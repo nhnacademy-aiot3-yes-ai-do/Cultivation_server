@@ -1,6 +1,8 @@
 spring:
   application:
     name: cultivation-server
+  config:
+    import: optional:file:.env[.properties]
   cloud:
     eureka:
       client:
@@ -25,7 +27,9 @@ spring:
       validation-query: SELECT 1
       pool-prepared-statements: true
       max-open-prepared-statements: 100
-
+  jpa:
+    hibernate:
+      ddl-auto: update
 eureka:
   client:
     service-url:
