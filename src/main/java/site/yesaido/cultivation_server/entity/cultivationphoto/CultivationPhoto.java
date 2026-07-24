@@ -22,6 +22,7 @@ public class CultivationPhoto {
     private String objectKey;
 
     @Column(name = "storage_type", nullable = false, length = 50)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private StorageType storageType = StorageType.MINIO;
 
