@@ -1,4 +1,4 @@
-package site.yesaido.cultivation_server.entity.photo;
+package site.yesaido.cultivation_server.entity.cultivationmember;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,25 +8,26 @@ import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "cultivation_member")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Table(name = "photo")
-public class Photo {
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
+public class CultivationMember {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "image_url", nullable = false, length = 500)
-    private String imageUrl;
+    @Column(name = "user_id")
+    private Long userId;
 
-    @Column(name = "uploaded_at", nullable = false)
-    private LocalDateTime uploadedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Role role;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime joinedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cultivation_id", nullable = false)

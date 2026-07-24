@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -17,13 +18,20 @@ public class Harvest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Double harvestWeight;
+    private BigDecimal harvestWeight;
 
     @Column(columnDefinition = "TEXT")
     private String memo;
 
     @Column(nullable = false)
     private LocalDateTime harvestedAt;
+
+    @Column(name = "project_score")
+    private BigDecimal projectScore;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "product_grade", length = 10)
+    private ProductGrade productGrade;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false, name = "cultivation_id", unique = true)

@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import site.yesaido.cultivation_server.entity.mushroomreference.MushroomReference;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 @Entity
@@ -22,21 +22,22 @@ public class Cultivation {
     @Column(nullable = false)
     private Long userId;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "mode", length = 20)
+    private Mode mode = Mode.GROWTH;
+
     @Column(nullable = false, length = 100)
     private String name;
-
-    @Column(nullable = false, length = 50)
-    @Enumerated(EnumType.STRING)
-    private MushroomType mushroomType;
 
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private Status status = Status.CREATED;
 
-    private Timestamp startedAt;
+    private LocalDateTime startedAt;
 
-    private Timestamp finishedAt;
+    private LocalDateTime finishedAt;
 
     @Column(nullable = false, updatable = false)
     @CreationTimestamp
@@ -45,4 +46,8 @@ public class Cultivation {
     @Column(nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "mushroom_id", nullable = false)
+    private MushroomReference mushroomReference;
 }
