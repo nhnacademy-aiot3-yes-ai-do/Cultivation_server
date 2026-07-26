@@ -1,0 +1,17 @@
+POST http://localhost:9001/api/cultivations
+X-User-Id: 1
+Content-Type: application/json
+
+{
+  "name": "테스트용",
+  "mushroomId": 1,
+  "devices": [
+    {
+      "deviceEui": "24e124128c067999",
+      "location": "A동",
+      "locationDetail": "선반1",
+      "deviceModel": "Milesight AM107",
+      "sensorTypeIds": [1, 2, 3, 4]
+    }
+  ]
+}
