@@ -13,7 +13,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor
-@Table(name = "cultivation")
+@Table(
+        name = "cultivation",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_cultivation_user_name",
+                columnNames = {"user_id", "name"}
+        )
+)
 public class Cultivation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +31,7 @@ public class Cultivation {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(name = "mode", length = 20)
-    private Mode mode = Mode.GROWTH;
+    private CultivationMode mode = CultivationMode.GROWTH;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -33,7 +39,7 @@ public class Cultivation {
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private Status status = Status.CREATED;
+    private CultivationStatus cultivationStatus = CultivationStatus.CREATED;
 
     private LocalDateTime startedAt;
 

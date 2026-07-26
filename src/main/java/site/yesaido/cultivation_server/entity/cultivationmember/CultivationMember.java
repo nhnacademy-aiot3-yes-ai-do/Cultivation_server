@@ -23,7 +23,7 @@ public class CultivationMember {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private Role role;
+    private MemberRole role;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
