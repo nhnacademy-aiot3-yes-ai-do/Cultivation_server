@@ -13,7 +13,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
 @AllArgsConstructor
-@Table(name = "cultivation")
+@Table(
+        name = "cultivation",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_cultivation_user_name",
+                columnNames = {"user_id", "name"}
+        )
+)
 public class Cultivation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

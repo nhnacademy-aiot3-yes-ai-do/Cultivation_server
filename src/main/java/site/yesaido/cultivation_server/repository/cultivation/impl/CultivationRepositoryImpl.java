@@ -23,6 +23,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 .join(cultivation.mushroomReference).fetchJoin()
                 .join(member).on(member.cultivation.eq(cultivation))
                 .where(member.userId.eq(userId))
+                .distinct()
                 .fetch();
     }
 }
