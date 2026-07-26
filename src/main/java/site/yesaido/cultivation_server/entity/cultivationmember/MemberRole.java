@@ -1,6 +1,6 @@
 package site.yesaido.cultivation_server.entity.cultivationmember;
 
-public enum Role {
+public enum MemberRole {
     OWNER,
     MEMBER
 }

@@ -25,7 +25,7 @@ public class Cultivation {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(name = "mode", length = 20)
-    private Mode mode = Mode.GROWTH;
+    private CultivationMode mode = CultivationMode.GROWTH;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -33,7 +33,7 @@ public class Cultivation {
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private Status status = Status.CREATED;
+    private CultivationStatus cultivationStatus = CultivationStatus.CREATED;
 
     private LocalDateTime startedAt;
 
