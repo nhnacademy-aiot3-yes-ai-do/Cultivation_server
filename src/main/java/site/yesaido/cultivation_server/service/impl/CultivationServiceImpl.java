@@ -5,10 +5,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
 import site.yesaido.cultivation_server.dto.cultivation.response.CultivationCreateResponse;
+import site.yesaido.cultivation_server.dto.cultivation.response.CultivationDetailResponse;
 import site.yesaido.cultivation_server.dto.cultivation.response.CultivationSummaryResponse;
 import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.entity.mushroomreference.MushroomReference;
+import site.yesaido.cultivation_server.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.exception.CultivationAlreadyExist;
+import site.yesaido.cultivation_server.exception.CultivationNotFoundException;
 import site.yesaido.cultivation_server.exception.MushroomNotFoundException;
 import site.yesaido.cultivation_server.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.repository.mushroomreference.MushroomReferenceRepository;
@@ -54,6 +57,17 @@ public class CultivationServiceImpl implements CultivationService {
                 .toList();
     }
 
+    @Override
+    public CultivationDetailResponse getCultivation(Long userId, Long cultivationId) {
+        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+        if (!cultivationRepository.isMember(cultivationId, userId)) {
+            throw new CultivationAccessDeniedException(cultivationId);
+        }
+
+        return toDetail(cultivation);
+    }
+
     // Helper Method
     private CultivationSummaryResponse toSummary(Cultivation cultivation) {
         return new CultivationSummaryResponse(
@@ -63,5 +77,19 @@ public class CultivationServiceImpl implements CultivationService {
                 cultivation.getCultivationStatus(),
                 cultivation.getMode(),
                 cultivation.getCreatedAt());
+    }
+
+    private CultivationDetailResponse toDetail(Cultivation cultivation) {
+        return new CultivationDetailResponse(
+                cultivation.getId(),
+                cultivation.getName(),
+                cultivation.getMushroomReference().getId(),
+                cultivation.getCultivationStatus(),
+                cultivation.getMode(),
+                cultivation.getStartedAt(),
+                cultivation.getFinishedAt(),
+                cultivation.getCreatedAt(),
+                cultivation.getUpdatedAt()
+        );
     }
 }

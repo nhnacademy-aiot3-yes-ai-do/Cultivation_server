@@ -26,4 +26,14 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 .distinct()
                 .fetch();
     }
+
+    @Override
+    public boolean isMember(Long cultivationId, Long userId) {
+        QCultivationMember member = QCultivationMember.cultivationMember;
+        return queryFactory
+                .selectOne()
+                .from(member)
+                .where(member.cultivation.id.eq(cultivationId), member.userId.eq(userId))
+                .fetchFirst() != null;
+    }
 }

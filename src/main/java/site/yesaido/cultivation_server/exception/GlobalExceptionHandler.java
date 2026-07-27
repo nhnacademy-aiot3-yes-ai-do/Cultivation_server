@@ -19,6 +19,18 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
     }
 
+    @ExceptionHandler(CultivationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCultivationNotFound(CultivationNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(CultivationAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleCultivationAccessDenied(CultivationAccessDeniedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.of(HttpStatus.FORBIDDEN.value(), e.getMessage()));
+    }
+
     @ExceptionHandler(MushroomNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleMushroomNotFoundException(MushroomNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface CultivationRepositoryCustom {
     List<Cultivation> findAllByMemberUserId(Long userId);
+    boolean isMember(Long cultivationId, Long userId);
 }
