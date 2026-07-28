@@ -8,7 +8,13 @@ import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "cultivation_member")
+@Table(
+        name = "cultivation_member",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_cultivation_member_cultivation_user",
+                columnNames = {"cultivation_id", "user_id"}
+        )
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -18,11 +24,11 @@ public class CultivationMember {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 20, nullable = false)
     private MemberRole role;
 
     @CreationTimestamp
@@ -32,4 +38,8 @@ public class CultivationMember {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cultivation_id", nullable = false)
     private Cultivation cultivation;
+
+    public void updateRole(MemberRole role) {
+        this.role = role;
+    }
 }
