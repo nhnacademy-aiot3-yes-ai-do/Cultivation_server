@@ -5,17 +5,20 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationCreateResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationDetailResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationSummaryResponse;
+import site.yesaido.cultivation_server.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.entity.cultivation.CultivationStatus;
+import site.yesaido.cultivation_server.entity.harvest.ProductGrade;
 import site.yesaido.cultivation_server.service.CultivationService;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -23,8 +26,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -96,5 +98,52 @@ class CultivationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cultivationId").value(cultivationId))
                 .andExpect(jsonPath("$.name").value("테스트 버섯"));
+    }
+
+    @Test
+    @DisplayName("재배 종료 API - 정상 요청 시 200 OK 반환")
+    void finishCultivationSuccess() throws Exception {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        CultivationFinishResponse response = new CultivationFinishResponse(
+                cultivationId,
+                CultivationStatus.FINISHED,
+                LocalDateTime.now()
+        );
+
+        when(cultivationService.finish(cultivationId, userId)).thenReturn(response);
+
+        mockMvc.perform(put("/api/cultivations/{cultivation-id}/finish", cultivationId)
+                .header("X-User-Id", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cultivationId").value(cultivationId))
+                .andExpect(jsonPath("$.status").value(CultivationStatus.FINISHED.name()));
+    }
+
+    @Test
+    @DisplayName("재배 이력 조회 API - 200 OK 및 페이징된 내역 반환")
+    void getHistorySuccess() throws Exception {
+        Long userId = 1L;
+        CultivationHistoryResponse history = new CultivationHistoryResponse(
+                100L,
+                "이전 버섯",
+                1L,
+                CultivationStatus.FINISHED,
+                new BigDecimal(10.5),
+                ProductGrade.TOP,
+                LocalDateTime.now()
+        );
+
+        Page<CultivationHistoryResponse> historyPage = new PageImpl<>(List.of(history), PageRequest.of(0, 20), 1);
+        when(cultivationService.getHistory(eq(userId), any())).thenReturn(historyPage);
+
+        mockMvc.perform(get("/api/cultivations/history")
+                .header("X-User-Id", userId)
+                .param("page", "0")
+                .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].cultivationId").value(100L))
+                .andExpect(jsonPath("$.content[0].name").value("이전 버섯"))
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 }
