@@ -69,6 +69,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
     }
 
+    @ExceptionHandler(CultivationAlreadyFinishedException.class)
+    public ResponseEntity<ErrorResponse> handleCultivationAlreadyFinished(CultivationAlreadyFinishedException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
+    }
+
     //500 INTERNAL_SERVER_ERROR
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
