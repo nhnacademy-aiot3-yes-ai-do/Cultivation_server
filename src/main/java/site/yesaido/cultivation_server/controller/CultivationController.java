@@ -2,6 +2,9 @@ package site.yesaido.cultivation_server.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,8 +51,9 @@ public class CultivationController {
 
     // 이력 조회
     @GetMapping("/history")
-    public ResponseEntity<List<CultivationHistoryResponse>> getHistory(@RequestHeader("X-User-Id") Long userId) {
-        List<CultivationHistoryResponse> response = cultivationService.getHistory(userId);
+    public ResponseEntity<Page<CultivationHistoryResponse>> getHistory(@RequestHeader("X-User-Id") Long userId,
+                                                                       @PageableDefault(size = 20) Pageable pageable) {
+        Page<CultivationHistoryResponse> response = cultivationService.getHistory(userId, pageable);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

@@ -1,6 +1,8 @@
 package site.yesaido.cultivation_server.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
@@ -103,8 +105,8 @@ public class CultivationServiceImpl implements CultivationService {
     }
 
     @Override
-    public List<CultivationHistoryResponse> getHistory(Long userId) {
-        return cultivationRepository.findHistoryByMemberUserId(userId);
+    public Page<CultivationHistoryResponse> getHistory(Long userId, Pageable pageable) {
+        return cultivationRepository.findHistoryByMemberUserId(userId, pageable);
     }
 
     // Helper Method

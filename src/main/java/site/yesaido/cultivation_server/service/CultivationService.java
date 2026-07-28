@@ -1,6 +1,8 @@
 package site.yesaido.cultivation_server.service;
 
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
 import site.yesaido.cultivation_server.dto.cultivation.response.*;
 
@@ -23,5 +25,5 @@ public interface CultivationService {
     CultivationFinishResponse finish(Long cultivationId, Long userId);
 
     // 경작 이력 조회
-    List<CultivationHistoryResponse> getHistory(Long userId);
+    Page<CultivationHistoryResponse> getHistory(Long userId, Pageable pageable);
 }

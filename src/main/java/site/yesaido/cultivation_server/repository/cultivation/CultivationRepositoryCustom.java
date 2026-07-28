@@ -1,5 +1,7 @@
 package site.yesaido.cultivation_server.repository.cultivation;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import site.yesaido.cultivation_server.dto.cultivation.response.CultivationHistoryResponse;
 import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
 
@@ -10,5 +12,5 @@ public interface CultivationRepositoryCustom {
     boolean isMember(Long cultivationId, Long userId);
 
     // 이력 조회용
-    List<CultivationHistoryResponse> findHistoryByMemberUserId(Long userId);
+    Page<CultivationHistoryResponse> findHistoryByMemberUserId(Long userId, Pageable pageable);
 }
