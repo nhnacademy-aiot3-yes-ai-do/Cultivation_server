@@ -64,7 +64,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 .leftJoin(harvest).on(harvest.cultivation.eq(cultivation))
                 .where(member.userId.eq(userId), cultivation.cultivationStatus.eq(CultivationStatus.FINISHED))
                 .distinct()
-                .orderBy(cultivation.finishedAt.desc())
+                .orderBy(cultivation.finishedAt.desc(), cultivation.id.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
