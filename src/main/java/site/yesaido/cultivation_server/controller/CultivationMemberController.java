@@ -33,7 +33,7 @@ public class CultivationMemberController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @PatchMapping("/{user-id}")
+    @PutMapping("/{user-id}")
     public ResponseEntity<Void> updateMember(@PathVariable("cultivation-id") Long cultivationId,
                                               @PathVariable("user-id") Long targetUserId,
                                               @RequestHeader("X-User-Id") Long userId,

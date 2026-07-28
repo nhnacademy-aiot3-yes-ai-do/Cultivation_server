@@ -83,6 +83,7 @@ public class CultivationServiceImpl implements CultivationService {
             throw new CultivationAccessDeniedException(cultivationId);
         }
 
+        cultivationMemberService.removeAllMembers(cultivationId);
         cultivationRepository.delete(cultivation);
     }
 

@@ -8,7 +8,13 @@ import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "cultivation_member")
+@Table(
+        name = "cultivation_member",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_cultivation_member_cultivation_user",
+                columnNames = {"cultivation_id", "user_id"}
+        )
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

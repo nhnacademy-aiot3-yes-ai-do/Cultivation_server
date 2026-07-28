@@ -1,6 +1,7 @@
 package site.yesaido.cultivation_server.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.dto.cultivationmember.request.MemberAddRequest;
@@ -12,6 +13,7 @@ import site.yesaido.cultivation_server.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.exception.CultivationMemberAlreadyExistException;
 import site.yesaido.cultivation_server.exception.CultivationMemberNotFoundException;
+import site.yesaido.cultivation_server.exception.InvalidMemberRoleException;
 import site.yesaido.cultivation_server.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.service.CultivationMemberService;
 
@@ -37,6 +39,9 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
     @Override
     @Transactional
     public void addMember(Long cultivationId, Long requesterId, MemberAddRequest request) {
+        if (request.role() == MemberRole.OWNER) {
+            throw new InvalidMemberRoleException();
+        }
         CultivationMember owner = verifyOwner(cultivationId, requesterId);
 
         if (cultivationMemberRepository.existsByCultivationIdAndUserId(cultivationId, request.userId())) {
@@ -48,7 +53,11 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
                 .role(request.role())
                 .cultivation(owner.getCultivation())
                 .build();
-        cultivationMemberRepository.save(newMember);
+        try {
+            cultivationMemberRepository.save(newMember);
+        } catch (DataIntegrityViolationException e) {
+            throw new CultivationMemberAlreadyExistException(request.userId());
+        }
     }
 
     @Override
@@ -65,6 +74,9 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
     @Override
     @Transactional
     public void updateMember(Long cultivationId, Long requesterId, Long targetUserId, MemberRoleUpdateRequest request) {
+        if (request.role() == MemberRole.OWNER) {
+            throw new InvalidMemberRoleException();
+        }
         verifyOwner(cultivationId, requesterId);
 
         CultivationMember target = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, targetUserId)
@@ -90,6 +102,12 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         }
 
         cultivationMemberRepository.delete(target);
+    }
+
+    @Override
+    @Transactional
+    public void removeAllMembers(Long cultivationId) {
+        cultivationMemberRepository.deleteAllByCultivationId(cultivationId);
     }
 
     // Helper Method
