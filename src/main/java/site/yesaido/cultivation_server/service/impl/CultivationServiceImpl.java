@@ -2,6 +2,7 @@ package site.yesaido.cultivation_server.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,7 +107,14 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Override
     public Page<CultivationHistoryResponse> getHistory(Long userId, Pageable pageable) {
-        return cultivationRepository.findHistoryByMemberUserId(userId, pageable);
+        Page<CultivationHistoryResponse> page = cultivationRepository.findHistoryByMemberUserId(userId, pageable);
+
+        if (page.getContent().isEmpty() && page.getTotalElements() > 0 && pageable.getPageNumber() > 0) {
+            int lastPage = page.getTotalPages() - 1;
+            Pageable lastPageable = PageRequest.of(lastPage, pageable.getPageSize(), pageable.getSort());
+            return cultivationRepository.findHistoryByMemberUserId(userId, lastPageable);
+        }
+        return page;
     }
 
     // Helper Method

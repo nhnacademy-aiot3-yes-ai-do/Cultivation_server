@@ -146,4 +146,29 @@ class CultivationControllerTest {
                 .andExpect(jsonPath("$.content[0].name").value("이전 버섯"))
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
+
+    @Test
+    @DisplayName("재배 이력 조회 페이징 경계값 - 범위를 벗어난 페이지 요청 시 마지막 페이징 데이터를 반환")
+    void getHistoryOutOfBoundsPage() throws Exception {
+        Long userId = 1L;
+        int outOfBoundsPage = 999;
+
+        CultivationHistoryResponse historyResponse = new CultivationHistoryResponse(
+                100L, "마지막 이력", 1L, CultivationStatus.FINISHED, new BigDecimal(10.5), ProductGrade.TOP, LocalDateTime.now()
+        );
+
+        Page<CultivationHistoryResponse> lastPage = new PageImpl<>(List.of(historyResponse), PageRequest.of(2, 20), 50);
+
+        when(cultivationService.getHistory(eq(userId), any())).thenReturn(lastPage);
+
+        mockMvc.perform(get("/api/cultivations/history")
+                .header("X-User-Id", userId)
+                .param("page", String.valueOf(outOfBoundsPage))
+                .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isNotEmpty())
+                .andExpect(jsonPath("$.content[0].name").value("마지막 이력"))
+                .andExpect(jsonPath("$.number").value(2));
+
+    }
 }
