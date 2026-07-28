@@ -6,9 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationCreateResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationDetailResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationSummaryResponse;
+import site.yesaido.cultivation_server.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.service.CultivationService;
 
 import java.util.List;
@@ -37,6 +35,21 @@ public class CultivationController {
     @GetMapping("/{cultivation-id}")
     public ResponseEntity<CultivationDetailResponse> getCultivation(@RequestHeader("X-User-Id") Long userId, @PathVariable("cultivation-id") Long cultivationId) {
         CultivationDetailResponse response = cultivationService.getCultivation(userId, cultivationId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    // 재배 종료
+    @PutMapping("/{cultivation-id}/finish")
+    public ResponseEntity<CultivationFinishResponse> finish(@RequestHeader("X-User-Id") Long userId,
+                                                            @PathVariable("cultivation-id") Long cultivationId) {
+        CultivationFinishResponse response = cultivationService.finish(cultivationId, userId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    // 이력 조회
+    @GetMapping("/history")
+    public ResponseEntity<List<CultivationHistoryResponse>> getHistory(@RequestHeader("X-User-Id") Long userId) {
+        List<CultivationHistoryResponse> response = cultivationService.getHistory(userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

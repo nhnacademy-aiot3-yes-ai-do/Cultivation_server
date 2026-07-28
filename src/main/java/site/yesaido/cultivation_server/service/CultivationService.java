@@ -2,9 +2,7 @@ package site.yesaido.cultivation_server.service;
 
 
 import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationCreateResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationDetailResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationSummaryResponse;
+import site.yesaido.cultivation_server.dto.cultivation.response.*;
 
 import java.util.List;
 
@@ -20,4 +18,10 @@ public interface CultivationService {
 
     // 경작 삭제
     void deleteCultivation(Long cultivationId, Long userId);
+
+    // 경작 종료
+    CultivationFinishResponse finish(Long cultivationId, Long userId);
+
+    // 경작 이력 조회
+    List<CultivationHistoryResponse> getHistory(Long userId);
 }

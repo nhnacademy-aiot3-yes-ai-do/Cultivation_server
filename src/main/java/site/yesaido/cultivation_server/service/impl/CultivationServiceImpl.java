@@ -4,15 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationCreateResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationDetailResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationSummaryResponse;
+import site.yesaido.cultivation_server.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.entity.mushroomreference.MushroomReference;
-import site.yesaido.cultivation_server.exception.CultivationAccessDeniedException;
-import site.yesaido.cultivation_server.exception.CultivationAlreadyExist;
-import site.yesaido.cultivation_server.exception.CultivationNotFoundException;
-import site.yesaido.cultivation_server.exception.MushroomNotFoundException;
+import site.yesaido.cultivation_server.exception.*;
 import site.yesaido.cultivation_server.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.repository.mushroomreference.MushroomReferenceRepository;
@@ -85,6 +81,30 @@ public class CultivationServiceImpl implements CultivationService {
 
         cultivationMemberService.removeAllMembers(cultivationId);
         cultivationRepository.delete(cultivation);
+    }
+
+    @Override
+    @Transactional
+    public CultivationFinishResponse finish(Long cultivationId, Long userId) {
+        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
+        if (!cultivation.getUserId().equals(userId)) {
+            throw new CultivationAccessDeniedException(cultivationId);
+        }
+
+        if (cultivation.getCultivationStatus() == CultivationStatus.FINISHED) {
+            throw new CultivationAlreadyFinishedException(cultivationId);
+        }
+
+        cultivation.finish();
+
+        return new CultivationFinishResponse(cultivation.getId(), cultivation.getCultivationStatus(), cultivation.getFinishedAt());
+    }
+
+    @Override
+    public List<CultivationHistoryResponse> getHistory(Long userId) {
+        return cultivationRepository.findHistoryByMemberUserId(userId);
     }
 
     // Helper Method

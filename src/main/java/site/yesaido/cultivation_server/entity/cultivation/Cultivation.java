@@ -56,4 +56,9 @@ public class Cultivation {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mushroom_id", nullable = false)
     private MushroomReference mushroomReference;
+
+    public void finish() {
+        this.cultivationStatus = CultivationStatus.FINISHED;
+        this.finishedAt = LocalDateTime.now();
+    }
 }
