@@ -75,6 +75,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
     }
 
+    @ExceptionHandler(CultivationMemberAlreadyExistException.class)
+    public ResponseEntity<ErrorResponse> handleCultivationMemberAlreadyExist(CultivationMemberAlreadyExistException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
+    }
+
     //500 INTERNAL_SERVER_ERROR
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {

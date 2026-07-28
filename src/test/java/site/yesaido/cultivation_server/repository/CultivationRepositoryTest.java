@@ -8,8 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import site.yesaido.cultivation_server.config.QuerydslConfig;
+import site.yesaido.cultivation_server.dto.cultivation.response.CultivationHistoryResponse;
 import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.entity.mushroomreference.MushroomReference;
@@ -159,6 +163,43 @@ class CultivationRepositoryTest {
         assertThat(cultivationRepository.isMember(cultivation.getId(), 999L)).isFalse();
     }
 
+    @Test
+    @DisplayName("페이징 경계값 - 21개 데이터 삽입 시 2번째 페이지는 1개만 조회됨")
+    void findHistoryByMemberUserIdPagingBoundary() {
+        Long userId = 1L;
+        for (int i = 1; i <= 21; i++) {
+            Cultivation cultivation = Cultivation.builder()
+                    .userId(userId)
+                    .name("종료된 농장 " + i)
+                    .mushroomReference(savedMushroom)
+                    .cultivationStatus(CultivationStatus.FINISHED)
+                    .build();
+            entityManager.persist(cultivation);
+
+            CultivationMember member = CultivationMember.builder()
+                    .userId(userId)
+                    .role(MemberRole.OWNER)
+                    .cultivation(cultivation)
+                    .build();
+            entityManager.persist(member);
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        PageRequest page0 = PageRequest.of(0, 20);
+        Page<CultivationHistoryResponse> resultPage0 = cultivationRepository.findHistoryByMemberUserId(userId, page0);
+
+        PageRequest page1 = PageRequest.of(1, 20);
+        Page<CultivationHistoryResponse> resultPage1 = cultivationRepository.findHistoryByMemberUserId(userId, page1);
+
+        assertThat(resultPage0.getContent()).hasSize(20);
+        assertThat(resultPage0.getTotalElements()).isEqualTo(21);
+        assertThat(resultPage0.getTotalPages()).isEqualTo(2);
+
+        assertThat(resultPage1.getContent()).hasSize(1);
+    }
+
+    // Helper Method
     private void saveMember(Cultivation cultivation, Long userId, MemberRole role) {
         CultivationMember member = CultivationMember.builder()
                 .cultivation(cultivation)

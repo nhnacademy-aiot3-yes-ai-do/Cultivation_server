@@ -6,11 +6,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationCreateResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationDetailResponse;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationSummaryResponse;
+import site.yesaido.cultivation_server.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.entity.mushroomreference.MushroomReference;
 import site.yesaido.cultivation_server.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.exception.CultivationAlreadyExist;
@@ -18,6 +20,7 @@ import site.yesaido.cultivation_server.exception.CultivationNotFoundException;
 import site.yesaido.cultivation_server.exception.MushroomNotFoundException;
 import site.yesaido.cultivation_server.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.repository.mushroomreference.MushroomReferenceRepository;
+import site.yesaido.cultivation_server.service.impl.CultivationMemberServiceImpl;
 import site.yesaido.cultivation_server.service.impl.CultivationServiceImpl;
 
 import java.nio.file.AccessDeniedException;
@@ -36,6 +39,9 @@ class CultivationServiceTest {
 
     @Mock
     private MushroomReferenceRepository mushroomReferenceRepository;
+
+    @Mock
+    private CultivationMemberServiceImpl cultivationMemberService;
 
     @InjectMocks
     private CultivationServiceImpl service;
@@ -141,5 +147,40 @@ class CultivationServiceTest {
 
         when(cultivationRepository.findById(invalidCultivationId)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.getCultivation(userId, invalidCultivationId)).isInstanceOf(CultivationNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("재배 종료 성공 - 상태가 FINISHED로 변경됨")
+    void finishSuccess() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.CREATED)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        CultivationFinishResponse response = service.finish(cultivationId, userId);
+
+        assertThat(response).isNotNull();
+        assertThat(response.status()).isEqualTo(CultivationStatus.FINISHED);
+    }
+
+    @Test
+    @DisplayName("재배 이력 조회 성공 - 페이징 결과가 반환됨")
+    void getHistorySuccess() {
+        Long userId = 1L;
+        PageRequest pageRequest = PageRequest.of(0, 20);
+
+        Page<CultivationHistoryResponse> emptyPage = new PageImpl<>(Collections.emptyList(), pageRequest, 0);
+        when(cultivationRepository.findHistoryByMemberUserId(userId, pageRequest)).thenReturn(emptyPage);
+
+        Page<CultivationHistoryResponse> result = service.getHistory(userId, pageRequest);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getTotalElements()).isEqualTo(emptyPage.getTotalElements());
     }
 }
