@@ -129,7 +129,7 @@ class CultivationControllerTest {
                 "이전 버섯",
                 1L,
                 CultivationStatus.FINISHED,
-                new BigDecimal(10.5),
+                new BigDecimal("10.5"),
                 ProductGrade.TOP,
                 LocalDateTime.now()
         );
