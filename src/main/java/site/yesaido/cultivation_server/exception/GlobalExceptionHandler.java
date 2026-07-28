@@ -13,42 +13,7 @@ import site.yesaido.cultivation_server.dto.ErrorResponse;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(CultivationAlreadyExist.class)
-    public ResponseEntity<ErrorResponse> handleCultivationAlreadyExist(CultivationAlreadyExist e) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(CultivationNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleCultivationNotFound(CultivationNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(CultivationAccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleCultivationAccessDenied(CultivationAccessDeniedException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ErrorResponse.of(HttpStatus.FORBIDDEN.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(MushroomNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleMushroomNotFoundException(MushroomNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(CultivationMemberNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleCultivationMemberNotFound(CultivationMemberNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), e.getMessage()));
-    }
-
-    @ExceptionHandler(CultivationMemberAlreadyExistException.class)
-    public ResponseEntity<ErrorResponse> handleCultivationMemberAlreadyExist(CultivationMemberAlreadyExistException e) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
-    }
-
+    // 400 BAD_REQUEST
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
@@ -71,6 +36,46 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "필수 헤더가 누락되었습니다: " + e.getHeaderName()));
     }
 
+    // 403 FORBIDDEN
+    @ExceptionHandler(CultivationAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleCultivationAccessDenied(CultivationAccessDeniedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.of(HttpStatus.FORBIDDEN.value(), e.getMessage()));
+    }
+
+    //404 NOT_FOUND
+    @ExceptionHandler(CultivationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCultivationNotFound(CultivationNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(MushroomNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleMushroomNotFoundException(MushroomNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(CultivationMemberNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCultivationMemberNotFound(CultivationMemberNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), e.getMessage()));
+    }
+
+    // 409 CONFLICT
+    @ExceptionHandler(CultivationAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> handleCultivationAlreadyExist(CultivationAlreadyExist e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
+    }
+
+    @ExceptionHandler(CultivationAlreadyFinishedException.class)
+    public ResponseEntity<ErrorResponse> handleCultivationAlreadyFinished(CultivationAlreadyFinishedException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), e.getMessage()));
+    }
+
+    //500 INTERNAL_SERVER_ERROR
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
         log.error("Unhandled exception", e);
