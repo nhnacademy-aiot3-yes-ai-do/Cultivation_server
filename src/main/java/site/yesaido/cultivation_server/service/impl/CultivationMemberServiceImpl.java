@@ -104,6 +104,7 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         cultivationMemberRepository.delete(target);
     }
 
+    // Cultivation을 삭제하는 경우 Member를 삭제하는 기능
     @Override
     @Transactional
     public void removeAllMembers(Long cultivationId) {
