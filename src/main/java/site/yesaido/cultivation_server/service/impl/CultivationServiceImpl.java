@@ -14,7 +14,9 @@ import site.yesaido.cultivation_server.exception.CultivationAlreadyExist;
 import site.yesaido.cultivation_server.exception.CultivationNotFoundException;
 import site.yesaido.cultivation_server.exception.MushroomNotFoundException;
 import site.yesaido.cultivation_server.repository.cultivation.CultivationRepository;
+import site.yesaido.cultivation_server.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.repository.mushroomreference.MushroomReferenceRepository;
+import site.yesaido.cultivation_server.service.CultivationMemberService;
 import site.yesaido.cultivation_server.service.CultivationService;
 
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ import java.util.List;
 public class CultivationServiceImpl implements CultivationService {
     private final CultivationRepository cultivationRepository;
     private final MushroomReferenceRepository mushroomReferenceRepository;
+    private final CultivationMemberService cultivationMemberService;
 
     @Override
     @Transactional
@@ -45,6 +48,8 @@ public class CultivationServiceImpl implements CultivationService {
                 .startedAt(LocalDateTime.now())
                 .build();
         cultivationRepository.save(cultivation);
+
+        cultivationMemberService.addOwner(cultivation, userId);
 
         return new CultivationCreateResponse(cultivation.getId(), null, Collections.emptyList());
     }
@@ -66,6 +71,19 @@ public class CultivationServiceImpl implements CultivationService {
         }
 
         return toDetail(cultivation);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCultivation(Long cultivationId, Long userId) {
+        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
+        if (!cultivation.getUserId().equals(userId)) {
+            throw new CultivationAccessDeniedException(cultivationId);
+        }
+
+        cultivationRepository.delete(cultivation);
     }
 
     // Helper Method

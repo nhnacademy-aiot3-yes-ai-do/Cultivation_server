@@ -12,7 +12,7 @@ spring:
         enabled: ${K8S_DISCOVERY_ENABLED:false}
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=${DB_SCHEMA}&stringtype=unspecified
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=${CULTIVATION_DB_SCHEMA}&stringtype=unspecified
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     type: org.apache.commons.dbcp2.BasicDataSource

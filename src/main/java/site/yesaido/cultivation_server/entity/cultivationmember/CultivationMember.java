@@ -32,4 +32,8 @@ public class CultivationMember {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cultivation_id", nullable = false)
     private Cultivation cultivation;
+
+    public void updateRole(MemberRole role) {
+        this.role = role;
+    }
 }

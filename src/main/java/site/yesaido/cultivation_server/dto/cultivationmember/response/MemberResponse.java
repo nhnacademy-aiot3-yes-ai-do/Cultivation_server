@@ -4,9 +4,9 @@ import site.yesaido.cultivation_server.entity.cultivationmember.MemberRole;
 
 import java.time.LocalDateTime;
 
-public record CultivationMemberResponse(
+public record MemberResponse(
+        Long memberId,
         Long userId,
         MemberRole role,
         LocalDateTime joinedAt
-) {
-}
+) {}
