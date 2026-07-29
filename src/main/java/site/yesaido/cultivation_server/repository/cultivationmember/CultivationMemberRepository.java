@@ -12,5 +12,4 @@ public interface CultivationMemberRepository extends CrudRepository<CultivationM
     boolean existsByCultivationIdAndUserId(Long cultivationId, Long userId);
     Optional<CultivationMember> findByCultivationIdAndUserId(Long cultivationId, Long userId);
     List<CultivationMember> findAllByCultivationId(Long cultivationId);
-    void deleteAllByCultivationId(Long cultivationId);
 }
