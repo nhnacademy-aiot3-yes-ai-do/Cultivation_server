@@ -18,9 +18,6 @@ public interface CultivationService {
     // 경작 상세 조회
     CultivationDetailResponse getCultivation(Long userId, Long cultivationId);
 
-    // 경작 삭제
-    void deleteCultivation(Long cultivationId, Long userId);
-
     // 경작 종료
     CultivationFinishResponse finish(Long cultivationId, Long userId);
 

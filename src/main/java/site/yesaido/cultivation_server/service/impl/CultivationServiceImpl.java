@@ -74,20 +74,6 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Override
     @Transactional
-    public void deleteCultivation(Long cultivationId, Long userId) {
-        Cultivation cultivation = cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-
-        if (!cultivation.getUserId().equals(userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
-
-        cultivationMemberService.removeAllMembers(cultivationId);
-        cultivationRepository.delete(cultivation);
-    }
-
-    @Override
-    @Transactional
     public CultivationFinishResponse finish(Long cultivationId, Long userId) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
