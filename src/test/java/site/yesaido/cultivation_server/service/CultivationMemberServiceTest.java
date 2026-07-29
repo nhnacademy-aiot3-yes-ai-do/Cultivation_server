@@ -201,7 +201,7 @@ class CultivationMemberServiceTest {
         Long newUserId = 200L;
 
         CultivationMember currentOwner = CultivationMember.builder().userId(requesterId).role(MemberRole.OWNER).build();
-        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, requesterId)).thenReturn(Optional.of(currentOwner));
+        when(cultivationMemberRepository.findByCultivationIdAndUserIdForUpdate(cultivationId, requesterId)).thenReturn(Optional.of(currentOwner));
         when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, newUserId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cultivationMemberService.transferOwnership(cultivationId, requesterId, newUserId)).isInstanceOf(CultivationMemberNotFoundException.class);
@@ -228,7 +228,7 @@ class CultivationMemberServiceTest {
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, requesterId)).thenReturn(Optional.of(currentOwner));
+        when(cultivationMemberRepository.findByCultivationIdAndUserIdForUpdate(cultivationId, requesterId)).thenReturn(Optional.of(currentOwner));
         when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, newUserId)).thenReturn(Optional.of(newOwner));
 
         cultivationMemberService.transferOwnership(cultivationId, requesterId, newUserId);

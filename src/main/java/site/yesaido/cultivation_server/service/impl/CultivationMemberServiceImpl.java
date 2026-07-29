@@ -108,7 +108,13 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
             throw new InvalidOwnershipTransferException();
         }
 
-        CultivationMember currentOwner = verifyOwner(cultivationId, requesterId);
+        CultivationMember currentOwner = cultivationMemberRepository.findByCultivationIdAndUserIdForUpdate(cultivationId, requesterId)
+                .orElseThrow(CultivationMemberNotFoundException::new);
+
+        if (currentOwner.getRole() != MemberRole.OWNER) {
+            throw new CultivationAccessDeniedException(cultivationId);
+        }
+
         CultivationMember newOwner = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, newUserId)
                 .orElseThrow(CultivationMemberNotFoundException::new);
 
