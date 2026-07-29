@@ -72,7 +72,7 @@ class CultivationMemberControllerTest {
                 .andExpect(jsonPath("$[0].role").value("OWNER"));
     }
 
-    @Test
-    @DisplayName("멤버 권한 수정 성공")
-    void
+//    @Test
+//    @DisplayName("멤버 권한 수정 성공")
+//    void
 }
