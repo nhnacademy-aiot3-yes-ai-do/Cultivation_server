@@ -61,4 +61,9 @@ public class Cultivation {
         this.cultivationStatus = CultivationStatus.FINISHED;
         this.finishedAt = LocalDateTime.now();
     }
+
+    // 소유권 이전
+    public void changeOwner(Long newUserId) {
+        this.userId = newUserId;
+    }
 }

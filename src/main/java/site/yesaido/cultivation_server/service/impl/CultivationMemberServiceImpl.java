@@ -10,10 +10,7 @@ import site.yesaido.cultivation_server.dto.cultivationmember.response.MemberResp
 import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.entity.cultivationmember.MemberRole;
-import site.yesaido.cultivation_server.exception.CultivationAccessDeniedException;
-import site.yesaido.cultivation_server.exception.CultivationMemberAlreadyExistException;
-import site.yesaido.cultivation_server.exception.CultivationMemberNotFoundException;
-import site.yesaido.cultivation_server.exception.InvalidMemberRoleException;
+import site.yesaido.cultivation_server.exception.*;
 import site.yesaido.cultivation_server.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.service.CultivationMemberService;
 
@@ -102,6 +99,22 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         }
 
         cultivationMemberRepository.delete(target);
+    }
+
+    @Override
+    @Transactional
+    public void transferOwnership(Long cultivationId, Long requesterId, Long newUserId) {
+        if (requesterId.equals(newUserId)) {
+            throw new InvalidOwnershipTransferException();
+        }
+
+        CultivationMember currentOwner = verifyOwner(cultivationId, requesterId);
+        CultivationMember newOwner = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, newUserId)
+                .orElseThrow(CultivationMemberNotFoundException::new);
+
+        currentOwner.updateRole(MemberRole.MANAGER);
+        newOwner.updateRole(MemberRole.OWNER);
+        currentOwner.getCultivation().changeOwner(newUserId);
     }
 
     // Helper Method

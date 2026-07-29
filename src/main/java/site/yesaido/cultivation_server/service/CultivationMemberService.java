@@ -14,4 +14,7 @@ public interface CultivationMemberService {
     List<MemberResponse> getMembers(Long cultivationId, Long requesterId);
     void updateMember(Long cultivationId, Long requesterId, Long targetUserId, MemberRoleUpdateRequest request);
     void removeMember(Long cultivationId, Long requesterId, Long targetUserId);
+
+    // 소유권 이전
+    void transferOwnership(Long cultivationId, Long requesterId, Long newUserId);
 }
