@@ -36,6 +36,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "필수 헤더가 누락되었습니다: " + e.getHeaderName()));
     }
 
+    @ExceptionHandler(InvalidOwnershipTransferException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOwnershipTransferException(InvalidOwnershipTransferException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), e.getMessage()));
+    }
+
     // 403 FORBIDDEN
     @ExceptionHandler(CultivationAccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleCultivationAccessDenied(CultivationAccessDeniedException e) {
