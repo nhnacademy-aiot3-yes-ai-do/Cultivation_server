@@ -1,0 +1,1 @@
+INSERT INTO mushroom_reference DEFAULT VALUES;
