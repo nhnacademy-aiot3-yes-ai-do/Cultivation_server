@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import site.yesaido.cultivation_server.cultivation.entity.mushroomreference.MushroomReference;
+import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 
 import java.time.LocalDateTime;
 
