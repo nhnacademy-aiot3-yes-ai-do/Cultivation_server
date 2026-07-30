@@ -8,13 +8,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import site.yesaido.cultivation_server.dto.cultivationmember.request.MemberAddRequest;
-import site.yesaido.cultivation_server.dto.cultivationmember.response.MemberResponse;
-import site.yesaido.cultivation_server.entity.cultivationmember.MemberRole;
-import site.yesaido.cultivation_server.service.CultivationMemberService;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;

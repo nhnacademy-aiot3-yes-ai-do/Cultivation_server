@@ -11,14 +11,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import site.yesaido.cultivation_server.config.QuerydslConfig;
-import site.yesaido.cultivation_server.dto.cultivation.response.CultivationHistoryResponse;
-import site.yesaido.cultivation_server.entity.cultivation.Cultivation;
-import site.yesaido.cultivation_server.entity.cultivation.CultivationStatus;
-import site.yesaido.cultivation_server.entity.cultivationmember.CultivationMember;
-import site.yesaido.cultivation_server.entity.cultivationmember.MemberRole;
-import site.yesaido.cultivation_server.entity.mushroomreference.MushroomReference;
-import site.yesaido.cultivation_server.repository.cultivation.CultivationRepository;
-import site.yesaido.cultivation_server.repository.mushroomreference.MushroomReferenceRepository;
+import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.CultivationHistoryResponse;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
+import site.yesaido.cultivation_server.cultivation.entity.mushroomreference.MushroomReference;
+import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
+import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 
 import java.util.List;
 

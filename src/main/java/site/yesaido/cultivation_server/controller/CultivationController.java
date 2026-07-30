@@ -8,9 +8,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
-import site.yesaido.cultivation_server.dto.cultivation.response.*;
-import site.yesaido.cultivation_server.service.CultivationService;
+import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.CultivationCreateRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
+import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 
 import java.util.List;
 
