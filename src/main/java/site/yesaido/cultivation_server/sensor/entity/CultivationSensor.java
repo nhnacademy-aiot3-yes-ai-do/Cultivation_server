@@ -66,4 +66,9 @@ public class CultivationSensor {
     public void isDelete() {
         this.isDeleted = true;
     }
+
+    public void softDelete() {
+        this.isDeleted = true;
+        this.sensorStatus = SensorConnectStatus.OFFLINE;
+    }
 }
