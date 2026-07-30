@@ -27,6 +27,9 @@ public class CultivationSensor {
     @Column(name = "device_model")
     private String deviceModel;
 
+    @Column(name = "device_name")
+    private String deviceName;
+
     @Column(name = "location")
     private String location;
 
@@ -43,10 +46,11 @@ public class CultivationSensor {
     @Column(name = "is_deleted")
     private boolean isDeleted = false;
 
-    public CultivationSensor(long cultivationId, String deviceEui, String deviceModel, String location, String locationDetail) {
+    public CultivationSensor(long cultivationId, String deviceEui, String deviceModel, String deviceName, String location, String locationDetail) {
         this.cultivationId = cultivationId;
         this.deviceEui = deviceEui;
         this.deviceModel = deviceModel;
+        this.deviceName = deviceName;
         this.location = location;
         this.locationDetail = locationDetail;
 
