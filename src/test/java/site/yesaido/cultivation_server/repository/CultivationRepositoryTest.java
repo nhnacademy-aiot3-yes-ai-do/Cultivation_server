@@ -16,7 +16,6 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivatio
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
-import site.yesaido.cultivation_server.cultivation.entity.mushroomreference.MushroomReference;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 
