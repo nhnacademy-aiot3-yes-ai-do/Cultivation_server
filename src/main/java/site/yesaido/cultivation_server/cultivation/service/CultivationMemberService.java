@@ -1,0 +1,20 @@
+package site.yesaido.cultivation_server.cultivation.service;
+
+
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+
+import java.util.List;
+
+public interface CultivationMemberService {
+    void addOwner(Cultivation cultivation, Long userId);
+    void addMember(Long cultivationId, Long requesterId, MemberAddRequest request);
+    List<MemberResponse> getMembers(Long cultivationId, Long requesterId);
+    void updateMember(Long cultivationId, Long requesterId, Long targetUserId, MemberRoleUpdateRequest request);
+    void removeMember(Long cultivationId, Long requesterId, Long targetUserId);
+
+    // 소유권 이전
+    void transferOwnership(Long cultivationId, Long requesterId, Long newUserId);
+}

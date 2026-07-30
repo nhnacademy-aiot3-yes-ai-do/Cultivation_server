@@ -11,12 +11,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import site.yesaido.cultivation_server.dto.cultivation.request.CultivationCreateRequest;
-import site.yesaido.cultivation_server.dto.cultivation.response.*;
-import site.yesaido.cultivation_server.entity.cultivation.CultivationMode;
-import site.yesaido.cultivation_server.entity.cultivation.CultivationStatus;
-import site.yesaido.cultivation_server.entity.harvest.ProductGrade;
-import site.yesaido.cultivation_server.service.CultivationService;
+import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.CultivationCreateRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
+import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
+import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

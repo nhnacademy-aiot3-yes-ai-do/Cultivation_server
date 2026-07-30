@@ -1,0 +1,15 @@
+package site.yesaido.cultivation_server.cultivation.dto.harvest.response;
+
+import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+public record HarvestCreateResponse(
+        Long harvestId,
+        BigDecimal harvestWeight,
+        LocalDateTime harvestedAt,
+        BigDecimal productScore,
+        ProductGrade productGrade
+) {
+}

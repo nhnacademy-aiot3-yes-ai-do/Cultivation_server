@@ -5,11 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import site.yesaido.cultivation_server.dto.cultivationmember.request.MemberAddRequest;
-import site.yesaido.cultivation_server.dto.cultivationmember.request.MemberRoleUpdateRequest;
-import site.yesaido.cultivation_server.dto.cultivationmember.request.OwnerTransferRequest;
-import site.yesaido.cultivation_server.dto.cultivationmember.response.MemberResponse;
-import site.yesaido.cultivation_server.service.CultivationMemberService;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.OwnerTransferRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 
 import java.util.List;
 
