@@ -1,4 +1,4 @@
-package site.yesaido.cultivation_server.controller;
+package site.yesaido.cultivation_server.cultivation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;

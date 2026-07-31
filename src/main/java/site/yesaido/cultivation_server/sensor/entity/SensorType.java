@@ -3,6 +3,8 @@ package site.yesaido.cultivation_server.sensor.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import site.yesaido.cultivation_server.sensor.dto.request.SensorTypeRequest;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -16,9 +18,11 @@ public class SensorType {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
     @Column(name = "type")
     private String type;
 
+    @Setter
     @Column(name = "value_unit")
     private String valueUnit;
 
@@ -39,4 +43,8 @@ public class SensorType {
 
     @OneToMany(mappedBy = "sensorType")
     private Set<MushroomReferenceThreshold> mushroomReferenceThresholds;
+
+    public static SensorType create(SensorTypeRequest dto) {
+        return new SensorType(dto.type(), dto.valueUnit());
+    }
 }
