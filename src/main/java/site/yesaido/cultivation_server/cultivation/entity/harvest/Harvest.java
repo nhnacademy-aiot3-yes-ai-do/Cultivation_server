@@ -26,8 +26,8 @@ public class Harvest {
     @Column(nullable = false)
     private LocalDateTime harvestedAt;
 
-    @Column(name = "project_score")
-    private BigDecimal projectScore;
+    @Column(name = "product_score")
+    private BigDecimal productScore;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "product_grade", length = 10)
@@ -36,4 +36,9 @@ public class Harvest {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false, name = "cultivation_id", unique = true)
     private Cultivation cultivation;
+
+    public void updateProductGrade(BigDecimal productScore, ProductGrade productGrade) {
+        this.productScore = productScore;
+        this.productGrade = productGrade;
+    }
 }
