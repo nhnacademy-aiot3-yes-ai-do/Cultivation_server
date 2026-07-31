@@ -1,0 +1,71 @@
+package site.yesaido.cultivation_server.sensor.service.impl;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import site.yesaido.cultivation_server.sensor.dto.request.SensorTypeRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.SensorTypeInfoListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.SensorTypeInfoResponse;
+import site.yesaido.cultivation_server.sensor.entity.SensorType;
+import site.yesaido.cultivation_server.sensor.exception.SensorTypeAlreadyExistException;
+import site.yesaido.cultivation_server.sensor.exception.SensorTypeNotFoundException;
+import site.yesaido.cultivation_server.sensor.repository.SensorTypeRepository;
+import site.yesaido.cultivation_server.sensor.service.SensorTypeService;
+
+import java.util.List;
+
+@RequiredArgsConstructor
+@Component
+public class SensorTypeServiceImpl implements SensorTypeService {
+    private final SensorTypeRepository sensorTypeRepository;
+
+    @Override
+    @Transactional
+    public long registerSensorType(SensorTypeRequest dto) {
+        if(sensorTypeRepository.existsSensorTypeByTypeAndValueUnit(dto.type(), dto.valueUnit())) {
+            throw new SensorTypeAlreadyExistException("type:%s, valueUnit:%s".formatted(dto.type(), dto.valueUnit()));
+        }
+
+        SensorType registerSensorType = SensorType.create(dto);
+        SensorType saveSensorType = sensorTypeRepository.saveAndFlush(registerSensorType);
+
+        return saveSensorType.getId();
+    }
+
+    @Override
+    @Transactional
+    public void updateSensorType(long sensorTypeId, SensorTypeRequest dto) {
+        if(!sensorTypeRepository.existsSensorTypeById(sensorTypeId)) {
+            throw new SensorTypeNotFoundException("sensorTypeId:%d".formatted(sensorTypeId));
+        }
+
+        SensorType sensorType = sensorTypeRepository.findSensorTypeById(sensorTypeId);
+
+        if(!dto.type().equals(sensorType.getType())) {
+            sensorType.setType(dto.type());
+        }
+        if(!dto.valueUnit().equals(sensorType.getValueUnit())) {
+            sensorType.setValueUnit(sensorType.getValueUnit());
+        }
+
+        sensorTypeRepository.save(sensorType);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSensorType(long sensorTypeId) {
+        if(!sensorTypeRepository.existsSensorTypeById(sensorTypeId)) {
+            throw new SensorTypeNotFoundException("sensorTypeId:%d".formatted(sensorTypeId));
+        }
+
+        sensorTypeRepository.deleteById(sensorTypeId);
+    }
+
+    @Override
+    @Transactional
+    public SensorTypeInfoListResponse findAll() {
+        List<SensorType> all = sensorTypeRepository.findAll();
+        List<SensorTypeInfoResponse> sensorTypeInfoList = all.stream().map(SensorTypeInfoResponse::from).toList();
+        return new SensorTypeInfoListResponse(sensorTypeInfoList);
+    }
+}

@@ -1,4 +1,4 @@
-package site.yesaido.cultivation_server.service;
+package site.yesaido.cultivation_server.cultivation.service;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

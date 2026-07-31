@@ -1,4 +1,4 @@
-package site.yesaido.cultivation_server.repository;
+package site.yesaido.cultivation_server.cultivation.repository;
 
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
