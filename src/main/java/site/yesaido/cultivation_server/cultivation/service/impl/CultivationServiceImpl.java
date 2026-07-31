@@ -10,12 +10,12 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.Culti
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
-import site.yesaido.cultivation_server.cultivation.entity.mushroomreference.MushroomReference;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
+import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 
 import java.time.LocalDateTime;
 import java.util.Collections;

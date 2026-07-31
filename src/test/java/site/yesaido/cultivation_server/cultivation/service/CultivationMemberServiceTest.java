@@ -7,9 +7,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
+import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
@@ -31,6 +33,9 @@ import static org.mockito.Mockito.*;
 class CultivationMemberServiceTest {
     @Mock
     private CultivationMemberRepository cultivationMemberRepository;
+
+    @Mock
+    private UserClient userClient;
 
     @InjectMocks
     private CultivationMemberServiceImpl cultivationMemberService;
@@ -95,11 +100,16 @@ class CultivationMemberServiceTest {
 
         when(cultivationMemberRepository.existsByCultivationIdAndUserId(cultivationId,requesterId)).thenReturn(true);
         when(cultivationMemberRepository.findAllByCultivationId(cultivationId)).thenReturn(List.of(member1, member2));
+        when(userClient.getUsers(anyList())).thenReturn(List.of(
+                new UserSummaryResponse(100L, "owner-nick"),
+                new UserSummaryResponse(200L, "member-nick")
+        ));
 
         List<MemberResponse> responses = cultivationMemberService.getMembers(cultivationId, requesterId);
 
         assertThat(responses).hasSize(2);
         assertThat(responses.getFirst().userId()).isEqualTo(100L);
+        assertThat(responses.getFirst().nickname()).isEqualTo("owner-nick");
     }
 
     @Test

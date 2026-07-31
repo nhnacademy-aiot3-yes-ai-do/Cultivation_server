@@ -59,8 +59,8 @@ class CultivationMemberControllerTest {
         Long cultivationId = 1L;
         Long requesterId = 100L;
         List<MemberResponse> responseList = List.of(
-                new MemberResponse(1L, 100L, MemberRole.OWNER, LocalDateTime.now()),
-                new MemberResponse(1L, 200L, MemberRole.MEMBER, LocalDateTime.now())
+                new MemberResponse(1L, 100L, "owner", MemberRole.OWNER, LocalDateTime.now()),
+                new MemberResponse(1L, 200L, "member",MemberRole.MEMBER, LocalDateTime.now())
         );
 
         when(cultivationMemberService.getMembers(cultivationId, requesterId)).thenReturn(responseList);

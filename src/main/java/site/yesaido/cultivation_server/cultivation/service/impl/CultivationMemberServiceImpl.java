@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
+import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
@@ -15,12 +17,15 @@ import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CultivationMemberServiceImpl implements CultivationMemberService {
     private final CultivationMemberRepository cultivationMemberRepository;
+    private final UserClient userClient;
 
     @Override
     @Transactional
@@ -63,8 +68,17 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
             throw new CultivationAccessDeniedException(cultivationId);
         }
 
-        return cultivationMemberRepository.findAllByCultivationId(cultivationId).stream()
-                .map(this::toResponse)
+        List<CultivationMember> members = cultivationMemberRepository.findAllByCultivationId(cultivationId);
+        if (members.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, String> nicknameByUserId = userClient.getUsers(
+                members.stream().map(CultivationMember::getUserId).toList()
+        ).stream().collect(Collectors.toMap(UserSummaryResponse::userId, UserSummaryResponse::nickname));
+
+        return members.stream()
+                .map(member -> toResponse(member, nicknameByUserId.get(member.getUserId())))
                 .toList();
     }
 
@@ -135,10 +149,11 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         return member;
     }
 
-    private MemberResponse toResponse(CultivationMember member) {
+    private MemberResponse toResponse(CultivationMember member, String nickname) {
         return new MemberResponse(
                 member.getId(),
                 member.getUserId(),
+                nickname,
                 member.getRole(),
                 member.getJoinedAt()
         );

@@ -13,7 +13,6 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.Culti
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
-import site.yesaido.cultivation_server.cultivation.entity.mushroomreference.MushroomReference;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyExist;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
@@ -22,6 +21,7 @@ import site.yesaido.cultivation_server.cultivation.repository.cultivation.Cultiv
 import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationMemberServiceImpl;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationServiceImpl;
+import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 
 import java.util.Collections;
 import java.util.List;
@@ -52,7 +52,7 @@ class CultivationServiceTest {
         Long mushroomId = 100L;
         CultivationCreateRequest request = new CultivationCreateRequest("테스트 버섯", mushroomId, Collections.emptyList());
 
-        MushroomReference mushroom = MushroomReference.builder().build();
+        MushroomReference mushroom = new MushroomReference();
 
         when(cultivationRepository.existsByUserIdAndName(userId, request.name())).thenReturn(false);
 
@@ -93,7 +93,7 @@ class CultivationServiceTest {
     @DisplayName("경작 목록 조회 성공")
     void getCultivationsSuccess() {
         Long userId = 1L;
-        MushroomReference mushroom = MushroomReference.builder().build();
+        MushroomReference mushroom = new MushroomReference();
         Cultivation cultivation1 = Cultivation.builder().name("농장1").mushroomReference(mushroom).build();
         Cultivation cultivation2 = Cultivation.builder().name("농장2").mushroomReference(mushroom).build();
 
@@ -111,7 +111,7 @@ class CultivationServiceTest {
     void getCultivationDetail_Success() {
         Long userId = 1L;
         Long cultivationId = 100L;
-        MushroomReference mushroom = MushroomReference.builder().build();
+        MushroomReference mushroom = new MushroomReference();
         Cultivation cultivation = Cultivation.builder()
                 .name("경작 상세")
                 .mushroomReference(mushroom)

@@ -10,15 +10,16 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.TestPropertySource;
 import site.yesaido.cultivation_server.config.QuerydslConfig;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.CultivationHistoryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
-import site.yesaido.cultivation_server.cultivation.entity.mushroomreference.MushroomReference;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
+import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 
 import java.util.List;
 
@@ -27,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @Import(QuerydslConfig.class)
+@TestPropertySource(properties = "spring.sql.init.mode=never")
 class CultivationRepositoryTest {
     @Autowired
     private CultivationRepository cultivationRepository;
@@ -41,7 +43,7 @@ class CultivationRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        MushroomReference mushroom = MushroomReference.builder().build();
+        MushroomReference mushroom = new MushroomReference();
         savedMushroom = mushroomReferenceRepository.save(mushroom);
     }
 
