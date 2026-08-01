@@ -27,6 +27,11 @@ jobs:
           java-version: "21"
           distribution: temurin
           cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: PACKAGES_READ_TOKEN
       - uses: ./.github/actions/setup-test-env
       - name: Test and coverage check
+        env:
+          PACKAGES_READ_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
         run: ./mvnw -B clean verify
