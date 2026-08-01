@@ -30,5 +30,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Maven settings.xml 생성 (빌드 시크릿용)
+        run: |
+          cat > settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.PACKAGES_READ_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Docker 이미지 빌드 테스트 (push는 안 함)
-        run: docker build -t user-server:pr-test .
+        run: |
+          docker buildx build \
+            --secret id=maven_settings,src=settings.xml \
+            -t user-server:pr-test \
+            --load \
+            .
