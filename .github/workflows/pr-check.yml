@@ -18,6 +18,7 @@ jobs:
 
   build-test:
     uses: ./.github/workflows/_reusable-test.yml
+    secrets: inherit
 
   docker-build-test:
     needs: build-test
