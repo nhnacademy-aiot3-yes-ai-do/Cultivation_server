@@ -81,11 +81,15 @@ public class CultivationServiceImpl implements CultivationService {
         Map<Long, String> nicknameByUserId = resolveOwnerNicknames(ownerIdByCultivationId.values());
 
         return cultivations.stream()
-                .map(c -> toSummary(
-                        c,
-                        memberCountByCultivationId.getOrDefault(c.getId(), 0L).intValue(),
-                        nicknameByUserId.get(ownerIdByCultivationId.get(c.getId()))
-                ))
+                .map(c -> {
+                    Long ownerId = ownerIdByCultivationId.get(c.getId());
+                    String ownerNickname = ownerId != null ? nicknameByUserId.get(ownerId) : null;
+                    return toSummary(
+                            c,
+                            memberCountByCultivationId.getOrDefault(c.getId(), 0L).intValue(),
+                            ownerNickname
+                    );
+                })
                 .toList();
     }
 

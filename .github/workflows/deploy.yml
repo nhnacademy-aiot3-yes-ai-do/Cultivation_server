@@ -13,7 +13,7 @@ on:
         default: false
 
 concurrency:
-  group: user-production
+  group: cultivation-production
   cancel-in-progress: false
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
@@ -56,11 +56,16 @@ jobs:
           java-version: "21"
           distribution: temurin
           cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: PACKAGES_READ_TOKEN
 
       - uses: ./.github/actions/setup-test-env
 
       - name: Run tests
-        run: ./mvnw -B clean test
+        env:
+          PACKAGES_READ_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
+        run: ./mvnw -B clean test -U
 
       - name: Check JaCoCo 40% coverage
         id: coverage
@@ -113,6 +118,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Maven settings.xml 생성 (빌드 시크릿용)
+        run: |
+          cat > settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.PACKAGES_READ_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -149,7 +168,7 @@ jobs:
           GH_TOKEN: ${{ steps.config-app-token.outputs.token }}
           CONFIG_REPOSITORY: ${{ github.repository_owner }}/Config
 
-          SERVICE_NAME: user-server
+          SERVICE_NAME: cultivation-server
           SOURCE_REPOSITORY: ${{ github.repository }}
           SOURCE_BRANCH: ${{ github.ref_name }}
           SOURCE_COMMIT_SHA: ${{ github.sha }}
