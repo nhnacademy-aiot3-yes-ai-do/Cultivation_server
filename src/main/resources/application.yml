@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: cultivation-server
+
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=${Cultivation_DB_SCHEMA}&stringtype=unspecified
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    type: org.apache.commons.dbcp2.BasicDataSource
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_schema: ${Cultivation_DB_SCHEMA}
+
+  cloud:
+    kubernetes:
+      discovery:
+        enabled: ${K8S_DISCOVERY_ENABLED:false}
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - ${FRONT_URL:https://yes-nhn.site}
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders: "*"
+                allowCredentials: true
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

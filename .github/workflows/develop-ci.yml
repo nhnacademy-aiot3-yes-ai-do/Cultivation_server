@@ -1,0 +1,13 @@
+name: develop-ci
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-coverage:
+    uses: ./.github/workflows/_reusable-test.yml
+    secrets: inherit
