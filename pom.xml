@@ -32,7 +32,7 @@
         <org.springframework.restdocs.version>3.0.3</org.springframework.restdocs.version>
 
         <sonar.projectKey>yes-nhn_cultivation-server</sonar.projectKey>
-        <sonar.projectName>User-server</sonar.projectName>
+        <sonar.projectName>Cultivation-server</sonar.projectName>
 
         <sonar.coverage.jacoco.xmlReportPaths>
             target/site/jacoco/jacoco.xml
@@ -294,6 +294,11 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>5.5.0.6356</version>
             </plugin>
         </plugins>
     </build>
