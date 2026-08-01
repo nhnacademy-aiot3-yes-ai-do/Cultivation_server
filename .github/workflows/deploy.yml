@@ -65,7 +65,7 @@ jobs:
       - name: Run tests
         env:
           PACKAGES_READ_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
-        run: ./mvnw -B clean test
+        run: ./mvnw -B clean test -U
 
       - name: Check JaCoCo 40% coverage
         id: coverage
