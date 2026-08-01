@@ -30,7 +30,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 .selectFrom(cultivation)
                 .join(cultivation.mushroomReference).fetchJoin()
                 .join(member).on(member.cultivation.eq(cultivation))
-                .where(member.userId.eq(userId))
+                .where(member.userId.eq(userId), cultivation.cultivationStatus.ne(CultivationStatus.FINISHED))
                 .distinct()
                 .fetch();
     }
