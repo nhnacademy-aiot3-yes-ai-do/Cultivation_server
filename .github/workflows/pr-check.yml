@@ -13,7 +13,12 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: PACKAGES_READ_TOKEN
       - name: dependency:tree 출력 (충돌 확인용)
+        env:
+          PACKAGES_READ_TOKEN: ${{ secrets.PACKAGES_READ_TOKEN }}
         run: mvn -B dependency:tree
 
   build-test:
