@@ -22,4 +22,6 @@ public interface CultivationMemberRepository extends CrudRepository<CultivationM
     @Query("SELECT m FROM CultivationMember m WHERE m.cultivation.id = :cultivationId AND m.userId = :userId")
     Optional<CultivationMember> findByCultivationIdAndUserIdForUpdate(@Param("cultivationId") Long cultivationId,
                                                                       @Param("userId") Long userId);
+
+    List<CultivationMember> findAllByCultivationIdIn(List<Long> cultivationIds);
 }

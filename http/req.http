@@ -100,3 +100,12 @@ GET {{auth}}/users/search?keyword=nick
 
 ### 15. userId 목록으로 일괄 조회 (멤버 목록 닉네임 채우기용)
 GET {{auth}}/users/batch?ids=100,200
+
+
+### 이력 조회 - 실제 계정
+GET {{cultivation}}/api/cultivations/history?page=0&size=20
+X-User-Id: 4
+
+### 내 재배지 목록 - 실제 계정
+GET {{cultivation}}/api/cultivations
+X-User-Id: 4

@@ -11,6 +11,8 @@ public record CultivationSummaryResponse(
         Long mushroomId,
         CultivationStatus status,
         CultivationMode mode,
+        Integer memberCount,
+        String ownerNickname,
         LocalDateTime createdAt
 ) {
 }
