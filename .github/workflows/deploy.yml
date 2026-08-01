@@ -13,7 +13,7 @@ on:
         default: false
 
 concurrency:
-  group: user-production
+  group: cultivation-production
   cancel-in-progress: false
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
@@ -149,7 +149,7 @@ jobs:
           GH_TOKEN: ${{ steps.config-app-token.outputs.token }}
           CONFIG_REPOSITORY: ${{ github.repository_owner }}/Config
 
-          SERVICE_NAME: user-server
+          SERVICE_NAME: cultivation-server
           SOURCE_REPOSITORY: ${{ github.repository }}
           SOURCE_BRANCH: ${{ github.ref_name }}
           SOURCE_COMMIT_SHA: ${{ github.sha }}
