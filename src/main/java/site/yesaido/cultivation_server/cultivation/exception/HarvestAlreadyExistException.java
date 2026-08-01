@@ -1,6 +1,5 @@
 package site.yesaido.cultivation_server.cultivation.exception;
 
-import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
 import site.yesaido.cultivation_server.exception.client.ConflictException;
 
 public class HarvestAlreadyExistException extends ConflictException {
