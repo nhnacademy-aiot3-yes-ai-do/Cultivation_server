@@ -137,6 +137,8 @@ jobs:
         with:
           context: .
           push: true
+          secret-files: |
+            maven_settings=settings.xml
           tags: |
             ${{ steps.image.outputs.name }}:latest
             ${{ steps.image.outputs.name }}:${{ github.sha }}
