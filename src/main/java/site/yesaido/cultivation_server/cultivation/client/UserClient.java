@@ -9,6 +9,6 @@ import java.util.List;
 
 @FeignClient(name = "user-server")
 public interface UserClient {
-    @GetMapping("/users/batch")
+    @GetMapping("/api/users/batch")
     List<UserSummaryResponse> getUsers(@RequestParam("ids") List<Long> ids);
 }

@@ -6,28 +6,40 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.CultivationCreateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
+import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
+import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CultivationServiceImpl implements CultivationService {
     private final CultivationRepository cultivationRepository;
+    private final CultivationMemberRepository cultivationMemberRepository;
+
     private final MushroomReferenceRepository mushroomReferenceRepository;
     private final CultivationMemberService cultivationMemberService;
+
+    private final UserClient userClient;
 
     @Override
     @Transactional
@@ -54,9 +66,33 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Override
     public List<CultivationSummaryResponse> getCultivations(Long userId) {
+        List<Cultivation> cultivations = cultivationRepository.findAllByMemberUserId(userId);
+        if (cultivations.isEmpty()) {
+            return List.of();
+        }
 
-        return cultivationRepository.findAllByMemberUserId(userId).stream()
-                .map(this::toSummary)
+        List<Long> cultivationIds = cultivations.stream().map(Cultivation::getId).toList();
+        List<CultivationMember> members = cultivationMemberRepository.findAllByCultivationIdIn(cultivationIds);
+
+        Map<Long, Long> memberCountByCultivationId = members.stream()
+                .collect(Collectors.groupingBy(m -> m.getCultivation().getId(), Collectors.counting()));
+
+        Map<Long, Long> ownerIdByCultivationId = members.stream()
+                .filter(m -> m.getRole() == MemberRole.OWNER)
+                .collect(Collectors.toMap(m -> m.getCultivation().getId(), CultivationMember::getUserId));
+
+        Map<Long, String> nicknameByUserId = resolveOwnerNicknames(ownerIdByCultivationId.values());
+
+        return cultivations.stream()
+                .map(c -> {
+                    Long ownerId = ownerIdByCultivationId.get(c.getId());
+                    String ownerNickname = ownerId != null ? nicknameByUserId.get(ownerId) : null;
+                    return toSummary(
+                            c,
+                            memberCountByCultivationId.getOrDefault(c.getId(), 0L).intValue(),
+                            ownerNickname
+                    );
+                })
                 .toList();
     }
 
@@ -103,13 +139,15 @@ public class CultivationServiceImpl implements CultivationService {
     }
 
     // Helper Method
-    private CultivationSummaryResponse toSummary(Cultivation cultivation) {
+    private CultivationSummaryResponse toSummary(Cultivation cultivation, int memberCount, String ownerNickname) {
         return new CultivationSummaryResponse(
                 cultivation.getId(),
                 cultivation.getName(),
                 cultivation.getMushroomReference().getId(),
                 cultivation.getCultivationStatus(),
                 cultivation.getMode(),
+                memberCount,
+                ownerNickname,
                 cultivation.getCreatedAt());
     }
 
@@ -125,5 +163,14 @@ public class CultivationServiceImpl implements CultivationService {
                 cultivation.getCreatedAt(),
                 cultivation.getUpdatedAt()
         );
+    }
+
+    private Map<Long, String> resolveOwnerNicknames(Collection<Long> ownerIds) {
+        List<Long> distinctIds = ownerIds.stream().distinct().toList();
+        if (distinctIds.isEmpty()) {
+            return Map.of();
+        }
+        return userClient.getUsers(distinctIds).stream()
+                .collect(Collectors.toMap(UserSummaryResponse::userId, UserSummaryResponse::nickname));
     }
 }

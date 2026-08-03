@@ -63,7 +63,7 @@ class CultivationControllerTest {
     @DisplayName("경작 목록 조회 API - 정상 요청 시 200 OK 반환")
     void getCultivationSuccess() throws Exception {
         Long userId = 1L;
-        CultivationSummaryResponse summary = new CultivationSummaryResponse(100L, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH, LocalDateTime.now());
+        CultivationSummaryResponse summary = new CultivationSummaryResponse(100L, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH, 1, "테스트 유저", LocalDateTime.now());
 
         when(cultivationService.getCultivations(userId)).thenReturn(List.of(summary));
 

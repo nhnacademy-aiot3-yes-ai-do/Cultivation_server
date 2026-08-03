@@ -10,3 +10,4 @@ permissions:
 jobs:
   test-and-coverage:
     uses: ./.github/workflows/_reusable-test.yml
+    secrets: inherit
