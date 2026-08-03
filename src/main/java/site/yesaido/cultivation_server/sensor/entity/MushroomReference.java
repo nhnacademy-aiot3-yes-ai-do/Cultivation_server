@@ -3,7 +3,6 @@ package site.yesaido.cultivation_server.sensor.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import site.yesaido.cultivation_server.sensor.dto.request.MushroomReferenceRequest;
 
 import java.time.LocalDateTime;
