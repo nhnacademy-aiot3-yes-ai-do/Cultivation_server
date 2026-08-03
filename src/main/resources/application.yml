@@ -38,6 +38,10 @@ spring:
                   - OPTIONS
                 allowedHeaders: "*"
                 allowCredentials: true
+  servlet:
+    multipart:
+      max-file-size: 12MB
+      max-request-size: 12MB
 
 eureka:
   client:
