@@ -1,22 +1,18 @@
 package site.yesaido.cultivation_server.sensor.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorTypeRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.SensorTypeInfoListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.SensorTypeInfoResponse;
-import site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThreshold;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeAlreadyExistException;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeNotFoundException;
 import site.yesaido.cultivation_server.sensor.repository.SensorTypeRepository;
 import site.yesaido.cultivation_server.sensor.service.SensorTypeService;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -50,7 +46,7 @@ public class SensorTypeServiceImpl implements SensorTypeService {
             sensorType.setType(dto.type());
         }
         if(!dto.valueUnit().equals(sensorType.getValueUnit())) {
-            sensorType.setValueUnit(sensorType.getValueUnit());
+            sensorType.setValueUnit(dto.valueUnit());
         }
 
         sensorTypeRepository.save(sensorType);
