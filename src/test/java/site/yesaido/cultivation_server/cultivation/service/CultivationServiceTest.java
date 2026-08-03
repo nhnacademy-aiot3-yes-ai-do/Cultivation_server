@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.CultivationCreateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
@@ -18,6 +19,7 @@ import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyE
 import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
 import site.yesaido.cultivation_server.cultivation.exception.MushroomNotFoundException;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
+import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationMemberServiceImpl;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationServiceImpl;
@@ -41,6 +43,12 @@ class CultivationServiceTest {
 
     @Mock
     private CultivationMemberServiceImpl cultivationMemberService;
+
+    @Mock
+    private CultivationMemberRepository cultivationMemberRepository;
+
+    @Mock
+    private UserClient userClient;
 
     @InjectMocks
     private CultivationServiceImpl service;
