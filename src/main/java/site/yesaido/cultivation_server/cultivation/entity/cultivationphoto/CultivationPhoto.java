@@ -3,6 +3,7 @@ package site.yesaido.cultivation_server.cultivation.entity.cultivationphoto;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import site.yesaido.common.storage.StorageType;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 
 import java.time.LocalDateTime;

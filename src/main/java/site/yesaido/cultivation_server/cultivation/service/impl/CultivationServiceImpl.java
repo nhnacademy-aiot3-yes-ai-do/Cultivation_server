@@ -17,10 +17,10 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.Memb
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
-import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
+import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
