@@ -20,42 +20,42 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BadRequestException.class})
     public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(BadRequestException.getCode(), e.getMessage());
     }
 
     //401 Unauthorized
     @ExceptionHandler({UnauthorizedException.class})
     public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(UnauthorizedException.getCode(), e.getMessage());
     }
 
     //403 Forbidden
     @ExceptionHandler({ForbiddenException.class})
     public ResponseEntity<ErrorResponse> handleForbiddenExceptionException(ForbiddenException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(ForbiddenException.getCode(), e.getMessage());
     }
 
     //404 Not Found
     @ExceptionHandler({NotFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFoundExceptionException(NotFoundException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(NotFoundException.getCode(), e.getMessage());
     }
 
     //409 Conflict
     @ExceptionHandler({ConflictException.class})
     public ResponseEntity<ErrorResponse> handleConflictException(ConflictException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(ConflictException.getCode(), e.getMessage());
     }
 
     //415 Unsupported Media Type
     @ExceptionHandler({UnsupportedMediaTypeException.class})
     public ResponseEntity<ErrorResponse> handleUnsupportedMediaTypeException(UnsupportedMediaTypeException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(UnsupportedMediaTypeException.getCode(), e.getMessage());
     }
 
     private void clientErrorPrint(String logContent) {
