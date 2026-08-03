@@ -1,4 +1,4 @@
-package site.yesaido.cultivation_server.sensor.repository.cultivationsensor;
+package site.yesaido.cultivation_server.sensor.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
@@ -7,11 +7,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CultivationSensorRepository extends JpaRepository<CultivationSensor, Long> {
-
-    /**
-    // deviceEui unique시 필요
-    // boolean existsByDeviceEui(String deviceEui);
-    */
 
     Optional<CultivationSensor> findByCultivationIdAndDeviceEui(long cultivationId, String deviceEui);
 

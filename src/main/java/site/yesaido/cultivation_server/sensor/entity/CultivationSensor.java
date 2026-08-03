@@ -63,12 +63,22 @@ public class CultivationSensor {
     @OneToMany(mappedBy = "cultivationSensor")
     private Set<CultivationSensorType> cultivationSensorTypes;
 
-    public void isDelete() {
-        this.isDeleted = true;
-    }
-
-    public void softDelete() {
+    public void toDelete() {
         this.isDeleted = true;
         this.sensorStatus = SensorConnectStatus.OFFLINE;
+    }
+
+    public void toRestore(
+            String deviceModel,
+            String deviceName,
+            String location,
+            String locationDetail
+    ) {
+        this.deviceModel = deviceModel;
+        this.deviceName = deviceName;
+        this.location = location;
+        this.locationDetail = locationDetail;
+        this.sensorStatus = SensorConnectStatus.OFFLINE;
+        this.isDeleted = false;
     }
 }

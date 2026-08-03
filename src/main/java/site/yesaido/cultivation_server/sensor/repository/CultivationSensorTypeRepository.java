@@ -1,4 +1,4 @@
-package site.yesaido.cultivation_server.sensor.repository.cultivationsensor;
+package site.yesaido.cultivation_server.sensor.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensorType;
@@ -14,4 +14,6 @@ public interface CultivationSensorTypeRepository extends JpaRepository<Cultivati
     boolean existsByCultivationSensor_IdAndSensorType_Id(Long cultivationSensorId, Long sensorTypeId);
 
     void deleteAllByCultivationSensor_IdAndSensorType_IdIn(Long cultivationSensorId, Collection<Long> sensorTypeIds);
+
+    List<CultivationSensorType> findAllByCultivationSensor_IdAndSensorType_IdIn(Long cultivationSensorId, Collection<Long> sensorTypeIds);
 }
