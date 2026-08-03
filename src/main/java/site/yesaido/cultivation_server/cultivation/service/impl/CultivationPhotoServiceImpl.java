@@ -103,6 +103,15 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
             );
         }
 
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                    compensateMinioUpload(objectKey);
+                }
+            }
+        });
+
         return toResponse(cultivationPhoto);
     }
 
