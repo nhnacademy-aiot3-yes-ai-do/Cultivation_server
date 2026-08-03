@@ -4,9 +4,12 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import site.yesaido.common.storage.ObjectKeyGenerator;
 import site.yesaido.common.storage.StorageType;
@@ -29,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -45,6 +49,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private String bucket;
 
     @Override
+    @Transactional
     public PhotoUploadResponse uploadPhoto(Long cultivationId, Long userId, MultipartFile file) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
@@ -87,7 +92,16 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
                 .uploadedAt(LocalDateTime.now())
                 .cultivation(cultivation)
                 .build();
-        cultivationPhotoRepository.save(cultivationPhoto);
+        try {
+            cultivationPhotoRepository.save(cultivationPhoto);
+        } catch (Exception e) {
+            compensateMinioUpload(objectKey);
+            throw new CustomServerException(
+                    "사진 업로드에 실패했습니다.",
+                    "DB 저장 실패, MinIO 객체 보상 삭제 시도: cultivationId: " + cultivationId + ", objectKey: " + objectKey + ", cause: " + e.getMessage(),
+                    ServerErrorLevel.ERROR_LEVEL
+            );
+        }
 
         return toResponse(cultivationPhoto);
     }
@@ -107,8 +121,9 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     }
 
     @Override
+    @Transactional
     public void deletePhoto(Long cultivationId, Long userId, Long photoId) {
-        cultivationPhotoRepository.findById(cultivationId)
+        cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
         if (!cultivationRepository.isMember(cultivationId, userId)) {
             throw new CultivationAccessDeniedException(cultivationId);
@@ -116,27 +131,43 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
 
         CultivationPhoto photo = cultivationPhotoRepository.findById(photoId)
                 .filter(p -> p.getCultivation().getId().equals(cultivationId))
-                .orElseThrow(() -> new PhotoNotFoundException(cultivationId));
+                .orElseThrow(() -> new PhotoNotFoundException(photoId));
 
+        String objectKey = photo.getObjectKey();
+        cultivationPhotoRepository.delete(photo);
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    minioClient.removeObject(
+                            RemoveObjectArgs.builder()
+                                    .bucket(bucket)
+                                    .object(photo.getObjectKey())
+                                    .build()
+                    );
+                } catch (Exception e) {
+                    log.error("MinIO 객체 삭제 실패(고아 객체로 남음): photoId={}, objectKey={}, cause={}",
+                            photoId, objectKey, e.getMessage());
+                }
+            }
+        });
+    }
+
+    // Helper Method
+    private void compensateMinioUpload(String objectKey) {
         try {
             minioClient.removeObject(
                     RemoveObjectArgs.builder()
                             .bucket(bucket)
-                            .object(photo.getObjectKey())
+                            .object(objectKey)
                             .build()
             );
-        } catch (Exception e) {
-            throw new CustomServerException(
-                    "사전 삭제에 실패했습니다.",
-                    "MINIO 삭제 실패: photoId: " + photoId + ", objectKey: " + photo.getObjectKey() + ", cause: " + e.getMessage(),
-                    ServerErrorLevel.ERROR_LEVEL
-            );
+        } catch (Exception cleanupException) {
+            log.error("MinIO 보상 삭제 실패(고아 객체로 남음): objectKey: {}, cause: {}", objectKey, cleanupException.getMessage());
         }
-
-        cultivationPhotoRepository.delete(photo);
     }
 
-    // Helper Method
     private PhotoUploadResponse toResponse(CultivationPhoto cultivationPhoto) {
         String url = storageUrlResolver.resolve(cultivationPhoto.getStorageType(), cultivationPhoto.getObjectKey());
 

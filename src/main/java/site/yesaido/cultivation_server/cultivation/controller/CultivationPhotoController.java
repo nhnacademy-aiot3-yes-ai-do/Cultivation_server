@@ -35,7 +35,7 @@ public class CultivationPhotoController {
     public ResponseEntity<Void> deletePhoto(@PathVariable("cultivation-id") Long cultivationId,
                                             @PathVariable("photo-id") Long photoId,
                                             @RequestHeader("X-User-Id") Long userId) {
-        cultivationPhotoService.deletePhoto(cultivationId, photoId, userId);
+        cultivationPhotoService.deletePhoto(cultivationId, userId, photoId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }
