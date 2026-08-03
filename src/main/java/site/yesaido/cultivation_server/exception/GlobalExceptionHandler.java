@@ -13,6 +13,8 @@ import site.yesaido.cultivation_server.exception.client.*;
 import site.yesaido.cultivation_server.exception.server.CustomServerException;
 import site.yesaido.cultivation_server.exception.server.ServerErrorLevel;
 
+import java.util.Objects;
+
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -91,6 +93,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse("잘못된 요청입니다.");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
