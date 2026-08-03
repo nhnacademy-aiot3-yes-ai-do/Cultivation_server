@@ -295,4 +295,20 @@ class CultivationPhotoServiceTest {
         assertThatThrownBy(() -> cultivationPhotoService.deletePhoto(cultivationId, userId, photoId))
                 .isInstanceOf(PhotoNotFoundException.class);
     }
+
+    @Test
+    @DisplayName("사진 업로드 실패 - 파일 크기 초과")
+    void uploadPhotoFailFileTooLarge() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        byte[] oversized = new byte[11 * 1024 * 1024]; // 11MB
+        MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", oversized);
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+
+        assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
+                .isInstanceOf(BadRequestException.class);
+    }
 }
