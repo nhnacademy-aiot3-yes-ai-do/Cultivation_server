@@ -18,8 +18,8 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivatio
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
-import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
+import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
 
 import java.util.List;
 
