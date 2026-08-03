@@ -44,6 +44,6 @@ public class SensorTypeController {
     @GetMapping
     public ResponseEntity<SensorTypeInfoListResponse> getAll() {
         SensorTypeInfoListResponse all = sensorTypeService.findAll();
-        return ResponseEntity.status(200).body(all);
+        return ResponseEntity.status(HttpStatus.OK).body(all);
     }
 }

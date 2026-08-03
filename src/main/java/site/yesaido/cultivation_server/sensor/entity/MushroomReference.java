@@ -3,6 +3,8 @@ package site.yesaido.cultivation_server.sensor.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import site.yesaido.cultivation_server.sensor.dto.request.MushroomReferenceRequest;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -50,4 +52,26 @@ public class MushroomReference {
         this.updatedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
     }
 
+    public void disconnect() {
+        this.getMushroomReferenceThresholds().forEach(MushroomReferenceThreshold::disconnect);
+    }
+
+    public static MushroomReference create(MushroomReferenceRequest dto) {
+        return new MushroomReference(dto.mushroomNameKo(), dto.mushroomNameEn(), dto.mushroomScientificName());
+    }
+
+    public void setMushroomNameKo(String mushroomNameKo) {
+        this.mushroomNameKo = mushroomNameKo;
+        isUpdate();
+    }
+
+    public void setMushroomNameEn(String mushroomNameEn) {
+        this.mushroomNameEn = mushroomNameEn;
+        isUpdate();
+    }
+
+    public void setMushroomScientificName(String mushroomScientificName) {
+        this.mushroomScientificName = mushroomScientificName;
+        isUpdate();
+    }
 }
