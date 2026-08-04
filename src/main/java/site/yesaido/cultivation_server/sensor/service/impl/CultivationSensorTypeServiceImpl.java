@@ -9,11 +9,9 @@ import site.yesaido.cultivation_server.sensor.entity.CultivationSensorType;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorNotFoundException;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeNotFoundException;
-import site.yesaido.cultivation_server.sensor.repository.CultivationSensorRepository;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorTypeRepository;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorTypeService;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -44,7 +42,7 @@ public class CultivationSensorTypeServiceImpl implements CultivationSensorTypeSe
 
         Map<Long, CultivationSensorType> existingByTypeId = existingCultivationSensorTypes.stream()
                                 .collect(Collectors.toMap(
-                                        CultivationSensorType::getId, Function.identity())
+                                        relation -> relation.getSensorType().getId(), Function.identity())
                                 );
 
         Map<Long, SensorType> requestedByTypeId = requestedSensorTypes.stream()

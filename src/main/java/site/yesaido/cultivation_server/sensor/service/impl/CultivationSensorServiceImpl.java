@@ -3,16 +3,11 @@ package site.yesaido.cultivation_server.sensor.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
-import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorAlreadyExistException;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorNotFoundException;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorRepository;
-import site.yesaido.cultivation_server.sensor.repository.CultivationSensorTypeRepository;
-import site.yesaido.cultivation_server.sensor.repository.EnvironmentSettingRepository;
-import site.yesaido.cultivation_server.sensor.repository.SensorTypeRepository;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorService;
 
 import java.util.Optional;
@@ -21,9 +16,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CultivationSensorServiceImpl implements CultivationSensorService {
 
-        private final CultivationSensorRepository cultivationSensorRepository;
-
-
+    private final CultivationSensorRepository cultivationSensorRepository;
 
     @Override
     @Transactional
