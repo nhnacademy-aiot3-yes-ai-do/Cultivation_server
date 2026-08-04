@@ -10,6 +10,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import site.yesaido.cultivation_server.cultivation.dto.ErrorResponse;
 import site.yesaido.cultivation_server.exception.client.*;
 import site.yesaido.cultivation_server.exception.server.CustomServerException;
@@ -73,6 +74,22 @@ class GlobalExceptionHandlerTest {
                     () -> Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode()),
                     () -> Assertions.assertEquals(
                             "필수 헤더가 누락되었습니다: X-Test-Header",
+                            Objects.requireNonNull(response.getBody()).message()
+                    )
+            );
+        }
+
+        @Test
+        @DisplayName("Max Upload Size Exceeded Exception")
+        void handleMaxUploadSizeExceededException() {
+            MaxUploadSizeExceededException exception = mock(MaxUploadSizeExceededException.class);
+
+            ResponseEntity<ErrorResponse> response = handler.handleMaxUploadSizeExceededException(exception);
+
+            Assertions.assertAll(
+                    () -> Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode()),
+                    () -> Assertions.assertEquals(
+                            "사진 파일 크기는 10MB를 초과할 수 없습니다.",
                             Objects.requireNonNull(response.getBody()).message()
                     )
             );
@@ -179,10 +196,25 @@ class GlobalExceptionHandlerTest {
     class CustomServer {
 
         @Test
-        @DisplayName("Custom Server Exception")
-        void handleCustomServerException() {
+        @DisplayName("Custom Server Exception - WARN")
+        void handleCustomServerExceptionWarn() {
             String message = "test-message";
             ServerErrorLevel level = ServerErrorLevel.WARN_LEVEL;
+            CustomServerException exception = new CustomServerException(message, level);
+
+            ResponseEntity<ErrorResponse> response = handler.handleServerException(exception);
+
+            Assertions.assertAll(
+                    () -> Assertions.assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode()),
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+            );
+        }
+
+        @Test
+        @DisplayName("Custom Server Exception - ERROR")
+        void handleCustomServerExceptionError() {
+            String message = "test-message";
+            ServerErrorLevel level = ServerErrorLevel.ERROR_LEVEL;
             CustomServerException exception = new CustomServerException(message, level);
 
             ResponseEntity<ErrorResponse> response = handler.handleServerException(exception);
