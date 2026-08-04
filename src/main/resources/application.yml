@@ -38,6 +38,10 @@ spring:
                   - OPTIONS
                 allowedHeaders: "*"
                 allowCredentials: true
+  servlet:
+    multipart:
+      max-file-size: 12MB
+      max-request-size: 12MB
 
 eureka:
   client:
@@ -50,3 +54,9 @@ eureka:
 logging:
   level:
     root: ${LOG_LEVEL:INFO}
+
+minio:
+  url: ${MINIO_URL}
+  access-key: ${MINIO_ACCESS_KEY}
+  secret-key: ${MINIO_SECRET_KEY}
+  bucket: ${MINIO_BUCKET}

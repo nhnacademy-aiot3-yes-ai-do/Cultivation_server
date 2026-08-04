@@ -8,10 +8,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import site.yesaido.cultivation_server.cultivation.dto.ErrorResponse;
 import site.yesaido.cultivation_server.exception.client.*;
 import site.yesaido.cultivation_server.exception.server.CustomServerException;
 import site.yesaido.cultivation_server.exception.server.ServerErrorLevel;
+
+import java.util.Objects;
 
 @Slf4j
 @RestControllerAdvice
@@ -20,42 +23,42 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BadRequestException.class})
     public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(BadRequestException.getCode(), e.getMessage());
     }
 
     //401 Unauthorized
     @ExceptionHandler({UnauthorizedException.class})
     public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(UnauthorizedException.getCode(), e.getMessage());
     }
 
     //403 Forbidden
     @ExceptionHandler({ForbiddenException.class})
     public ResponseEntity<ErrorResponse> handleForbiddenExceptionException(ForbiddenException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(ForbiddenException.getCode(), e.getMessage());
     }
 
     //404 Not Found
     @ExceptionHandler({NotFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFoundExceptionException(NotFoundException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(NotFoundException.getCode(), e.getMessage());
     }
 
     //409 Conflict
     @ExceptionHandler({ConflictException.class})
     public ResponseEntity<ErrorResponse> handleConflictException(ConflictException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(ConflictException.getCode(), e.getMessage());
     }
 
     //415 Unsupported Media Type
     @ExceptionHandler({UnsupportedMediaTypeException.class})
     public ResponseEntity<ErrorResponse> handleUnsupportedMediaTypeException(UnsupportedMediaTypeException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(e.getCode(), e.getMessage());
+        return createResponseEntity(UnsupportedMediaTypeException.getCode(), e.getMessage());
     }
 
     private void clientErrorPrint(String logContent) {
@@ -91,6 +94,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse("잘못된 요청입니다.");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -101,5 +105,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMissingRequestHeaderException(MissingRequestHeaderException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "필수 헤더가 누락되었습니다: " + e.getHeaderName()));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "사진 파일 크기는 10MB를 초과할 수 없습니다."));
     }
 }
