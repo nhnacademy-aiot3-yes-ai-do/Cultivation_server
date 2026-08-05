@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.EnvironmentSettingResponse;
 import site.yesaido.cultivation_server.sensor.entity.EnvironmentSetting;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.InvalidThresholdRangeException;
@@ -12,10 +13,7 @@ import site.yesaido.cultivation_server.sensor.repository.EnvironmentSettingRepos
 import site.yesaido.cultivation_server.sensor.service.EnvironmentSettingService;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -75,6 +73,20 @@ public class EnvironmentSettingServiceImpl implements EnvironmentSettingService 
             environmentSettingRepository.saveAll(newSettings);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EnvironmentSettingResponse> findAll(long cultivationId) {
+        return environmentSettingRepository.findAllByCultivationId(cultivationId)
+                .stream()
+                .map(EnvironmentSettingResponse::from)
+                .sorted(Comparator.comparing(
+                        EnvironmentSettingResponse::sensorTypeId
+                ))
+                .toList();
+    }
+
+
 
     // Threshold가 min이 max보다 클때 예외 검사
     private void validateThresholdRange(SensorSettingRequest request) {

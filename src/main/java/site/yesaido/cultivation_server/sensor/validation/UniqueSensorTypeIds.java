@@ -17,6 +17,7 @@ import java.lang.annotation.Target;
 @Constraint(validatedBy = UniqueSensorTypeIdsValidator.class)
 public @interface UniqueSensorTypeIds {
 
+    // UniqueSensorTypeIdsValidator에서 false 반환, 예외발생 400 에러
     String message() default "센서 타입 ID는 중복될 수 없습니다.";
 
     Class<?>[] groups() default {};

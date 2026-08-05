@@ -5,12 +5,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorAlreadyExistException;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorNotFoundException;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorRepository;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorService;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -64,6 +66,18 @@ public class CultivationSensorServiceImpl implements CultivationSensorService {
 
         // 소프트 DELETE
         sensor.toDelete();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CultivationSensorResponse> findAll(long cultivationId) {
+        return cultivationSensorRepository
+                .findAllByCultivationIdAndIsDeletedFalseOrderByCreatedAtAsc(
+                        cultivationId
+                )
+                .stream()
+                .map(CultivationSensorResponse::from)
+                .toList();
     }
 
 }
