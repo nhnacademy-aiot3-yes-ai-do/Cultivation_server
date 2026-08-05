@@ -15,7 +15,6 @@ import site.yesaido.cultivation_server.exception.client.*;
 import site.yesaido.cultivation_server.exception.server.CustomServerException;
 import site.yesaido.cultivation_server.exception.server.ServerErrorLevel;
 
-import java.util.List;
 import java.util.Objects;
 
 import static org.mockito.Mockito.mock;
@@ -51,7 +50,7 @@ class GlobalExceptionHandlerTest {
             FieldError fieldError = new FieldError("objectName", "field", "test-message");
 
             when(exception.getBindingResult()).thenReturn(bindingResult);
-            when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
+            when(bindingResult.getFieldError()).thenReturn(fieldError);
 
             ErrorResponse response = handler.handleMethodArgumentNotValidException(exception);
 
