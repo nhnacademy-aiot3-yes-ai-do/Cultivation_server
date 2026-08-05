@@ -148,9 +148,7 @@ class MushroomReferenceServiceTest {
     void getMushroomReferenceById() {
         long mushroomReferenceId = 1L;
 
-        MushroomReferenceRequest request = new MushroomReferenceRequest(
-                "name-ko", "name-en", "scientific-name", List.of()
-        );
+        MushroomReferenceRequest request = new MushroomReferenceRequest("name-ko", "name-en", "scientific-name", List.of());
         MushroomReference mushroomReference = MushroomReference.create(request);
         ReflectionTestUtils.setField(mushroomReference, "id", mushroomReferenceId);
 
