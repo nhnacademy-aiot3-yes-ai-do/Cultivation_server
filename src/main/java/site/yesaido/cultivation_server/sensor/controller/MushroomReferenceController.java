@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.sensor.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class MushroomReferenceController {
     private final MushroomReferenceService mushroomReferenceService;
 
     @PostMapping
-    public ResponseEntity<Void> registerMushroomReference(@RequestBody MushroomReferenceRequest request) {
+    public ResponseEntity<Void> registerMushroomReference(@Valid @RequestBody MushroomReferenceRequest request) {
         long mushroomReferenceId = mushroomReferenceService.registerMushroomReference(request);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -32,7 +33,7 @@ public class MushroomReferenceController {
 
     @PutMapping("/{mushroom-reference-id}")
     public ResponseEntity<Void> updateMushroomReference(@PathVariable("mushroom-reference-id")Long id,
-                                                        @RequestBody MushroomReferenceRequest request) {
+                                                        @Valid @RequestBody MushroomReferenceRequest request) {
         mushroomReferenceService.updateMushroomReference(id, request);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
