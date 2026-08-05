@@ -7,6 +7,7 @@ import site.yesaido.cultivation_server.cultivation.exception.CultivationMemberNo
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.DuplicateSensorTypeException;
@@ -78,6 +79,16 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         validateAccess(userId, cultivationId);
         cultivationSensorService.delete(cultivationId, sensorId);
 
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CultivationSensorListResponse findAll(Long userId, long cultivationId) {
+        validateAccess(userId, cultivationId);
+
+        return new CultivationSensorListResponse(
+                cultivationSensorService.findAll(cultivationId), environmentSettingService.findAll(cultivationId)
+        );
     }
 
 

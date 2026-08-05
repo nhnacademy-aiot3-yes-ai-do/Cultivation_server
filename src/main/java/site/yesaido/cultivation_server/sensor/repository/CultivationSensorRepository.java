@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.sensor.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 
@@ -17,5 +18,9 @@ public interface CultivationSensorRepository extends JpaRepository<CultivationSe
     Optional<CultivationSensor> findByCultivationIdAndDeviceEuiAndIsDeletedFalse(long cultivationId, String deviceEui);
 
     // 경작 Id로 등록된 모든 센서 조회
+    @EntityGraph(attributePaths = {
+            "cultivationSensorTypes",
+            "cultivationSensorTypes.sensorType"
+    })
     List<CultivationSensor> findAllByCultivationIdAndIsDeletedFalseOrderByCreatedAtAsc(long cultivationId);
 }

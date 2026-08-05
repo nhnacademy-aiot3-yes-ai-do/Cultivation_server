@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
 import java.net.URI;
@@ -45,7 +46,14 @@ public class CultivationSensorController {
         return ResponseEntity.noContent().build();
     }
 
-
-
+    @GetMapping
+    public ResponseEntity<CultivationSensorListResponse> getAllCultivationSensor(
+            @RequestHeader("X-User-Id") Long userId,
+            @PathVariable("cultivation-id") long cultivationId
+    ) {
+        return ResponseEntity.ok(
+                cultivationSensorFacade.findAll(userId, cultivationId)
+        );
+    }
 
 }
