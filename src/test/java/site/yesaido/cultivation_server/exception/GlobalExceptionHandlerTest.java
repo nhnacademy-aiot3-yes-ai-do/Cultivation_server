@@ -8,10 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import site.yesaido.cultivation_server.cultivation.dto.ErrorResponse;
 import site.yesaido.cultivation_server.exception.client.*;
 import site.yesaido.cultivation_server.exception.server.CustomServerException;
 import site.yesaido.cultivation_server.exception.server.ServerErrorLevel;
@@ -40,7 +40,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode()),
-                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
 
@@ -58,7 +58,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode()),
-                    () -> Assertions.assertEquals("test-message", Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals("test-message", Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
 
@@ -74,7 +74,7 @@ class GlobalExceptionHandlerTest {
                     () -> Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode()),
                     () -> Assertions.assertEquals(
                             "필수 헤더가 누락되었습니다: X-Test-Header",
-                            Objects.requireNonNull(response.getBody()).message()
+                            Objects.requireNonNull(response.getBody()).getBody().getDetail()
                     )
             );
         }
@@ -90,7 +90,7 @@ class GlobalExceptionHandlerTest {
                     () -> Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode()),
                     () -> Assertions.assertEquals(
                             "사진 파일 크기는 10MB를 초과할 수 없습니다.",
-                            Objects.requireNonNull(response.getBody()).message()
+                            Objects.requireNonNull(response.getBody()).getBody().getDetail()
                     )
             );
         }
@@ -110,7 +110,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode()),
-                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
     }
@@ -129,7 +129,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode()),
-                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
     }
@@ -148,7 +148,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode()),
-                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
     }
@@ -167,7 +167,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.CONFLICT, response.getStatusCode()),
-                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
     }
@@ -186,7 +186,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, response.getStatusCode()),
-                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
     }
@@ -206,7 +206,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode()),
-                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
 
@@ -221,7 +221,7 @@ class GlobalExceptionHandlerTest {
 
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode()),
-                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message())
+                    () -> Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail())
             );
         }
     }
@@ -234,6 +234,6 @@ class GlobalExceptionHandlerTest {
 
         ResponseEntity<ErrorResponse> response = handler.handleException(exception);
 
-        Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).message());
+        Assertions.assertEquals(message, Objects.requireNonNull(response.getBody()).getBody().getDetail());
     }
 }
