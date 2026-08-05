@@ -11,8 +11,8 @@ public class RabbitMQConfig {
 
     // Dead Letter 관련
     @Bean
-    public DirectExchange deadLetterExchange() {
-        return new DirectExchange(DLX_NAME);
+    public FanoutExchange deadLetterExchange() {
+        return new FanoutExchange(DLX_NAME);
     }
 
     @Bean
@@ -23,8 +23,7 @@ public class RabbitMQConfig {
     @Bean
     public Binding deadLetterBinding() {
         return BindingBuilder.bind(deadLetterQueue())
-                .to(deadLetterExchange())
-                .with("#");
+                .to(deadLetterExchange());
     }
 
     // 센서 관련
@@ -99,7 +98,7 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(aiHarvestQueue())
                 .to(harvestExchange())
-                .with("#");
+                .with("yes-nhn.ai.harvest.queue");
     }
 
     // 알림 관련
@@ -121,6 +120,6 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(notificationDoneQueue())
                 .to(notificationExchange())
-                .with("#");
+                .with("yes-nhn.notification.done.queue");
     }
 }
