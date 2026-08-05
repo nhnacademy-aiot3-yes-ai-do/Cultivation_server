@@ -4,10 +4,10 @@ import org.springframework.amqp.core.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
+
 @Configuration
 public class RabbitMQConfig {
-    private static final String DLX_NAME = "yes-nhn.dlx";
-    private static final String DLX_KEY = "x-dead-letter-exchange";
 
     // Dead Letter 관련
     @Bean
@@ -17,7 +17,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue deadLetterQueue() {
-        return QueueBuilder.durable("yes-nhn.dlq").build();
+        return QueueBuilder.durable(DLQ_QUEUE).build();
     }
 
     @Bean
@@ -29,13 +29,13 @@ public class RabbitMQConfig {
     // 센서 관련
     @Bean
     public TopicExchange sensorExchange() {
-        return new TopicExchange("yes-nhn.sensor.exchange");
+        return new TopicExchange(SENSOR_EXCHANGE);
     }
 
     @Bean
     public Queue dataSourceSensorInfoQueue() {
         return QueueBuilder
-                .durable("yes-nhn.data-source.sensor-info.queue")
+                .durable(DATA_SOURCE_SENSOR_INFO_QUEUE)
                 .withArgument(DLX_KEY, DLX_NAME)
                 .build();
     }
@@ -43,7 +43,7 @@ public class RabbitMQConfig {
     @Bean
     public Queue ruleEngineSensorInfoQueue() {
         return QueueBuilder
-                .durable("yes-nhn.rule-engine.sensor-info.queue")
+                .durable(RULE_ENGINE_SENSOR_INFO_QUEUE)
                 .withArgument(DLX_KEY, DLX_NAME)
                 .build();
     }
@@ -53,7 +53,7 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(dataSourceSensorInfoQueue())
                 .to(sensorExchange())
-                .with("yes-nhn.#.sensor-info.queue");
+                .with(SENSOR_INFO_ROUTING_KEY_PATTERN);
     }
 
     @Bean
@@ -61,13 +61,13 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(ruleEngineSensorInfoQueue())
                 .to(sensorExchange())
-                .with("yes-nhn.#.sensor-info.queue");
+                .with(SENSOR_INFO_ROUTING_KEY_PATTERN);
     }
 
     @Bean
     public Queue ruleEngineThresholdInfoQueue() {
         return QueueBuilder
-                .durable("yes-nhn.rule-engine.threshold-info.queue")
+                .durable(RULE_ENGINE_THRESHOLD_INFO_QUEUE)
                 .withArgument(DLX_KEY, DLX_NAME)
                 .build();
     }
@@ -77,20 +77,37 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(ruleEngineThresholdInfoQueue())
                 .to(sensorExchange())
-                .with("yes-nhn.rule-engine.threshold-info.queue");
+                .with(RULE_ENGINE_THRESHOLD_INFO_QUEUE);
+    }
+
+    @Bean
+    public Queue sensorSensorValueQueue() {
+        return QueueBuilder
+                .durable(SENSOR_SENSOR_VALUE_QUEUE)
+                .withArgument(DLX_KEY, DLX_NAME)
+                .build();
+    }
+
+    @Bean
+    public Binding sensorSensorValueBinding() {
+        return BindingBuilder
+                .bind(sensorSensorValueQueue())   // 수정됨
+                .to(sensorExchange())
+                .with(SENSOR_SENSOR_VALUE_QUEUE);
     }
 
     // AI 관련
     @Bean
     public DirectExchange harvestExchange() {
-        return new DirectExchange("yes-nhn.harvest.exchange");
+        return new DirectExchange(HARVEST_EXCHANGE);
     }
 
     @Bean
     public Queue aiHarvestQueue() {
         return QueueBuilder
-                .durable("yes-nhn.ai.harvest.queue")
-                .withArgument(DLX_KEY, DLX_NAME).build();
+                .durable(AI_HARVEST_QUEUE)
+                .withArgument(DLX_KEY, DLX_NAME)
+                .build();
     }
 
     @Bean
@@ -98,19 +115,19 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(aiHarvestQueue())
                 .to(harvestExchange())
-                .with("yes-nhn.ai.harvest.queue");
+                .with(AI_HARVEST_QUEUE);
     }
 
     // 알림 관련
     @Bean
     public DirectExchange notificationExchange() {
-        return new DirectExchange("yes-nhn.notification.exchange");
+        return new DirectExchange(NOTIFICATION_EXCHANGE);
     }
 
     @Bean
     public Queue notificationDoneQueue() {
         return QueueBuilder
-                .durable("yes-nhn.notification.done.queue")
+                .durable(NOTIFICATION_DONE_QUEUE)
                 .withArgument(DLX_KEY, DLX_NAME)
                 .build();
     }
@@ -120,6 +137,6 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(notificationDoneQueue())
                 .to(notificationExchange())
-                .with("yes-nhn.notification.done.queue");
+                .with(NOTIFICATION_DONE_QUEUE);
     }
 }
