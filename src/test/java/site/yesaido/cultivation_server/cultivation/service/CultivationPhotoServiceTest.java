@@ -83,7 +83,7 @@ class CultivationPhotoServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.storageType()).isEqualTo(StorageType.MINIO);
-        assertThat(response.url()).isEqualTo("http://storage.example.com/test-bucket/objectKey");
+        assertThat(response.uri()).isEqualTo("http://storage.example.com/test-bucket/objectKey");
 
         verify(minioClient, times(1)).putObject(any(PutObjectArgs.class));
         verify(cultivationPhotoRepository, times(1)).save(any(CultivationPhoto.class));

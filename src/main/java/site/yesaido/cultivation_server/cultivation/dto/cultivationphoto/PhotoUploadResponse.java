@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 public record PhotoUploadResponse(
         Long photoId,
         String objectKey,
-        String url,
+        String uri,
         StorageType storageType,
-        LocalDateTime uploadedAt
+        LocalDateTime updatedAt
 ) {
 }
