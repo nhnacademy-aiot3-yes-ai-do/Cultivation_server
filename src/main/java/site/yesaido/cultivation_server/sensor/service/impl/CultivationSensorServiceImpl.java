@@ -1,6 +1,7 @@
 package site.yesaido.cultivation_server.sensor.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
@@ -25,8 +26,19 @@ public class CultivationSensorServiceImpl implements CultivationSensorService {
         Optional<CultivationSensor> existingSensor = cultivationSensorRepository
                 .findByCultivationIdAndDeviceEui(cultivationId, dto.deviceEui());
 
+        //레이스컨디션
+        //요청 A: INSERT 성공
+        //요청 B: INSERT → DB UNIQUE 제약 위반
+        //요청 A, B에대한 예외처리
         if (existingSensor.isEmpty()) {
-            return cultivationSensorRepository.save(dto.toEntity(cultivationId));
+            try {
+                return cultivationSensorRepository.saveAndFlush(dto.toEntity(cultivationId));
+            } catch (DataIntegrityViolationException e) {
+                throw new CultivationSensorAlreadyExistException(
+                        "동시 등록 충돌 -> cultivationId:%d, deviceEui:%s"
+                                .formatted(cultivationId, dto.deviceEui())
+                );
+            }
         }
 
         // 마지막은 소프트 delete 되어있는 상태이므로 dirty check 복구

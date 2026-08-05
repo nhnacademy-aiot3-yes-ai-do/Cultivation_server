@@ -7,10 +7,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorConnectStatus;
+import site.yesaido.cultivation_server.sensor.exception.CultivationSensorAlreadyExistException;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorNotFoundException;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorRepository;
 import site.yesaido.cultivation_server.sensor.service.impl.CultivationSensorServiceImpl;
@@ -61,8 +63,12 @@ class CultivationSensorServiceTest {
             when(cultivationSensorRepository.findByCultivationIdAndDeviceEui(CULTIVATION_ID, request.deviceEui()))
                     .thenReturn(Optional.empty());
 
-            when(cultivationSensorRepository.save(any(CultivationSensor.class)))
+            when(cultivationSensorRepository.saveAndFlush(any(CultivationSensor.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
+
+            when(cultivationSensorRepository
+                    .findByCultivationIdAndDeviceEui(CULTIVATION_ID, request.deviceEui()))
+                    .thenReturn(Optional.empty());
 
             CultivationSensor result = cultivationSensorService.register(CULTIVATION_ID, request);
 
@@ -70,7 +76,43 @@ class CultivationSensorServiceTest {
                     CULTIVATION_ID,
                     request.deviceEui()
             );
-            verify(cultivationSensorRepository).save(result);
+            verify(cultivationSensorRepository).saveAndFlush(result);
+            verifyNoMoreInteractions(cultivationSensorRepository);
+        }
+        @Test
+        @DisplayName("신규 센서 예외")
+        void add_new_sensor_race_condition() {
+            CreateCultivationSensorRequest request = new CreateCultivationSensorRequest(
+                    "EUI-001",
+                    "MODEL-A",
+                    "배양실 센서",
+                    "ROOM-1",
+                    "북쪽 선반",
+                    List.of(
+                            new SensorSettingRequest(
+                                    1L,
+                                    BigDecimal.valueOf(20),
+                                    BigDecimal.valueOf(30)
+                            )
+                    )
+            );
+
+            when(cultivationSensorRepository.findByCultivationIdAndDeviceEui(CULTIVATION_ID, request.deviceEui()))
+                    .thenReturn(Optional.empty());
+
+            when(cultivationSensorRepository.saveAndFlush(any()))
+                    .thenThrow(new DataIntegrityViolationException("unique violation"));
+
+            assertThatThrownBy(() ->
+                    cultivationSensorService.register(CULTIVATION_ID, request))
+                    .isInstanceOf(CultivationSensorAlreadyExistException.class);
+
+            verify(cultivationSensorRepository).findByCultivationIdAndDeviceEui(
+                    CULTIVATION_ID,
+                    request.deviceEui()
+            );
+
+            verify(cultivationSensorRepository).saveAndFlush(any());
             verifyNoMoreInteractions(cultivationSensorRepository);
         }
 

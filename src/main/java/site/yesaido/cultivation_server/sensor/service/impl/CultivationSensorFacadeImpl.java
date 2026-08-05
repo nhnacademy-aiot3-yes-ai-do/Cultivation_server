@@ -9,10 +9,13 @@ import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSenso
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
+import site.yesaido.cultivation_server.sensor.exception.DuplicateSensorTypeException;
 import site.yesaido.cultivation_server.sensor.service.*;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -25,7 +28,6 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     private final CultivationSensorService cultivationSensorService;
     private final CultivationSensorTypeService cultivationSensorTypeService;
     private final EnvironmentSettingService environmentSettingService;
-
 
     /**
      *
@@ -47,9 +49,7 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     public long register(Long userId, long cultivationId, CreateCultivationSensorRequest request) {
         validateAccess(userId, cultivationId);
 
-        List<Long> sensorTypeIds = request.sensorSettings().stream()
-                                          .map(SensorSettingRequest::sensorTypeId)
-                                          .toList();
+        List<Long> sensorTypeIds = extractAndValidateSensorTypeIds(request.sensorSettings());
 
         // [예외] 등록된 센서 없으면
         List<SensorType> sensorTypes = sensorTypeService.getSensorTypeList(sensorTypeIds);
@@ -85,6 +85,26 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         if(!cultivationRepository.isMember(cultivationId, userId)) {
             throw new CultivationMemberNotFoundException();
         }
+    }
 
+    // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성
+    private List<Long> extractAndValidateSensorTypeIds(List<SensorSettingRequest> settings) {
+
+        List<Long> sensorTypeIds = settings.stream()
+                .map(SensorSettingRequest::sensorTypeId)
+                .toList();
+
+        Set<Long> seen = new HashSet<>();
+
+        List<Long> duplicateIds = sensorTypeIds.stream()
+                .filter(sensorTypeId -> !seen.add(sensorTypeId))
+                .distinct()
+                .toList();
+
+        if (!duplicateIds.isEmpty()) {
+            throw new DuplicateSensorTypeException(duplicateIds);
+        }
+
+        return sensorTypeIds;
     }
 }
