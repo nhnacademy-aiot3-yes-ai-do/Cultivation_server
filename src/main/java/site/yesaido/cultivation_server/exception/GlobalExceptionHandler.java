@@ -2,14 +2,13 @@ package site.yesaido.cultivation_server.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import site.yesaido.cultivation_server.cultivation.dto.ErrorResponse;
 import site.yesaido.cultivation_server.exception.client.*;
 import site.yesaido.cultivation_server.exception.server.CustomServerException;
 import site.yesaido.cultivation_server.exception.server.ServerErrorLevel;
@@ -21,44 +20,44 @@ import java.util.Objects;
 public class GlobalExceptionHandler {
     //400 Bad Request
     @ExceptionHandler({BadRequestException.class})
-    public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException e) {
+    public ErrorResponse handleBadRequestException(BadRequestException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(BadRequestException.getCode(), e.getMessage());
+        return createResponseEntity(e, BadRequestException.getCode(), e.getMessage());
     }
 
     //401 Unauthorized
     @ExceptionHandler({UnauthorizedException.class})
-    public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException e) {
+    public ErrorResponse handleUnauthorizedException(UnauthorizedException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(UnauthorizedException.getCode(), e.getMessage());
+        return createResponseEntity(e, UnauthorizedException.getCode(), e.getMessage());
     }
 
     //403 Forbidden
     @ExceptionHandler({ForbiddenException.class})
-    public ResponseEntity<ErrorResponse> handleForbiddenExceptionException(ForbiddenException e) {
+    public ErrorResponse handleForbiddenExceptionException(ForbiddenException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(ForbiddenException.getCode(), e.getMessage());
+        return createResponseEntity(e, ForbiddenException.getCode(), e.getMessage());
     }
 
     //404 Not Found
     @ExceptionHandler({NotFoundException.class})
-    public ResponseEntity<ErrorResponse> handleNotFoundExceptionException(NotFoundException e) {
+    public ErrorResponse handleNotFoundExceptionException(NotFoundException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(NotFoundException.getCode(), e.getMessage());
+        return createResponseEntity(e, NotFoundException.getCode(), e.getMessage());
     }
 
     //409 Conflict
     @ExceptionHandler({ConflictException.class})
-    public ResponseEntity<ErrorResponse> handleConflictException(ConflictException e) {
+    public ErrorResponse handleConflictException(ConflictException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(ConflictException.getCode(), e.getMessage());
+        return createResponseEntity(e, ConflictException.getCode(), e.getMessage());
     }
 
     //415 Unsupported Media Type
     @ExceptionHandler({UnsupportedMediaTypeException.class})
-    public ResponseEntity<ErrorResponse> handleUnsupportedMediaTypeException(UnsupportedMediaTypeException e) {
+    public ErrorResponse handleUnsupportedMediaTypeException(UnsupportedMediaTypeException e) {
         clientErrorPrint(e.getLogContent());
-        return createResponseEntity(UnsupportedMediaTypeException.getCode(), e.getMessage());
+        return createResponseEntity(e, UnsupportedMediaTypeException.getCode(), e.getMessage());
     }
 
     private void clientErrorPrint(String logContent) {
@@ -67,49 +66,45 @@ public class GlobalExceptionHandler {
 
     //500 Custom Server Exception
     @ExceptionHandler({CustomServerException.class})
-    public ResponseEntity<ErrorResponse> handleServerException(CustomServerException e) {
+    public ErrorResponse handleServerException(CustomServerException e) {
         if(e.getErrorLevel().equals(ServerErrorLevel.WARN_LEVEL)) {
             log.warn("{}", e.getLogContent());
         } else {
             log.error("{}", e.getLogContent());
         }
 
-        return createResponseEntity(CustomServerException.getStatus(), e.getMessage());
+        return createResponseEntity(e, CustomServerException.getStatus(), e.getMessage());
     }
 
     //500 Server Exception
     @ExceptionHandler({Exception.class})
-    public ResponseEntity<ErrorResponse> handleException(Exception e) {
+    public ErrorResponse handleException(Exception e) {
         log.warn("{}", e.getMessage());
-        return createResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        return createResponseEntity(e, HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
-    private ResponseEntity<ErrorResponse> createResponseEntity(HttpStatus status, String message) {
-        return ResponseEntity.status(status).body(ErrorResponse.of(status.value(), message));
+    private ErrorResponse createResponseEntity(Exception e, HttpStatus status, String message) {
+        return ErrorResponse.create(e, status, message);
     }
 
 
     // Spring
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse("잘못된 요청입니다.");
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), message));
+    public ErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        FieldError fieldError = e.getBindingResult().getFieldError();
+        String defaultMessage = (fieldError != null) ? fieldError.getDefaultMessage() : null;
+        String message = Objects.requireNonNullElse(defaultMessage, "잘못된 요청입니다.");
+
+        return ErrorResponse.create(e, HttpStatus.BAD_REQUEST, message);
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
-    public ResponseEntity<ErrorResponse> handleMissingRequestHeaderException(MissingRequestHeaderException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "필수 헤더가 누락되었습니다: " + e.getHeaderName()));
+    public ErrorResponse handleMissingRequestHeaderException(MissingRequestHeaderException e) {
+        return ErrorResponse.create(e, HttpStatus.BAD_REQUEST, "필수 헤더가 누락되었습니다: " + e.getHeaderName());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "사진 파일 크기는 10MB를 초과할 수 없습니다."));
+    public ErrorResponse handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        return ErrorResponse.create(e, HttpStatus.BAD_REQUEST, "사진 파일 크기는 10MB를 초과할 수 없습니다.");
     }
 }

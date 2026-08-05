@@ -82,7 +82,7 @@ class MushroomReferenceControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(s))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message").exists());
+                    .andExpect(jsonPath("$.detail").exists());
         }
 
         @Test
@@ -96,7 +96,7 @@ class MushroomReferenceControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(s))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").exists());
+                    .andExpect(jsonPath("$.detail").exists());
 
             verify(mushroomReferenceService, never()).registerMushroomReference(any());
         }

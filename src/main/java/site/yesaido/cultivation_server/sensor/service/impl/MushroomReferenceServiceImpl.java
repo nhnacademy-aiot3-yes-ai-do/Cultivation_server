@@ -28,6 +28,8 @@ public class MushroomReferenceServiceImpl implements MushroomReferenceService {
 
     private final SensorTypeService sensorTypeService;
 
+    private static final String CONTENT_FORMAT_BY_ID = "id:%s";
+
     @Override
     @Transactional
     public long registerMushroomReference(MushroomReferenceRequest dto) {
@@ -56,7 +58,7 @@ public class MushroomReferenceServiceImpl implements MushroomReferenceService {
     @Transactional
     public void updateMushroomReference(long mushroomReferenceId, MushroomReferenceRequest dto) {
         if(!mushroomReferenceRepository.existsMushroomReferenceById(mushroomReferenceId)) {
-            throw new MushroomReferenceNotFoundException("id:%s".formatted(mushroomReferenceId));
+            throw new MushroomReferenceNotFoundException(CONTENT_FORMAT_BY_ID.formatted(mushroomReferenceId));
         }
 
         // mushroom reference 업데이트
@@ -148,7 +150,7 @@ public class MushroomReferenceServiceImpl implements MushroomReferenceService {
     @Transactional
     public void deleteMushroomReference(long mushroomReferenceId) {
         if(!mushroomReferenceRepository.existsMushroomReferenceById(mushroomReferenceId)) {
-            throw new MushroomReferenceNotFoundException("id:%s".formatted(mushroomReferenceId));
+            throw new MushroomReferenceNotFoundException(CONTENT_FORMAT_BY_ID.formatted(mushroomReferenceId));
         }
 
         MushroomReference mushroomReference = mushroomReferenceRepository.findMushroomReferenceById(mushroomReferenceId);
@@ -164,7 +166,7 @@ public class MushroomReferenceServiceImpl implements MushroomReferenceService {
     @Transactional(readOnly = true)
     public MushroomReferenceInfoResponse getMushroomReferenceInfo(long mushroomReferenceId) {
         if(!mushroomReferenceRepository.existsMushroomReferenceById(mushroomReferenceId)) {
-            throw new MushroomReferenceNotFoundException("id:%s".formatted(mushroomReferenceId));
+            throw new MushroomReferenceNotFoundException(CONTENT_FORMAT_BY_ID.formatted(mushroomReferenceId));
         }
 
         MushroomReference mushroomReference = mushroomReferenceRepository.findMushroomReferenceById(mushroomReferenceId);

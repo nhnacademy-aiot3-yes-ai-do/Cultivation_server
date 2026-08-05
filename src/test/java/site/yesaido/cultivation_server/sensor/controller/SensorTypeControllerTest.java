@@ -70,7 +70,7 @@ class SensorTypeControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(s))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message").exists());
+                    .andExpect(jsonPath("$.detail").exists());
         }
 
         @Test
