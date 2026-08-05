@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.sensor.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 
@@ -13,6 +14,7 @@ public record MushroomReferenceRequest(
         @NotBlank
         String mushroomScientificName,
         @NotEmpty
+        @Valid
         List<MushroomReferenceThresholdRequest> thresholds
 ) {
 }
