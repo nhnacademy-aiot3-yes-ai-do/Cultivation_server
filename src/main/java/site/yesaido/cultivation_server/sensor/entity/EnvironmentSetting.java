@@ -45,7 +45,9 @@ public class EnvironmentSetting {
         this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
     }
 
-    public void idUpdate() {
+    public void updateThreshold(BigDecimal min, BigDecimal max) {
+        this.thresholdMin = min;
+        this.thresholdMax = max;
         this.updatedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
     }
 }
