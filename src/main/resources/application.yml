@@ -43,6 +43,12 @@ spring:
       max-file-size: 12MB
       max-request-size: 12MB
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST}      # 로컬 Docker
+    port: ${RABBITMQ_PORT}           # AMQP 포트
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
 eureka:
   client:
     enabled: ${EUREKA_ENABLED:false}
