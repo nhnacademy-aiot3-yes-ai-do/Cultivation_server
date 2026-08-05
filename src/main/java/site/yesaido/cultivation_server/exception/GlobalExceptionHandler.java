@@ -2,6 +2,7 @@ package site.yesaido.cultivation_server.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -12,7 +13,7 @@ import site.yesaido.cultivation_server.exception.client.*;
 import site.yesaido.cultivation_server.exception.server.CustomServerException;
 import site.yesaido.cultivation_server.exception.server.ServerErrorLevel;
 
-import java.util.Optional;
+import java.util.Objects;
 
 @Slf4j
 @RestControllerAdvice
@@ -90,10 +91,9 @@ public class GlobalExceptionHandler {
     // Spring
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
-                .findFirst()
-                .map(error -> Optional.ofNullable(error.getDefaultMessage()).orElse("잘못된 요청입니다."))
-                .orElse("잘못된 요청입니다.");
+        FieldError fieldError = e.getBindingResult().getFieldError();
+        String defaultMessage = (fieldError != null) ? fieldError.getDefaultMessage() : null;
+        String message = Objects.requireNonNullElse(defaultMessage, "잘못된 요청입니다.");
 
         return ErrorResponse.create(e, HttpStatus.BAD_REQUEST, message);
     }
