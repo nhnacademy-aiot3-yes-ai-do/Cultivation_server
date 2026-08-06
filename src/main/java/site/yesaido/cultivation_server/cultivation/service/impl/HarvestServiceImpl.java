@@ -19,6 +19,7 @@ import site.yesaido.cultivation_server.cultivation.service.HarvestService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +46,7 @@ public class HarvestServiceImpl implements HarvestService {
         Harvest harvest = Harvest.builder()
                 .harvestWeight(harvestCreateRequest.harvestWeight())
                 .memo(harvestCreateRequest.memo())
-                .harvestedAt(LocalDateTime.now())
+                .harvestedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .cultivation(cultivation)
                 .build();
         harvestRepository.save(harvest);

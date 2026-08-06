@@ -144,7 +144,7 @@ class CultivationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].cultivationId").value(100L))
                 .andExpect(jsonPath("$.content[0].name").value("이전 버섯"))
-                .andExpect(jsonPath("$.page.totalElements").value(1));
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
@@ -168,7 +168,7 @@ class CultivationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isNotEmpty())
                 .andExpect(jsonPath("$.content[0].name").value("마지막 이력"))
-                .andExpect(jsonPath("$.page.number").value(2));
+                .andExpect(jsonPath("$.number").value(2));
 
     }
 }
