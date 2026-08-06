@@ -1,5 +1,7 @@
 package site.yesaido.cultivation_server.cultivation.dto.ai;
 
+import site.yesaido.cultivation_server.cultivation.exception.InvalidEvaluationRangeException;
+
 public record AiEvaluationDto(
         int difficultyLevel,       // 초보자 난이도 (1: 매우 쉬움 ~ 5: 매우 어려움)
         int growthSpeed,           // 성장 속도 (1: 매우 느림 ~ 5: 수확이 아주 빠름)
@@ -8,10 +10,10 @@ public record AiEvaluationDto(
 ) {
     public AiEvaluationDto{
         if (difficultyLevel < 1 || difficultyLevel > 5) {
-            throw new IllegalArgumentException("difficultyLevel은 1~5 사이여야 합니다. 입력값: " + difficultyLevel);
+            throw new InvalidEvaluationRangeException("difficultyLevel", difficultyLevel);
         }
         if (growthSpeed < 1 || growthSpeed > 5) {
-            throw new IllegalArgumentException("growthSpeed는 1~5 사이여야 합니다. 입력값: " + growthSpeed);
+            throw new InvalidEvaluationRangeException("growthSpeed", growthSpeed);
         }
     }
 }
