@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.exception;
 
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.FieldError;
@@ -106,5 +107,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ErrorResponse handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
         return ErrorResponse.create(e, HttpStatus.BAD_REQUEST, "사진 파일 크기는 10MB를 초과할 수 없습니다.");
+    }
+
+    @ExceptionHandler(FeignException.class)
+    public ErrorResponse handleFeignException(FeignException e) {
+        log.error("AI 서버 통신 실패 (Status: {}): {}", e.status(), e.getMessage());
+        if(e.status() == 404){
+            return createResponseEntity(e, HttpStatus.NOT_FOUND, "해당 버섯 가이드 정보를 찾을 수 없습니다.");
+        } // 503 (Load balancer / Eureka 연결 실패 등) 또는 500 AI 서버 오류 시
+        return ErrorResponse.create(e, HttpStatus.SERVICE_UNAVAILABLE, "AI 서비스 연결이 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해 주세요.");
     }
 }
