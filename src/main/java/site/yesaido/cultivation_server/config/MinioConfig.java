@@ -31,7 +31,7 @@ public class MinioConfig {
 
     @Bean
     public StorageUrlResolver storageUrlResolver() {
-        String baseUrl = minioUrl.replaceAll("^/+$", "");
+        String baseUrl = minioUrl.replaceAll("^/+|/+$", "");
         return new DefaultStorageUrlResolver(baseUrl, bucket, baseUrl);
     }
 }
