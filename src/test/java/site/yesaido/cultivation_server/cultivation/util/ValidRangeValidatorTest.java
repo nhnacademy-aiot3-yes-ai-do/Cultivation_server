@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ValidRangeValidatorTest {
+class ValidRangeValidatorTest {
     private final ValidRangeValidator validator = new ValidRangeValidator();
 
     @Test
