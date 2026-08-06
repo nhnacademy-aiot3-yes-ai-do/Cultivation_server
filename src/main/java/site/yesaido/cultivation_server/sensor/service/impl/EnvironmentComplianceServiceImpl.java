@@ -16,9 +16,11 @@ import site.yesaido.cultivation_server.sensor.service.EnvironmentComplianceServi
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,13 +43,14 @@ public class EnvironmentComplianceServiceImpl implements EnvironmentComplianceSe
             return;
         }
 
-        ensureStatExists(event.cultivationId(), sensorType);
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        ensureStatExists(event.cultivationId(), sensorType, today);
 
         boolean inRange = isInRange(event.value(), setting.getThresholdMin(), setting.getThresholdMax());
         if (inRange) {
-            environmentComplianceStatRepository.incrementInRange(event.cultivationId(), sensorType.getId());
+            environmentComplianceStatRepository.incrementInRange(event.cultivationId(), sensorType.getId(), today);
         } else {
-            environmentComplianceStatRepository.incrementOutOfRange(event.cultivationId(), sensorType.getId());
+            environmentComplianceStatRepository.incrementOutOfRange(event.cultivationId(), sensorType.getId(), today);
         }
     }
 
@@ -55,28 +58,23 @@ public class EnvironmentComplianceServiceImpl implements EnvironmentComplianceSe
     @Transactional(readOnly = true)
     public EnvironmentComplianceResponse getCompliance(Long cultivationId) {
         List<EnvironmentComplianceStat> stats = environmentComplianceStatRepository.findAllByCultivationId(cultivationId);
+        return toResponse(sumByType(stats));
+    }
 
-        Map<String, BigDecimal> rateByType = stats.stream()
-                .collect(Collectors.toMap(
-                        s -> s.getSensorType().getType(),
-                        this::complianceRate
-                ));
-
-        return new EnvironmentComplianceResponse(
-                rateByType.get("TEMPERATURE"),
-                rateByType.get("HUMIDITY"),
-                rateByType.get("CO2"),
-                rateByType.get("LIGHT")
-        );
+    @Override
+    @Transactional(readOnly = true)
+    public EnvironmentComplianceResponse getDailyCompliance(Long cultivationId, LocalDate date) {
+        List<EnvironmentComplianceStat> stats = environmentComplianceStatRepository.findAllByCultivationIdAndStatDate(cultivationId, date);
+        return toResponse(sumByType(stats));
     }
 
     // Helper Method
-    private void ensureStatExists(Long cultivationId, SensorType sensorType) {
-        boolean exists = environmentComplianceStatRepository.findByCultivationIdAndSensorType_Id(cultivationId, sensorType.getId()).isPresent();
+    private void ensureStatExists(Long cultivationId, SensorType sensorType, LocalDate date) {
+        boolean exists = environmentComplianceStatRepository.findByCultivationIdAndSensorType_IdAndStatDate(cultivationId, sensorType.getId(), date).isPresent();
 
         if (!exists) {
             try {
-                environmentComplianceStatRepository.save(new EnvironmentComplianceStat(cultivationId, sensorType));
+                environmentComplianceStatRepository.save(new EnvironmentComplianceStat(cultivationId, sensorType, date));
             } catch (DataIntegrityViolationException e) {
 
             }
@@ -89,15 +87,42 @@ public class EnvironmentComplianceServiceImpl implements EnvironmentComplianceSe
 
     }
 
-    private BigDecimal complianceRate(EnvironmentComplianceStat stat) {
-        long total = stat.getInRangeCount() + stat.getOutOfRangeCount();
+    private Map<String, int[]> sumByType(List<EnvironmentComplianceStat> stats) {
+        Map<String, int[]> totals = new HashMap<>();
+        for (EnvironmentComplianceStat stat : stats) {
+            String type = stat.getSensorType().getType();
+            int[] counts = totals.computeIfAbsent(type, k -> new int[2]);
+            counts[0] += stat.getInRangeCount();
+            counts[1] += stat.getOutOfRangeCount();
+        }
+        return totals;
+    }
+
+    private BigDecimal rateOf(int[] counts) {
+        if (counts == null) {
+            return null;
+        }
+        return rate(counts[0], counts[1]);
+    }
+
+    private BigDecimal rate(int inRangeCount, int outOfRangeCount) {
+        long total = inRangeCount + outOfRangeCount;
         if (total == 0) {
             return null;
         }
 
-        return BigDecimal.valueOf(stat.getInRangeCount())
+        return BigDecimal.valueOf(inRangeCount)
                 .divide(BigDecimal.valueOf(total), 4, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private EnvironmentComplianceResponse toResponse(Map<String, int[]> totalsByType) {
+        return new EnvironmentComplianceResponse(
+                rateOf(totalsByType.get("TEMPERATURE")),
+                rateOf(totalsByType.get("HUMIDITY")),
+                rateOf(totalsByType.get("CO2")),
+                rateOf(totalsByType.get("LIGHT"))
+        );
     }
 }
