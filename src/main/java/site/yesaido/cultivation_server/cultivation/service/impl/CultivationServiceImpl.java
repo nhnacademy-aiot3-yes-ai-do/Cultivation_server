@@ -23,6 +23,7 @@ import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -55,7 +56,7 @@ public class CultivationServiceImpl implements CultivationService {
                 .name(request.name())
                 .userId(userId)
                 .mushroomReference(mushroomReference)
-                .startedAt(LocalDateTime.now())
+                .startedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .build();
         cultivationRepository.save(cultivation);
 
