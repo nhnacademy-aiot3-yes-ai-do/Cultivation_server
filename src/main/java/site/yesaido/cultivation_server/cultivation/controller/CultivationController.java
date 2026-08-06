@@ -52,9 +52,9 @@ public class CultivationController {
 
     // 이력 조회
     @GetMapping("/history")
-    public ResponseEntity<PagedModel<CultivationHistoryResponse>> getHistory(@RequestHeader("X-User-Id") Long userId,
-                                                                             @PageableDefault(size = 20) Pageable pageable) {
+    public ResponseEntity<CultivationHistoryPageResponse> getHistory(@RequestHeader("X-User-Id") Long userId,
+                                                                     @PageableDefault(size = 20) Pageable pageable) {
         Page<CultivationHistoryResponse> response = cultivationService.getHistory(userId, pageable);
-        return ResponseEntity.ok(new PagedModel<>(response));
+        return ResponseEntity.ok(CultivationHistoryPageResponse.from(response));
     }
 }

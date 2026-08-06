@@ -29,6 +29,7 @@ import site.yesaido.cultivation_server.exception.server.CustomServerException;
 import site.yesaido.cultivation_server.exception.server.ServerErrorLevel;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 
@@ -94,7 +95,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         CultivationPhoto cultivationPhoto = CultivationPhoto.builder()
                 .objectKey(objectKey)
                 .storageType(StorageType.MINIO)
-                .uploadedAt(LocalDateTime.now())
+                .uploadedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .cultivation(cultivation)
                 .build();
         try {
