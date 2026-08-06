@@ -25,7 +25,7 @@ public class SensorValueConsumer {
             @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag
     ) throws IOException {
         try {
-            environmentComplianceService.record(event);
+            environmentComplianceService.recordCount(event);
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             channel.basicNack(deliveryTag, false, false);

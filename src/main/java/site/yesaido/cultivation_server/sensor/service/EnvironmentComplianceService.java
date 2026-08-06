@@ -4,6 +4,6 @@ import site.yesaido.cultivation_server.cultivation.dto.harvest.response.Environm
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 
 public interface EnvironmentComplianceService {
-    void record(SensorValueEvent event);
+    void recordCount(SensorValueEvent event);
     EnvironmentComplianceResponse getCompliance(Long cultivationId);
 }

@@ -15,9 +15,7 @@ import site.yesaido.cultivation_server.sensor.repository.SensorTypeRepository;
 import site.yesaido.cultivation_server.sensor.service.EnvironmentComplianceService;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,7 +29,7 @@ public class EnvironmentComplianceServiceImpl implements EnvironmentComplianceSe
 
     @Override
     @Transactional
-    public void record(SensorValueEvent event) {
+    public void recordCount(SensorValueEvent event) {
         SensorType sensorType = sensorTypeRepository.findByType(event.sensorType().name()).orElse(null);
         if (sensorType == null) {
             return;
