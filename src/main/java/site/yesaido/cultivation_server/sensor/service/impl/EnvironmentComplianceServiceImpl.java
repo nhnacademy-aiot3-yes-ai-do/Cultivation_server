@@ -48,6 +48,9 @@ public class EnvironmentComplianceServiceImpl implements EnvironmentComplianceSe
     @Override
     @Transactional(readOnly = true)
     public EnvironmentComplianceResponse getComplianceForPeriod(Long cultivationId, LocalDate startDate, LocalDate endDate) {
+        cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
         List<EnvironmentSetting> settings = environmentSettingRepository.findAllByCultivationId(cultivationId);
 
         Map<String, BigDecimal> rates = new HashMap<>();
