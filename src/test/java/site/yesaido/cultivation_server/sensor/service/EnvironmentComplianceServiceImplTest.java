@@ -9,13 +9,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.EnvironmentComplianceResponse;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
-import site.yesaido.cultivation_server.sensor.entity.EnvironmentComplianceStat;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
+import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.sensor.entity.EnvironmentSetting;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
-import site.yesaido.cultivation_server.sensor.repository.EnvironmentComplianceStatRepository;
 import site.yesaido.cultivation_server.sensor.repository.EnvironmentSettingRepository;
-import site.yesaido.cultivation_server.sensor.repository.SensorTypeRepository;
+import site.yesaido.cultivation_server.sensor.repository.InfluxSensorQueryRepository;
 import site.yesaido.cultivation_server.sensor.service.impl.EnvironmentComplianceServiceImpl;
 
 import java.math.BigDecimal;
@@ -26,8 +26,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -35,212 +35,222 @@ import static org.mockito.Mockito.never;
 @ExtendWith(MockitoExtension.class)
 class EnvironmentComplianceServiceImplTest {
 
-    private static final long CULTIVATION_ID = 10L;
-    private static final long SENSOR_TYPE_ID = 1L;
-    private static final LocalDate TODAY = LocalDate.now(ZoneId.of("Asia/Seoul"));
-
-    @Mock
-    EnvironmentComplianceStatRepository environmentComplianceStatRepository;
+    private static final Long CULTIVATION_ID = 1L;
+    private static final Long TEMPERATURE_TYPE_ID = 10L;
+    private static final Long HUMIDITY_TYPE_ID = 11L;
+    private static final LocalDate START_DATE = LocalDate.of(2026, 8, 1);
+    private static final LocalDate END_DATE = LocalDate.of(2026, 8, 7);
 
     @Mock
     EnvironmentSettingRepository environmentSettingRepository;
 
     @Mock
-    SensorTypeRepository sensorTypeRepository;
+    InfluxSensorQueryRepository influxSensorQueryRepository;
+
+    @Mock
+    CultivationRepository cultivationRepository;
 
     @InjectMocks
     EnvironmentComplianceServiceImpl service;
 
     private SensorType temperatureType() {
         SensorType sensorType = new SensorType("TEMPERATURE", "C");
-        ReflectionTestUtils.setField(sensorType, "id", SENSOR_TYPE_ID);
+        ReflectionTestUtils.setField(sensorType, "id", TEMPERATURE_TYPE_ID);
         return sensorType;
     }
 
-    private SensorValueEvent event(double value) {
-        return new SensorValueEvent(
-                "배양실", "ROOM-1", "MODEL-A", "온도센서1", "EUI-001",
-                site.yesaido.cultivation_server.rabbitmq.event.SensorType.TEMPERATURE,
-                value, LocalDateTime.now(), CULTIVATION_ID
-        );
+    private SensorType humidityType() {
+        SensorType sensorType = new SensorType("HUMIDITY", "%");
+        ReflectionTestUtils.setField(sensorType, "id", HUMIDITY_TYPE_ID);
+        return sensorType;
     }
 
-
-
-    @Test
-    @DisplayName("매핑되는 센서 타입이 없으면 아무 것도 하지 않음")
-    void doesNothing_whenSensorTypeUnknown() {
-        given(sensorTypeRepository.findByType("TEMPERATURE")).willReturn(Optional.empty());
-
-        service.recordCount(event(25.0));
-
-        then(environmentSettingRepository).shouldHaveNoInteractions();
-        then(environmentComplianceStatRepository).shouldHaveNoInteractions();
+    private EnvironmentSetting settingFor(SensorType sensorType, BigDecimal min, BigDecimal max) {
+        return new EnvironmentSetting(CULTIVATION_ID, sensorType, min, max);
     }
 
-    @Test
-    @DisplayName("해당 경작에 임계값 설정이 없으면 아무 것도 하지 않음")
-    void doesNothing_whenNoEnvironmentSetting() {
-        SensorType sensorType = temperatureType();
-        given(sensorTypeRepository.findByType("TEMPERATURE")).willReturn(Optional.of(sensorType));
-        given(environmentSettingRepository.findByCultivationIdAndSensorType_Id(CULTIVATION_ID, SENSOR_TYPE_ID))
-                .willReturn(Optional.empty());
+    @Nested
+    @DisplayName("getComplianceForPeriod")
+    class GetComplianceForPeriod {
 
-        service.recordCount(event(25.0));
+        @Test
+        @DisplayName("등록된 센서타입이 없으면 전부 null 반환")
+        void returnsAllNull_whenNoSettings() {
+            given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of());
 
-        then(environmentComplianceStatRepository).shouldHaveNoInteractions();
+            EnvironmentComplianceResponse response = service.getComplianceForPeriod(CULTIVATION_ID, START_DATE, END_DATE);
+
+            assertThat(response.temperatureCompliance()).isNull();
+            assertThat(response.humidityCompliance()).isNull();
+            assertThat(response.co2Compliance()).isNull();
+            assertThat(response.lightCompliance()).isNull();
+            then(influxSensorQueryRepository).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("InfluxDB에 아직 데이터가 없는(total=0) 타입은 null 반환하고 countInRange는 호출 안 함")
+        void returnsNull_whenNoInfluxDataYet() {
+            SensorType temperature = temperatureType();
+            EnvironmentSetting setting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
+
+            given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of(setting));
+            given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", START_DATE, END_DATE))
+                    .willReturn(0L);
+
+            EnvironmentComplianceResponse response = service.getComplianceForPeriod(CULTIVATION_ID, START_DATE, END_DATE);
+
+            assertThat(response.temperatureCompliance()).isNull();
+            then(influxSensorQueryRepository).should(never())
+                    .countInRange(any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("in-range/total 비율을 퍼센트로 계산")
+        void computesRate() {
+            SensorType temperature = temperatureType();
+            EnvironmentSetting setting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
+
+            given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of(setting));
+            given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", START_DATE, END_DATE))
+                    .willReturn(10L);
+            given(influxSensorQueryRepository.countInRange(
+                    CULTIVATION_ID, "TEMPERATURE", START_DATE, END_DATE,
+                    BigDecimal.valueOf(18), BigDecimal.valueOf(28)))
+                    .willReturn(8L);
+
+            EnvironmentComplianceResponse response = service.getComplianceForPeriod(CULTIVATION_ID, START_DATE, END_DATE);
+
+            assertThat(response.temperatureCompliance()).isEqualByComparingTo(BigDecimal.valueOf(80));
+            assertThat(response.humidityCompliance()).isNull();
+        }
+
+        @Test
+        @DisplayName("여러 센서타입은 각각 독립적으로 계산")
+        void computesEachSensorTypeIndependently() {
+            SensorType temperature = temperatureType();
+            SensorType humidity = humidityType();
+            EnvironmentSetting tempSetting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
+            EnvironmentSetting humiditySetting = settingFor(humidity, BigDecimal.valueOf(50), BigDecimal.valueOf(70));
+
+            given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID))
+                    .willReturn(List.of(tempSetting, humiditySetting));
+
+            given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", START_DATE, END_DATE))
+                    .willReturn(10L);
+            given(influxSensorQueryRepository.countInRange(
+                    CULTIVATION_ID, "TEMPERATURE", START_DATE, END_DATE,
+                    BigDecimal.valueOf(18), BigDecimal.valueOf(28)))
+                    .willReturn(10L);
+
+            given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "HUMIDITY", START_DATE, END_DATE))
+                    .willReturn(4L);
+            given(influxSensorQueryRepository.countInRange(
+                    CULTIVATION_ID, "HUMIDITY", START_DATE, END_DATE,
+                    BigDecimal.valueOf(50), BigDecimal.valueOf(70)))
+                    .willReturn(1L);
+
+            EnvironmentComplianceResponse response = service.getComplianceForPeriod(CULTIVATION_ID, START_DATE, END_DATE);
+
+            assertThat(response.temperatureCompliance()).isEqualByComparingTo(BigDecimal.valueOf(100));
+            assertThat(response.humidityCompliance()).isEqualByComparingTo(BigDecimal.valueOf(25));
+        }
     }
 
-    @Test
-    @DisplayName("값이 임계값 범위 안이면 오늘 날짜로 incrementInRange 호출")
-    void incrementsInRange_whenValueWithinThreshold() {
-        SensorType sensorType = temperatureType();
-        EnvironmentSetting setting = new EnvironmentSetting(
-                CULTIVATION_ID, sensorType, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
+    @Nested
+    @DisplayName("getDailyCompliance")
+    class GetDailyCompliance {
 
-        given(sensorTypeRepository.findByType("TEMPERATURE")).willReturn(Optional.of(sensorType));
-        given(environmentSettingRepository.findByCultivationIdAndSensorType_Id(CULTIVATION_ID, SENSOR_TYPE_ID))
-                .willReturn(Optional.of(setting));
-        given(environmentComplianceStatRepository
-                .findByCultivationIdAndSensorType_IdAndStatDate(CULTIVATION_ID, SENSOR_TYPE_ID, TODAY))
-                .willReturn(Optional.empty());
+        @Test
+        @DisplayName("시작일=종료일=해당 날짜로 getComplianceForPeriod에 위임")
+        void delegatesWithSameStartAndEndDate() {
+            SensorType temperature = temperatureType();
+            EnvironmentSetting setting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
 
-        service.recordCount(event(25.0));
+            given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of(setting));
+            given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", END_DATE, END_DATE))
+                    .willReturn(2L);
+            given(influxSensorQueryRepository.countInRange(
+                    CULTIVATION_ID, "TEMPERATURE", END_DATE, END_DATE,
+                    BigDecimal.valueOf(18), BigDecimal.valueOf(28)))
+                    .willReturn(1L);
 
-        then(environmentComplianceStatRepository).should().save(any(EnvironmentComplianceStat.class));
-        then(environmentComplianceStatRepository).should()
-                .incrementInRange(eq(CULTIVATION_ID), eq(SENSOR_TYPE_ID), eq(TODAY));
-        then(environmentComplianceStatRepository).should(never())
-                .incrementOutOfRange(eq(CULTIVATION_ID), eq(SENSOR_TYPE_ID), eq(TODAY));
+            EnvironmentComplianceResponse response = service.getDailyCompliance(CULTIVATION_ID, END_DATE);
+
+            assertThat(response.temperatureCompliance()).isEqualByComparingTo(BigDecimal.valueOf(50));
+        }
     }
 
-    @Test
-    @DisplayName("값이 임계값 범위 밖이면 오늘 날짜로 incrementOutOfRange 호출")
-    void incrementsOutOfRange_whenValueOutsideThreshold() {
-        SensorType sensorType = temperatureType();
-        EnvironmentSetting setting = new EnvironmentSetting(
-                CULTIVATION_ID, sensorType, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
+    @Nested
+    @DisplayName("getCompliance (누적)")
+    class GetCompliance {
 
-        given(sensorTypeRepository.findByType("TEMPERATURE")).willReturn(Optional.of(sensorType));
-        given(environmentSettingRepository.findByCultivationIdAndSensorType_Id(CULTIVATION_ID, SENSOR_TYPE_ID))
-                .willReturn(Optional.of(setting));
-        given(environmentComplianceStatRepository
-                .findByCultivationIdAndSensorType_IdAndStatDate(CULTIVATION_ID, SENSOR_TYPE_ID, TODAY))
-                .willReturn(Optional.empty());
+        @Test
+        @DisplayName("존재하지 않는 재배면 예외 발생")
+        void throws_whenCultivationNotFound() {
+            given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.empty());
 
-        service.recordCount(event(35.0));
+            assertThatThrownBy(() -> service.getCompliance(CULTIVATION_ID))
+                    .isInstanceOf(CultivationNotFoundException.class);
 
-        then(environmentComplianceStatRepository).should()
-                .incrementOutOfRange(eq(CULTIVATION_ID), eq(SENSOR_TYPE_ID), eq(TODAY));
-        then(environmentComplianceStatRepository).should(never())
-                .incrementInRange(eq(CULTIVATION_ID), eq(SENSOR_TYPE_ID), eq(TODAY));
+            then(environmentSettingRepository).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("startedAt이 있으면 startedAt을 시작일로 사용해서 InfluxDB 조회")
+        void usesStartedAt_whenPresent() {
+            LocalDateTime startedAt = LocalDateTime.of(2026, 7, 20, 9, 0);
+            Cultivation cultivation = Cultivation.builder()
+                    .id(CULTIVATION_ID)
+                    .startedAt(startedAt)
+                    .createdAt(LocalDateTime.of(2026, 7, 1, 0, 0))
+                    .build();
+
+            SensorType temperature = temperatureType();
+            EnvironmentSetting setting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
+
+            given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(cultivation));
+            given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of(setting));
+
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+            given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", startedAt.toLocalDate(), today))
+                    .willReturn(4L);
+            given(influxSensorQueryRepository.countInRange(
+                    CULTIVATION_ID, "TEMPERATURE", startedAt.toLocalDate(), today,
+                    BigDecimal.valueOf(18), BigDecimal.valueOf(28)))
+                    .willReturn(4L);
+
+            EnvironmentComplianceResponse response = service.getCompliance(CULTIVATION_ID);
+
+            assertThat(response.temperatureCompliance()).isEqualByComparingTo(BigDecimal.valueOf(100));
+        }
+
+        @Test
+        @DisplayName("startedAt이 없으면 createdAt을 시작일로 사용해서 InfluxDB 조회")
+        void usesCreatedAt_whenStartedAtIsNull() {
+            LocalDateTime createdAt = LocalDateTime.of(2026, 7, 15, 0, 0);
+            Cultivation cultivation = Cultivation.builder()
+                    .id(CULTIVATION_ID)
+                    .startedAt(null)
+                    .createdAt(createdAt)
+                    .build();
+
+            SensorType temperature = temperatureType();
+            EnvironmentSetting setting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
+
+            given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(cultivation));
+            given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of(setting));
+
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+            given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", createdAt.toLocalDate(), today))
+                    .willReturn(5L);
+            given(influxSensorQueryRepository.countInRange(
+                    CULTIVATION_ID, "TEMPERATURE", createdAt.toLocalDate(), today,
+                    BigDecimal.valueOf(18), BigDecimal.valueOf(28)))
+                    .willReturn(5L);
+
+            EnvironmentComplianceResponse response = service.getCompliance(CULTIVATION_ID);
+
+            assertThat(response.temperatureCompliance()).isEqualByComparingTo(BigDecimal.valueOf(100));
+        }
     }
-
-    @Test
-    @DisplayName("오늘치 row가 이미 있으면 새로 저장하지 않음")
-    void doesNotSave_whenTodayStatAlreadyExists() {
-        SensorType sensorType = temperatureType();
-        EnvironmentSetting setting = new EnvironmentSetting(
-                CULTIVATION_ID, sensorType, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
-        EnvironmentComplianceStat existingStat =
-                new EnvironmentComplianceStat(CULTIVATION_ID, sensorType, TODAY);
-
-        given(sensorTypeRepository.findByType("TEMPERATURE")).willReturn(Optional.of(sensorType));
-        given(environmentSettingRepository.findByCultivationIdAndSensorType_Id(CULTIVATION_ID, SENSOR_TYPE_ID))
-                .willReturn(Optional.of(setting));
-        given(environmentComplianceStatRepository
-                .findByCultivationIdAndSensorType_IdAndStatDate(CULTIVATION_ID, SENSOR_TYPE_ID, TODAY))
-                .willReturn(Optional.of(existingStat));
-
-        service.recordCount(event(25.0));
-
-        then(environmentComplianceStatRepository).should(never()).save(any(EnvironmentComplianceStat.class));
-        then(environmentComplianceStatRepository).should()
-                .incrementInRange(eq(CULTIVATION_ID), eq(SENSOR_TYPE_ID), eq(TODAY));
-    }
-
-    @Test
-    @DisplayName("경계값(최댓값과 정확히 같음)은 범위 안으로 판정")
-    void treatsBoundaryValueAsInRange() {
-        SensorType sensorType = temperatureType();
-        EnvironmentSetting setting = new EnvironmentSetting(
-                CULTIVATION_ID, sensorType, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
-
-        given(sensorTypeRepository.findByType("TEMPERATURE")).willReturn(Optional.of(sensorType));
-        given(environmentSettingRepository.findByCultivationIdAndSensorType_Id(CULTIVATION_ID, SENSOR_TYPE_ID))
-                .willReturn(Optional.of(setting));
-        given(environmentComplianceStatRepository
-                .findByCultivationIdAndSensorType_IdAndStatDate(CULTIVATION_ID, SENSOR_TYPE_ID, TODAY))
-                .willReturn(Optional.of(new EnvironmentComplianceStat(CULTIVATION_ID, sensorType, TODAY)));
-
-        service.recordCount(event(28.0));
-
-        then(environmentComplianceStatRepository).should()
-                .incrementInRange(eq(CULTIVATION_ID), eq(SENSOR_TYPE_ID), eq(TODAY));
-    }
-
-    @Test
-    @DisplayName("여러 날짜에 걸친 row를 전부 합산해서 비율로 반환")
-    void sumsAcrossAllDates() {
-        SensorType temperature = new SensorType("TEMPERATURE", "C");
-
-        EnvironmentComplianceStat day1 = new EnvironmentComplianceStat(CULTIVATION_ID, temperature, TODAY.minusDays(1));
-        ReflectionTestUtils.setField(day1, "inRangeCount", 5);
-        ReflectionTestUtils.setField(day1, "outOfRangeCount", 5);
-
-        EnvironmentComplianceStat day2 = new EnvironmentComplianceStat(CULTIVATION_ID, temperature, TODAY);
-        ReflectionTestUtils.setField(day2, "inRangeCount", 3);
-        ReflectionTestUtils.setField(day2, "outOfRangeCount", 7);
-
-        given(environmentComplianceStatRepository.findAllByCultivationId(CULTIVATION_ID))
-                .willReturn(List.of(day1, day2));
-
-        EnvironmentComplianceResponse response = service.getCompliance(CULTIVATION_ID);
-
-        // (5+3) / (10+10) * 100 = 40.00
-        assertThat(response.temperatureCompliance()).isEqualByComparingTo(BigDecimal.valueOf(40));
-        assertThat(response.humidityCompliance()).isNull();
-    }
-
-    @Test
-    @DisplayName("아직 데이터가 없는 타입은 null 반환")
-    void returnsNull_whenNoDataYet() {
-        given(environmentComplianceStatRepository.findAllByCultivationId(CULTIVATION_ID))
-                .willReturn(List.of());
-
-        EnvironmentComplianceResponse response = service.getCompliance(CULTIVATION_ID);
-
-        assertThat(response.temperatureCompliance()).isNull();
-        assertThat(response.humidityCompliance()).isNull();
-        assertThat(response.co2Compliance()).isNull();
-        assertThat(response.lightCompliance()).isNull();
-    }
-
-    @Test
-    @DisplayName("해당 날짜의 row만 조회해서 비율로 반환")
-    void returnsRateForGivenDateOnly() {
-        SensorType temperature = new SensorType("TEMPERATURE", "C");
-        EnvironmentComplianceStat stat = new EnvironmentComplianceStat(CULTIVATION_ID, temperature, TODAY);
-        ReflectionTestUtils.setField(stat, "inRangeCount", 8);
-        ReflectionTestUtils.setField(stat, "outOfRangeCount", 2);
-
-        given(environmentComplianceStatRepository.findAllByCultivationIdAndStatDate(CULTIVATION_ID, TODAY))
-                .willReturn(List.of(stat));
-
-        EnvironmentComplianceResponse response = service.getDailyCompliance(CULTIVATION_ID, TODAY);
-
-        assertThat(response.temperatureCompliance()).isEqualByComparingTo(BigDecimal.valueOf(80));
-    }
-
-    @Test
-    @DisplayName("해당 날짜에 데이터가 없으면 null 반환")
-    void returnsNull_whenNoDataForDate() {
-        given(environmentComplianceStatRepository.findAllByCultivationIdAndStatDate(CULTIVATION_ID, TODAY))
-                .willReturn(List.of());
-
-        EnvironmentComplianceResponse response = service.getDailyCompliance(CULTIVATION_ID, TODAY);
-
-        assertThat(response.temperatureCompliance()).isNull();
-    }
-
 }

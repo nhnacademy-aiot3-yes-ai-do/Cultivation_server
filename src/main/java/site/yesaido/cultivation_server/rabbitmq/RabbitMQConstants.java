@@ -16,6 +16,7 @@ public final class RabbitMQConstants {
     public static final String SENSOR_INFO_ROUTING_KEY_PATTERN = "yes-nhn.#.sensor-info.queue";
     public static final String RULE_ENGINE_THRESHOLD_INFO_QUEUE = "yes-nhn.rule-engine.threshold-info.queue";
     public static final String SENSOR_SENSOR_VALUE_QUEUE = "yes-nhn.sensor.sensor-value.queue";
+    public static final String ENVIRONMENT_COMPLIANCE_REQUEST_QUEUE = "yes-nhn.environment.compliance.queue";
 
     // AI 관련
     public static final String HARVEST_EXCHANGE = "yes-nhn.harvest.exchange";

@@ -5,7 +5,7 @@ spring:
   config:
     import: optional:file:.env[.properties]
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=${Cultivation_DB_SCHEMA}&stringtype=unspecified
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=${CULTIVATION_DB_SCHEMA}&stringtype=unspecified
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     type: org.apache.commons.dbcp2.BasicDataSource
@@ -15,7 +15,7 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
-        default_schema: ${Cultivation_DB_SCHEMA}
+        default_schema: ${CULTIVATION_DB_SCHEMA}
 
   cloud:
     kubernetes:
@@ -66,3 +66,9 @@ minio:
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
   bucket: ${MINIO_BUCKET}
+
+influxdb:
+  url: ${INFLUXDB_URL}
+  token: ${INFLUXDB_TOKEN}
+  org: ${INFLUXDB_ORG}
+  bucket: ${INFLUXDB_BUCKET}
