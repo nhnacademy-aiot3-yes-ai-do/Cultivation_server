@@ -6,6 +6,11 @@ import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import site.yesaido.cultivation_server.cultivation.dto.harvest.response.EnvironmentComplianceResponse;
+import site.yesaido.cultivation_server.rabbitmq.event.EnvironmentComplianceRequest;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
+
+import java.util.Map;
 
 import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
 
@@ -16,7 +21,11 @@ public class RabbitMQConfig {
     public MessageConverter jsonMessageConverter() {
         JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
         DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
-        typeMapper.setTrustedPackages("*");
+        typeMapper.setIdClassMapping(Map.of(
+                "sensorValueEvent", SensorValueEvent.class,
+                "environmentComplianceRequest", EnvironmentComplianceRequest.class,
+                "environmentComplianceResponse", EnvironmentComplianceResponse.class
+        ));
         converter.setJavaTypeMapper(typeMapper);
         return converter;
     }

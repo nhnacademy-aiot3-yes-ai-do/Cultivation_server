@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.rabbitmq;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.ENVIRON
 import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.SENSOR_EXCHANGE;
 
 @SpringBootTest
+@Disabled("RabbitMQ와 InfluxDB가 준비된 수동 환경에서만 실행")
 class EnvironmentComplianceRpcManualTest {
 
     @Autowired
