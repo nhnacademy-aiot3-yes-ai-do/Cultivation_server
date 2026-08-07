@@ -19,3 +19,7 @@ runs:
         echo "RABBITMQ_PORT=5672" >> "$GITHUB_ENV"
         echo "RABBITMQ_USERNAME=test" >> "$GITHUB_ENV"
         echo "RABBITMQ_PASSWORD=test1234" >> "$GITHUB_ENV"
+        echo "INFLUXDB_URL=http://localhost:8086" >> "$GITHUB_ENV"
+        echo "INFLUXDB_TOKEN=iot-lab-super-secret-auth-token" >> "$GITHUB_ENV"
+        echo "INFLUXDB_ORG=iot-lab" >> "$GITHUB_ENV"
+        echo "INFLUXDB_BUCKET=sensor_data" >> "$GITHUB_ENV"
