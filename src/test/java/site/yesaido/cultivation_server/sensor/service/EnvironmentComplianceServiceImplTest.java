@@ -76,6 +76,7 @@ class EnvironmentComplianceServiceImplTest {
         @Test
         @DisplayName("등록된 센서타입이 없으면 전부 null 반환")
         void returnsAllNull_whenNoSettings() {
+            given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(existingCultivation()));
             given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of());
 
             EnvironmentComplianceResponse response = service.getComplianceForPeriod(CULTIVATION_ID, START_DATE, END_DATE);
@@ -93,6 +94,7 @@ class EnvironmentComplianceServiceImplTest {
             SensorType temperature = temperatureType();
             EnvironmentSetting setting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
 
+            given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(existingCultivation()));
             given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of(setting));
             given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", START_DATE, END_DATE))
                     .willReturn(0L);
@@ -110,6 +112,7 @@ class EnvironmentComplianceServiceImplTest {
             SensorType temperature = temperatureType();
             EnvironmentSetting setting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
 
+            given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(existingCultivation()));
             given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of(setting));
             given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", START_DATE, END_DATE))
                     .willReturn(10L);
@@ -132,6 +135,7 @@ class EnvironmentComplianceServiceImplTest {
             EnvironmentSetting tempSetting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
             EnvironmentSetting humiditySetting = settingFor(humidity, BigDecimal.valueOf(50), BigDecimal.valueOf(70));
 
+            given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(existingCultivation()));
             given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID))
                     .willReturn(List.of(tempSetting, humiditySetting));
 
@@ -166,6 +170,7 @@ class EnvironmentComplianceServiceImplTest {
             SensorType temperature = temperatureType();
             EnvironmentSetting setting = settingFor(temperature, BigDecimal.valueOf(18), BigDecimal.valueOf(28));
 
+            given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(existingCultivation()));
             given(environmentSettingRepository.findAllByCultivationId(CULTIVATION_ID)).willReturn(List.of(setting));
             given(influxSensorQueryRepository.countTotal(CULTIVATION_ID, "TEMPERATURE", END_DATE, END_DATE))
                     .willReturn(2L);
@@ -252,5 +257,10 @@ class EnvironmentComplianceServiceImplTest {
 
             assertThat(response.temperatureCompliance()).isEqualByComparingTo(BigDecimal.valueOf(100));
         }
+    }
+
+    // Helper Method
+    private Cultivation existingCultivation() {
+        return Cultivation.builder().id(CULTIVATION_ID).build();
     }
 }
