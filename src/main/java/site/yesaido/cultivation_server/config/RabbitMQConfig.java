@@ -1,13 +1,34 @@
 package site.yesaido.cultivation_server.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.support.converter.DefaultJacksonJavaTypeMapper;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import site.yesaido.cultivation_server.cultivation.dto.harvest.response.EnvironmentComplianceResponse;
+import site.yesaido.cultivation_server.rabbitmq.event.EnvironmentComplianceRequest;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
+
+import java.util.Map;
 
 import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
 
 @Configuration
 public class RabbitMQConfig {
+
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
+        DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
+        typeMapper.setIdClassMapping(Map.of(
+                "sensorValueEvent", SensorValueEvent.class,
+                "environmentComplianceRequest", EnvironmentComplianceRequest.class,
+                "environmentComplianceResponse", EnvironmentComplianceResponse.class
+        ));
+        converter.setJavaTypeMapper(typeMapper);
+        return converter;
+    }
 
     // Dead Letter 관련
     @Bean
@@ -94,6 +115,22 @@ public class RabbitMQConfig {
                 .bind(sensorSensorValueQueue())   // 수정됨
                 .to(sensorExchange())
                 .with(SENSOR_SENSOR_VALUE_QUEUE);
+    }
+
+    @Bean
+    public Queue environmentComplianceRequestQueue() {
+        return QueueBuilder
+                .durable(ENVIRONMENT_COMPLIANCE_REQUEST_QUEUE)
+                .withArgument(DLX_KEY, DLX_NAME)
+                .build();
+    }
+
+    @Bean
+    public Binding environmentComplianceRequestBinding() {
+        return BindingBuilder
+                .bind(environmentComplianceRequestQueue())
+                .to(sensorExchange())
+                .with(ENVIRONMENT_COMPLIANCE_REQUEST_QUEUE);
     }
 
     // AI 관련

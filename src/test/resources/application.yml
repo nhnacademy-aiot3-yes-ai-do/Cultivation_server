@@ -15,7 +15,7 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
-        default_schema: ${CULTIVATION_DB_SCHEMA}
+        default_schema:
 
   cloud:
     kubernetes:

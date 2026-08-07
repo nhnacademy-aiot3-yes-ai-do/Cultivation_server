@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 
-import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
+import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.RULE_ENGINE_THRESHOLD_INFO_QUEUE;
+import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.SENSOR_EXCHANGE;
 
 @RequiredArgsConstructor
 @Component
