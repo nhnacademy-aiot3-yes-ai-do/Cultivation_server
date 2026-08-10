@@ -7,8 +7,8 @@ import com.influxdb.query.FluxTable;
 import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
-import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
+import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
 import java.util.List;
 import java.util.Map;

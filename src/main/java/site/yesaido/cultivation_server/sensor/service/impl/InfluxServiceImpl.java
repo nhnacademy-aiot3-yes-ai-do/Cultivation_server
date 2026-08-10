@@ -9,8 +9,8 @@ import site.yesaido.cultivation_server.rabbitmq.event.SensorType;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 
