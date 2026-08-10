@@ -3,8 +3,10 @@ package site.yesaido.cultivation_server.sensor.repository;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.QueryApi;
 import com.influxdb.query.FluxTable;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import site.yesaido.cultivation_server.config.InfluxProperties;
+import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,15 +15,12 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 @Repository
+@RequiredArgsConstructor
 public class InfluxSensorQueryRepository {
     private static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
-    private final InfluxDBClient influxDBClient;
-    private final String bucket;
 
-    public InfluxSensorQueryRepository(InfluxDBClient influxDBClient, @Value("${influx.bucket}") String bucket) {
-        this.influxDBClient = influxDBClient;
-        this.bucket = bucket;
-    }
+    private final InfluxDBClient influxDBClient;
+    private final InfluxProperties properties;
 
     public Long countTotal(Long cultivationId, String sensorType, LocalDate startDate, LocalDate endDate) {
         String flux = baseFilter(cultivationId, sensorType, startDate, endDate) + "  |> count()";
@@ -43,18 +42,27 @@ public class InfluxSensorQueryRepository {
         return """
                 from(bucket: "%s")
                   |> range(start: %s, stop: %s)
-                  |> filter(fn: (r) => r._measurement == "sensor_value" and r._field == "value")
-                  |> filter(fn: (r) => r.cultivation_id == "%d" and r.sensor_type == "%s")
-                """.formatted(bucket, start.toInstant(), stop.toInstant(), cultivationId, sensorType);
+                  |> filter(fn: (r) => r._measurement == "%s" and r._field == "%s")
+                  |> filter(fn: (r) => r.cultivationId == "%d" and r.sensorType == "%s")
+                """.formatted(
+                escape(properties.getBucket()),
+                start.toInstant(), stop.toInstant(),
+                SensorValuePointMapper.MEASUREMENT, SensorValuePointMapper.VALUE_FIELD,
+                cultivationId, sensorType
+        );
     }
 
     private long executeCount(String flux) {
         QueryApi queryApi = influxDBClient.getQueryApi();
-        List<FluxTable> tables = queryApi.query(flux);
-        if (tables.isEmpty() || tables.get(0).getRecords().isEmpty()) {
+        List<FluxTable> tables = queryApi.query(flux, properties.getOrg());
+        if (tables.isEmpty() || tables.getFirst().getRecords().isEmpty()) {
             return 0L;
         }
-        Object value = tables.get(0).getRecords().get(0).getValue();
+        Object value = tables.getFirst().getRecords().getFirst().getValue();
         return value == null ? 0L : ((Number) value).longValue();
+    }
+
+    private String escape(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

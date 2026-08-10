@@ -9,8 +9,8 @@ import java.util.Objects;
 
 public class SensorValuePointMapper {
 
-    static final String MEASUREMENT = "sensor_value";
-    static final String VALUE_FIELD = "value";
+    public static final String MEASUREMENT = "sensor_value";
+    public static final String VALUE_FIELD = "value";
 
     public Point toPoint(SensorValueEvent event) {
         Objects.requireNonNull(event, "event must not be null");

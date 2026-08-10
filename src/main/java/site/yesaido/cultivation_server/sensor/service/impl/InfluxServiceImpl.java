@@ -42,8 +42,8 @@ public class InfluxServiceImpl implements InfluxService {
 
         String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
                 + " |> range(start: 0)"
-                + " |> filter(fn: (r) => r._measurement == \"sensor_value\")"
-                + " |> filter(fn: (r) => r._field == \"value\")"
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
                 + " |> group(columns: [\"sensorType\", \"deviceEui\"])"
                 + " |> last()";
@@ -65,8 +65,8 @@ public class InfluxServiceImpl implements InfluxService {
 
         String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
                 + " |> range(start: -24h)"
-                + " |> filter(fn: (r) => r._measurement == \"sensor_value\")"
-                + " |> filter(fn: (r) => r._field == \"value\")"
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
                 + " |> group(columns: [\"sensorType\"])"
                 + " |> mean(column: \"_value\")";
@@ -94,8 +94,8 @@ public class InfluxServiceImpl implements InfluxService {
 
         String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
                 + " |> range(start: -24h)"
-                + " |> filter(fn: (r) => r._measurement == \"sensor_value\")"
-                + " |> filter(fn: (r) => r._field == \"value\")"
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
                 + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
                 + " |> filter(fn: (r) => r.sensorType == \"" + sensorType.name() + "\")"
