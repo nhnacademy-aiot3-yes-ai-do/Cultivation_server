@@ -3,7 +3,7 @@ package site.yesaido.cultivation_server.sensor.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import site.yesaido.cultivation_server.cultivation.service.CultivationService;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorType;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
@@ -14,7 +14,7 @@ import site.yesaido.cultivation_server.sensor.service.InfluxService;
 public class SensorValueController {
 
     private final InfluxService influxService;
-    private final CultivationService cultivationService;
+    private final CultivationMemberService cultivationMemberService;
 
     @GetMapping("/trend")
     public ResponseEntity<SensorTrendPointListResponse> getTrend(
@@ -23,7 +23,7 @@ public class SensorValueController {
             @RequestParam(name = "sensor-type", required = true) SensorType sensorType,
             @RequestHeader(name = "X-User-Id") Long userId
     ) {
-//        cultivationService.existCultivationMember(cultivationId, userId);
+//        cultivationMemberService.existCultivationMember(cultivationId, userId);
         SensorTrendPointListResponse trend = influxService.findTrend(cultivationId, deviceEui, sensorType);
         return ResponseEntity.ok(trend);
     }
