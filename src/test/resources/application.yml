@@ -67,8 +67,11 @@ minio:
   secret-key: ${MINIO_SECRET_KEY}
   bucket: ${MINIO_BUCKET}
 
-influxdb:
-  url: ${INFLUXDB_URL}
-  token: ${INFLUXDB_TOKEN}
-  org: ${INFLUXDB_ORG}
-  bucket: ${INFLUXDB_BUCKET}
+influx:
+  url: ${INFLUX_URL}
+  org: ${INFLUX_ORG}
+  bucket: ${INFLUX_BUCKET:sensor-data}
+  token: ${INFLUX_TOKEN}
+  cloudflare:
+    access-client-id: ${CF_ACCESS_CLIENT_ID:}
+    access-client-secret: ${CF_ACCESS_CLIENT_SECRET:}

@@ -18,7 +18,7 @@ public class InfluxSensorQueryRepository {
     private final InfluxDBClient influxDBClient;
     private final String bucket;
 
-    public InfluxSensorQueryRepository(InfluxDBClient influxDBClient, @Value("${influxdb.bucket}") String bucket) {
+    public InfluxSensorQueryRepository(InfluxDBClient influxDBClient, @Value("${influx.bucket}") String bucket) {
         this.influxDBClient = influxDBClient;
         this.bucket = bucket;
     }

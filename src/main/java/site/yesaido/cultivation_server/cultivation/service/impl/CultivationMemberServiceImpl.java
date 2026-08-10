@@ -137,7 +137,7 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
 
     @Override
     public void existCultivationMember(Long cultivationId, Long userId) {
-        if (!cultivationMemberRepository.existsByCultivationIdAndUserId(userId, userId)) {
+        if (!cultivationMemberRepository.existsByCultivationIdAndUserId(cultivationId, userId)) {
             throw new CultivationAccessDeniedException(cultivationId);
         }
     }
