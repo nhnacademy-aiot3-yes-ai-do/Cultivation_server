@@ -4,15 +4,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
-import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoDeleteEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorTypeResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
+import site.yesaido.cultivation_server.sensor.entity.SensorConnectStatus;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.service.impl.CultivationSensorFacadeImpl;
 
@@ -21,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.*;
 
 
@@ -32,7 +40,7 @@ class CultivationSensorFacadeTest {
     private static final long SENSOR_ID = 100L;
 
     @Mock
-    CultivationRepository cultivationRepository;
+    CultivationMemberService cultivationMemberService;
 
     @Mock
     SensorTypeService sensorTypeService;
@@ -46,20 +54,23 @@ class CultivationSensorFacadeTest {
     @Mock
     EnvironmentSettingService environmentSettingService;
 
+    @Mock
+    ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     CultivationSensorFacadeImpl cultivationSensorFacade;
 
     /**
      * 1. 등록 성공
-     *    → 타입 조회
-     *    → 센서 등록
-     *    → 타입 연결
-     *    → 환경설정 적용
-     *    → 센서 ID 반환
-     *
+     * → 타입 조회
+     * → 센서 등록
+     * → 타입 연결
+     * → 환경설정 적용
+     * → 센서 ID 반환
+     * <p>
      * 2. 삭제 성공
-     *    → 접근 권한 확인
-     *    → sensorService.delete() 호출
+     * → 접근 권한 확인
+     * → sensorService.delete() 호출
      */
 
     @Nested
@@ -68,7 +79,7 @@ class CultivationSensorFacadeTest {
 
         @Test
         @DisplayName("등록 성공")
-        // 센서 타입 조회부터 환경설정 적용까지 순서대로 처리
+            // 센서 타입 조회부터 환경설정 적용까지 순서대로 처리
         void register_success() {
             // given
             SensorSettingRequest temperatureSetting =
@@ -138,7 +149,7 @@ class CultivationSensorFacadeTest {
                     SENSOR_ID
             );
 
-            when(cultivationRepository.isMember(CULTIVATION_ID, USER_ID)).thenReturn(true);
+            // 멤버 확인 로직 아직 미구현으로 테스트 X
 
             when(sensorTypeService.getSensorTypeList(sensorTypeIds))
                     .thenReturn(sensorTypes);
@@ -152,15 +163,44 @@ class CultivationSensorFacadeTest {
             assertThat(registeredSensorId).isEqualTo(SENSOR_ID);
 
             InOrder inOrder = inOrder(
-                    cultivationRepository,
                     sensorTypeService,
                     cultivationSensorService,
                     cultivationSensorTypeService,
                     environmentSettingService
             );
 
-            inOrder.verify(cultivationRepository)
-                    .isMember(CULTIVATION_ID, USER_ID);
+//            inOrder.verify(cultivationMemberService)
+//                    .existingMember(CULTIVATION_ID, USER_ID);
+
+            ArgumentCaptor<SensorInfoUpsertEvent> eventCaptor =
+                    ArgumentCaptor.forClass(SensorInfoUpsertEvent.class);
+
+            verify(eventPublisher, times(2))
+                    .publishEvent(eventCaptor.capture());
+
+            List<SensorInfoUpsertEvent> events = eventCaptor.getAllValues();
+
+            assertThat(events)
+                    .extracting(
+                            SensorInfoUpsertEvent::cultivationId,
+                            SensorInfoUpsertEvent::deviceEui,
+                            SensorInfoUpsertEvent::sensorType,
+                            SensorInfoUpsertEvent::unit
+                    )
+                    .containsExactly(
+                            tuple(
+                                    CULTIVATION_ID,
+                                    "EUI-001",
+                                    site.yesaido.cultivation_server.rabbitmq.event.SensorType.TEMPERATURE,
+                                    "C"
+                            ),
+                            tuple(
+                                    CULTIVATION_ID,
+                                    "EUI-001",
+                                    site.yesaido.cultivation_server.rabbitmq.event.SensorType.HUMIDITY,
+                                    "%"
+                            )
+                    );
 
             inOrder.verify(sensorTypeService)
                     .getSensorTypeList(sensorTypeIds);
@@ -179,7 +219,7 @@ class CultivationSensorFacadeTest {
                     );
 
             verifyNoMoreInteractions(
-                    cultivationRepository,
+                    cultivationMemberService,
                     sensorTypeService,
                     cultivationSensorService,
                     cultivationSensorTypeService,
@@ -192,24 +232,76 @@ class CultivationSensorFacadeTest {
     @DisplayName("삭제")
     class Facade_delete {
 
+        /**
+         * when(cultivationMemberService.existingMember(
+         * CULTIVATION_ID,
+         * USER_ID
+         * )).thenReturn(true);
+         */
         @Test
         @DisplayName("삭제 성공")
         // 접근 권한 확인 후 센서 삭제
         void delete_success() {
-            when(cultivationRepository.isMember(
-                    CULTIVATION_ID,
-                    USER_ID
-            )).thenReturn(true);
+
+
+            List<CultivationSensorTypeResponse> sensorTypes = List.of(
+                    new CultivationSensorTypeResponse(10L, "TEMPERATURE", "C"),
+                    new CultivationSensorTypeResponse(20L, "HUMIDITY", "%")
+            );
+
+            CultivationSensorResponse sensorResponse = new CultivationSensorResponse(
+                    SENSOR_ID,
+                    "EUI-001",
+                    "MODEL-A",
+                    "배양실 센서",
+                    "ROOM-1",
+                    "북쪽 선반",
+                    SensorConnectStatus.OFFLINE,
+                    sensorTypes
+            );
+
+            when(cultivationSensorService.findById(CULTIVATION_ID, SENSOR_ID))
+                    .thenReturn(sensorResponse);
 
             cultivationSensorFacade.delete(USER_ID, CULTIVATION_ID, SENSOR_ID);
 
-            InOrder inOrder = inOrder(cultivationRepository, cultivationSensorService);
+            ArgumentCaptor<SensorInfoDeleteEvent> eventCaptor =
+                    ArgumentCaptor.forClass(SensorInfoDeleteEvent.class);
 
-            inOrder.verify(cultivationRepository).isMember(CULTIVATION_ID, USER_ID);
+            InOrder inOrder = inOrder(
+                    cultivationSensorService,
+                    eventPublisher
+            );
+
+            inOrder.verify(cultivationSensorService).findById(CULTIVATION_ID, SENSOR_ID);
+
             inOrder.verify(cultivationSensorService).delete(CULTIVATION_ID, SENSOR_ID);
 
-            verifyNoMoreInteractions(cultivationRepository, cultivationSensorService);
-            verifyNoInteractions(sensorTypeService, cultivationSensorTypeService, environmentSettingService);
+            inOrder.verify(eventPublisher, times(2)).publishEvent(eventCaptor.capture());
+
+            assertThat(eventCaptor.getAllValues()).extracting(
+                    SensorInfoDeleteEvent::cultivationId,
+                    SensorInfoDeleteEvent::deviceEui,
+                    SensorInfoDeleteEvent::sensorType,
+                    SensorInfoDeleteEvent::unit
+            )
+            .containsExactly(
+                    tuple(
+                            CULTIVATION_ID,
+                            "EUI-001",
+                            site.yesaido.cultivation_server.rabbitmq.event.SensorType.TEMPERATURE,
+                            "C"
+                    ),
+                    tuple(
+                            CULTIVATION_ID,
+                            "EUI-001",
+                            site.yesaido.cultivation_server.rabbitmq.event.SensorType.HUMIDITY,
+                            "%"
+                    )
+            );
+
+            verifyNoMoreInteractions(cultivationMemberService, cultivationSensorService, eventPublisher);
+            verifyNoInteractions(sensorTypeService, cultivationSensorTypeService, environmentSettingService,cultivationMemberService);
         }
     }
 

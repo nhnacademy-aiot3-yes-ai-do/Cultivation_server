@@ -74,14 +74,14 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         environmentSettingService.apply(cultivationId, request.sensorSettings(), sensorTypeMap);
 
         sensorTypes.stream()
-                .map(sensorType -> toSensorInfoEvent(cultivationId, sensor, sensorType))
+                .map(sensorType -> toSensorInfoUpsertEvent(cultivationId, sensor, sensorType))
                 .forEach(eventPublisher::publishEvent);
 
 
         return sensor.getId();
     }
 
-    private SensorInfoUpsertEvent toSensorInfoEvent(long cultivationId, CultivationSensor sensor, SensorType sensorType) {
+    private SensorInfoUpsertEvent toSensorInfoUpsertEvent(long cultivationId, CultivationSensor sensor, SensorType sensorType) {
         site.yesaido.cultivation_server.rabbitmq.event.SensorType sensorTypeEnum = site.yesaido.cultivation_server.rabbitmq.event.SensorType
                 .fromString(sensorType.getType());
 
@@ -124,13 +124,15 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         );
     }
 
+    /**
+     * cultivationMemberService.existingMember
+     * //        if(!cultivationMemberService.existingMember(cultivationId, userId)) {
+     * //            throw new CultivationMemberNotFoundException();
+     * //        }
+     */
     private void validateAccess(Long userId, long cultivationId) {
 
-        // cultivationMemberService.existingMember
 
-//        if(!cultivationMemberService.existingMember(cultivationId, userId)) {
-//            throw new CultivationMemberNotFoundException();
-//        }
     }
 
     // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성
