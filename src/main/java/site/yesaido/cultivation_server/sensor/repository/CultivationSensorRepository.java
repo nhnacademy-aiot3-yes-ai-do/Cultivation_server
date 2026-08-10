@@ -12,6 +12,10 @@ public interface CultivationSensorRepository extends JpaRepository<CultivationSe
     Optional<CultivationSensor> findByCultivationIdAndDeviceEui(long cultivationId, String deviceEui);
 
     // 경작에 등록된 센서를 센서 Id, 경작 Id로 조회
+    @EntityGraph(attributePaths = {
+            "cultivationSensorTypes",
+            "cultivationSensorTypes.sensorType"
+    })
     Optional<CultivationSensor> findByIdAndCultivationIdAndIsDeletedFalse(Long sensorId, long cultivationId);
 
     // 등록된 센서 경작Id, DeviceEui로 조회

@@ -12,5 +12,6 @@ public record SensorValueEvent(
         Double value,
         LocalDateTime time,
         Long cultivationId
+        // String unit 추가필요
 ) {
 }

@@ -1,22 +1,23 @@
 package site.yesaido.cultivation_server.sensor.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.yesaido.cultivation_server.cultivation.exception.CultivationMemberNotFoundException;
-import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoDeleteEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
+
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.DuplicateSensorTypeException;
 import site.yesaido.cultivation_server.sensor.service.*;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -24,11 +25,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
 
-    private final CultivationRepository cultivationRepository;
+    private final CultivationMemberService cultivationMemberService;
     private final SensorTypeService sensorTypeService;
     private final CultivationSensorService cultivationSensorService;
     private final CultivationSensorTypeService cultivationSensorTypeService;
     private final EnvironmentSettingService environmentSettingService;
+
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      *
@@ -70,15 +73,45 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         // [예외] 요청한 센서세팅에 정해둔 센서 타입이 없는 경우
         environmentSettingService.apply(cultivationId, request.sensorSettings(), sensorTypeMap);
 
+        sensorTypes.stream()
+                .map(sensorType -> toSensorInfoEvent(cultivationId, sensor, sensorType))
+                .forEach(eventPublisher::publishEvent);
+
+
         return sensor.getId();
+    }
+
+    private SensorInfoUpsertEvent toSensorInfoEvent(long cultivationId, CultivationSensor sensor, SensorType sensorType) {
+        site.yesaido.cultivation_server.rabbitmq.event.SensorType sensorTypeEnum = site.yesaido.cultivation_server.rabbitmq.event.SensorType
+                .fromString(sensorType.getType());
+
+        return new SensorInfoUpsertEvent(
+                cultivationId,
+                sensor.getLocation(), sensor.getLocationDetail(), sensor.getDeviceModel(), sensor.getDeviceName(), sensor.getDeviceEui(),
+                sensorTypeEnum, sensorType.getValueUnit()
+                );
     }
 
     @Override
     @Transactional
     public void delete(Long userId, long cultivationId, long sensorId) {
         validateAccess(userId, cultivationId);
+
+        CultivationSensorResponse sensor = cultivationSensorService.findById(cultivationId, sensorId);
+
+        List<SensorInfoDeleteEvent> events = sensor.sensorTypes().stream()
+                .map(type -> new SensorInfoDeleteEvent(
+                        cultivationId,
+                        sensor.deviceEui(),
+                        site.yesaido.cultivation_server.rabbitmq.event.SensorType
+                                .fromString(type.type()),
+                        type.valueUnit()
+                ))
+                .toList();
+
         cultivationSensorService.delete(cultivationId, sensorId);
 
+        events.forEach(eventPublisher::publishEvent);
     }
 
     @Override
@@ -91,11 +124,13 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         );
     }
 
-
     private void validateAccess(Long userId, long cultivationId) {
-        if(!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationMemberNotFoundException();
-        }
+
+        // cultivationMemberService.existingMember
+
+//        if(!cultivationMemberService.existingMember(cultivationId, userId)) {
+//            throw new CultivationMemberNotFoundException();
+//        }
     }
 
     // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성

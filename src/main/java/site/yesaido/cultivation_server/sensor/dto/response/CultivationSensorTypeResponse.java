@@ -8,6 +8,7 @@ public record CultivationSensorTypeResponse(
         String type,
         String valueUnit
 ) {
+    // 센서타입 리턴
     public static CultivationSensorTypeResponse from(CultivationSensorType relation) {
         SensorType sensorType = relation.getSensorType();
 
