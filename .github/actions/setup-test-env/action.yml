@@ -1,25 +1,43 @@
-name: Setup test env
-description: CI 테스트용 DB/JWT 환경변수 설정
+name: Setup test environment
+description: Configure service endpoints and credentials for CI tests
 runs:
   using: composite
   steps:
     - shell: bash
       run: |
+        set -euo pipefail
+
+        # PostgreSQL
         echo "DB_HOST=localhost" >> "$GITHUB_ENV"
         echo "DB_PORT=5432" >> "$GITHUB_ENV"
         echo "DB_NAME=testdb" >> "$GITHUB_ENV"
         echo "DB_USERNAME=test" >> "$GITHUB_ENV"
         echo "DB_PASSWORD=test1234" >> "$GITHUB_ENV"
-        echo "CULTIVATION_DB_SCHEMA=public" >> "$GITHUB_ENV"
+        # application.yml uses this exact, case-sensitive variable name.
+        echo "Cultivation_DB_SCHEMA=public" >> "$GITHUB_ENV"
+
+        # MinIO
         echo "MINIO_URL=http://localhost:9000" >> "$GITHUB_ENV"
         echo "MINIO_ACCESS_KEY=minioadmin" >> "$GITHUB_ENV"
         echo "MINIO_SECRET_KEY=minioadmin123" >> "$GITHUB_ENV"
         echo "MINIO_BUCKET=testbucket" >> "$GITHUB_ENV"
+
+        # RabbitMQ
         echo "RABBITMQ_HOST=localhost" >> "$GITHUB_ENV"
         echo "RABBITMQ_PORT=5672" >> "$GITHUB_ENV"
         echo "RABBITMQ_USERNAME=test" >> "$GITHUB_ENV"
         echo "RABBITMQ_PASSWORD=test1234" >> "$GITHUB_ENV"
-        echo "INFLUXDB_URL=http://localhost:8086" >> "$GITHUB_ENV"
-        echo "INFLUXDB_TOKEN=iot-lab-super-secret-auth-token" >> "$GITHUB_ENV"
-        echo "INFLUXDB_ORG=iot-lab" >> "$GITHUB_ENV"
-        echo "INFLUXDB_BUCKET=sensor_data" >> "$GITHUB_ENV"
+
+        # InfluxDB service container
+        echo "INFLUX_URL=http://localhost:8086" >> "$GITHUB_ENV"
+        echo "INFLUX_ORG=yes-nhn" >> "$GITHUB_ENV"
+        echo "INFLUX_BUCKET=sensor-data" >> "$GITHUB_ENV"
+        echo "INFLUX_TOKEN=ci-test-token" >> "$GITHUB_ENV"
+        echo "CF_ACCESS_CLIENT_ID=" >> "$GITHUB_ENV"
+        echo "CF_ACCESS_CLIENT_SECRET=" >> "$GITHUB_ENV"
+
+        # Disable external service discovery in CI.
+        echo "K8S_DISCOVERY_ENABLED=false" >> "$GITHUB_ENV"
+        echo "EUREKA_ENABLED=false" >> "$GITHUB_ENV"
+        echo "EUREKA_URL=http://localhost:8761/eureka/" >> "$GITHUB_ENV"
+        echo "LOG_LEVEL=WARN" >> "$GITHUB_ENV"
