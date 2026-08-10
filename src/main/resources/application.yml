@@ -21,23 +21,6 @@ spring:
     kubernetes:
       discovery:
         enabled: ${K8S_DISCOVERY_ENABLED:false}
-    gateway:
-      server:
-        webflux:
-          globalcors:
-            cors-configurations:
-              '[/**]':
-                allowedOrigins:
-                  - ${FRONT_URL:https://yes-nhn.site}
-                allowedMethods:
-                  - GET
-                  - POST
-                  - PUT
-                  - PATCH
-                  - DELETE
-                  - OPTIONS
-                allowedHeaders: "*"
-                allowCredentials: true
   servlet:
     multipart:
       max-file-size: 12MB
@@ -66,3 +49,12 @@ minio:
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
   bucket: ${MINIO_BUCKET}
+
+influx:
+  url: ${INFLUX_URL}
+  org: ${INFLUX_ORG}
+  bucket: ${INFLUX_BUCKET:sensor-data}
+  token: ${INFLUX_TOKEN}
+  cloudflare:
+    access-client-id: ${CF_ACCESS_CLIENT_ID:}
+    access-client-secret: ${CF_ACCESS_CLIENT_SECRET:}
