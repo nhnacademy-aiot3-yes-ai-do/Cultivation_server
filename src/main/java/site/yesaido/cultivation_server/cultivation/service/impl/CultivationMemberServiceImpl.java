@@ -64,9 +64,7 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
 
     @Override
     public List<MemberResponse> getMembers(Long cultivationId, Long requesterId) {
-        if (!cultivationMemberRepository.existsByCultivationIdAndUserId(cultivationId, requesterId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        existCultivationMember(cultivationId, requesterId);
 
         List<CultivationMember> members = cultivationMemberRepository.findAllByCultivationId(cultivationId);
         if (members.isEmpty()) {
@@ -135,6 +133,13 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         currentOwner.updateRole(MemberRole.MANAGER);
         newOwner.updateRole(MemberRole.OWNER);
         currentOwner.getCultivation().changeOwner(newUserId);
+    }
+
+    @Override
+    public void existCultivationMember(Long cultivationId, Long userId) {
+        if (!cultivationMemberRepository.existsByCultivationIdAndUserId(userId, userId)) {
+            throw new CultivationAccessDeniedException(cultivationId);
+        }
     }
 
     // Helper Method
