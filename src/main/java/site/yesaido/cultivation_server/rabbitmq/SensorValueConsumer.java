@@ -7,6 +7,7 @@ import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
+import site.yesaido.cultivation_server.sensor.service.InfluxService;
 
 import java.io.IOException;
 
@@ -16,6 +17,8 @@ import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.SENSOR_
 @Component
 public class SensorValueConsumer {
 
+    private final InfluxService influxService;
+
     @RabbitListener(queues = SENSOR_SENSOR_VALUE_QUEUE)
     public void process(
             SensorValueEvent event,
@@ -23,7 +26,7 @@ public class SensorValueConsumer {
             @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag
     ) throws IOException {
         try {
-
+            influxService.save(event);
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             channel.basicNack(deliveryTag, false, false);
