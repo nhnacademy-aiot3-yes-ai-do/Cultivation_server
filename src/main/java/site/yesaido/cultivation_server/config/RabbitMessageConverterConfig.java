@@ -1,7 +1,5 @@
 package site.yesaido.cultivation_server.config;
 
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.DefaultClassMapper;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -40,6 +38,14 @@ public class RabbitMessageConverterConfig {
 
         return converter;
     }
+}
+/**
+    RabbitTemplate을 직접 생성하고 있음.
+    이러면 Boot가 만드는 RabbitTemplate에 적용되는 다음 설정이 누락될 수 있음
+    RabbitTemplateCustomizer
+    spring.rabbitmq.template.retry
+    기타 Boot 자동 설정
+    Boot가 MessageConverter를 자동으로 감지하여 기본 RabbitTemplate에 등록해줌
 
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter) {
@@ -51,4 +57,4 @@ public class RabbitMessageConverterConfig {
 
         return rabbitTemplate;
     }
-}
+ */

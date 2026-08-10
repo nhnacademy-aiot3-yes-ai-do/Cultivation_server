@@ -21,7 +21,7 @@ import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.SENSOR_
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class SensorInfoProducer {
+public class SensorInfoUpsertProducer {
     private final RabbitTemplate rabbitTemplate;
 
     /**
