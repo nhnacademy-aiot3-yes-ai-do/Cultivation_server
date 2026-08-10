@@ -14,7 +14,7 @@ runs:
         echo "DB_USERNAME=test" >> "$GITHUB_ENV"
         echo "DB_PASSWORD=test1234" >> "$GITHUB_ENV"
         # application.yml uses this exact, case-sensitive variable name.
-        echo "Cultivation_DB_SCHEMA=public" >> "$GITHUB_ENV"
+        echo "CULTIVATION_DB_SCHEMA=public" >> "$GITHUB_ENV"
 
         # MinIO
         echo "MINIO_URL=http://localhost:9000" >> "$GITHUB_ENV"
