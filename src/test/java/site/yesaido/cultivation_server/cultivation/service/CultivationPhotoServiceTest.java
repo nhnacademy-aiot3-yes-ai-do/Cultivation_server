@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import site.yesaido.common.storage.StorageType;
@@ -179,6 +180,10 @@ class CultivationPhotoServiceTest {
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(CustomServerException.class);
+
+        // 실제 트랜잭션 매니저가 롤백 시 해주는 일을 테스트에서 직접 흉내
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(sync -> sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
 
         verify(minioClient, times(1)).removeObject(any(RemoveObjectArgs.class));
     }
