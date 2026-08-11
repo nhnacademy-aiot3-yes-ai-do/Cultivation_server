@@ -23,14 +23,27 @@ spring:
         enabled: ${K8S_DISCOVERY_ENABLED:false}
   servlet:
     multipart:
-      max-file-size: 12MB
-      max-request-size: 12MB
+      max-file-size: 8MB
+      max-request-size: 2MB
 
   rabbitmq:
     host: ${RABBITMQ_HOST}      # 로컬 Docker
     port: ${RABBITMQ_PORT}           # AMQP 포트
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
+
+    publisher-confirm-type: correlated
+    publisher-returns: true
+
+    template:
+      mandatory: true
+      retry:
+        enabled: true
+        max-retries: 3
+        initial-interval: 1s
+        multiplier: 2.0
+        max-interval: 10s
+
 
 eureka:
   client:

@@ -57,6 +57,15 @@ public class CultivationSensorServiceImpl implements CultivationSensorService {
     }
 
     @Override
+    public CultivationSensorResponse findById(long cultivationId, long sensorId) {
+        CultivationSensor sensor = cultivationSensorRepository.findByIdAndCultivationIdAndIsDeletedFalse(sensorId, cultivationId)
+                .orElseThrow(() ->
+                        new CultivationSensorNotFoundException("경작지[Id:%s]에 존재하지 않는 센서 요청 sensorId:%s".formatted(cultivationId, sensorId)));
+
+        return CultivationSensorResponse.from(sensor);
+    }
+
+    @Override
     @Transactional
     public void delete(long cultivationId, long sensorId) {
 
@@ -70,6 +79,7 @@ public class CultivationSensorServiceImpl implements CultivationSensorService {
 
     @Override
     @Transactional(readOnly = true)
+    // cultivationId에 해당하는 센서정보와 센서 sensorTypes 담긴정보들 dto 반환
     public List<CultivationSensorResponse> findAll(long cultivationId) {
         return cultivationSensorRepository
                 .findAllByCultivationIdAndIsDeletedFalseOrderByCreatedAtAsc(

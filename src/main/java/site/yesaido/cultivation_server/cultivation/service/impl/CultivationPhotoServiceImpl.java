@@ -92,6 +92,15 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
             );
         }
 
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                    compensateMinioUpload(objectKey);
+                }
+            }
+        });
+
         CultivationPhoto cultivationPhoto = CultivationPhoto.builder()
                 .objectKey(objectKey)
                 .storageType(StorageType.MINIO)
@@ -101,22 +110,12 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         try {
             cultivationPhotoRepository.save(cultivationPhoto);
         } catch (Exception e) {
-            compensateMinioUpload(objectKey);
             throw new CustomServerException(
                     "사진 업로드에 실패했습니다.",
                     "DB 저장 실패, MinIO 객체 보상 삭제 시도: cultivationId: " + cultivationId + ", objectKey: " + objectKey + ", cause: " + e.getMessage(),
                     ServerErrorLevel.ERROR_LEVEL
             );
         }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
-                    compensateMinioUpload(objectKey);
-                }
-            }
-        });
 
         return toResponse(cultivationPhoto);
     }
