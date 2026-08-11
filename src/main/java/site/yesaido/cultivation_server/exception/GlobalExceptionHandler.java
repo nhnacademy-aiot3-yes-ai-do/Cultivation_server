@@ -119,9 +119,4 @@ public class GlobalExceptionHandler {
         return ErrorResponse.create(e, HttpStatus.SERVICE_UNAVAILABLE, "AI 서비스 연결이 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해 주세요.");
     }
 
-    @ExceptionHandler(InvalidEvaluationRangeException.class)
-    public ErrorResponse handleInvalidEvaluationRangeException(InvalidEvaluationRangeException e){
-        log.warn("[InvalidEvaluationRange] {}", e.getMessage());
-        return ErrorResponse.create(e, HttpStatus.BAD_REQUEST, e.getMessage());
-    }
 }
