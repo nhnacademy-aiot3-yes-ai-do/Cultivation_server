@@ -82,7 +82,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({Exception.class})
     public ErrorResponse handleException(Exception e) {
         log.warn("{}", e.getMessage());
-        return createResponseEntity(e, HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        return createResponseEntity(e, HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
     }
 
     private ErrorResponse createResponseEntity(Exception e, HttpStatus status, String message) {
