@@ -39,7 +39,8 @@ class InfluxTrendQueryTest {
         when(record.getValues()).thenReturn(Map.of(
                 "cultivationId", "42",
                 "deviceEui", "eui-01",
-                "sensorType", "TEMPERATURE"
+                "sensorType", "TEMPERATURE",
+                "unit", "°C"
         ));
 
         InfluxServiceImpl service = new InfluxServiceImpl(
@@ -50,6 +51,7 @@ class InfluxTrendQueryTest {
                 42L, "eui-01", SensorType.TEMPERATURE
         );
 
+        assertThat(result.unit()).isEqualTo("°C");
         assertThat(result.responses())
                 .containsExactly(new SensorTrendPointResponse(measuredAt, 24.25));
         verify(queryApi).query(argThat((String query) ->

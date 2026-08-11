@@ -36,6 +36,7 @@ class InfluxLatestQueryTest {
         when(record.getValues()).thenReturn(Map.of(
                 "cultivationId", "42",
                 "sensorType", "TEMPERATURE",
+                "unit", "°C",
                 "deviceEui", "eui-01",
                 "deviceModel", "model-x",
                 "deviceName", "sensor-01",
@@ -50,14 +51,14 @@ class InfluxLatestQueryTest {
         List<LatestSensorValueResponse> result = service.findLatestByCultivationId(42L);
 
         assertThat(result).containsExactly(new LatestSensorValueResponse(
-                42L, "TEMPERATURE", 23.5,
+                42L, "TEMPERATURE", "°C", 23.5,
                 Instant.parse("2026-08-09T12:34:56Z"),
                 "eui-01", "model-x", "sensor-01", "room-1", "farm-a"
         ));
         verify(queryApi).query(argThat((String query) ->
                 query.contains("r.cultivationId == \"42\"")
                         && query.contains("r._field == \"value\"")
-                        && query.contains("group(columns: [\"sensorType\", \"deviceEui\"])")
+                        && query.contains("group(columns: [\"sensorType\", \"unit\", \"deviceEui\"])")
                         && query.contains("|> last()")
         ), eq("yes-nhn"));
     }

@@ -5,6 +5,7 @@ import java.time.Instant;
 public record LatestSensorValueResponse(
         Long cultivationId,
         String sensorType,
+        String unit,
         Double value,
         Instant measuredAt,
         String deviceEui,

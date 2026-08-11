@@ -8,10 +8,10 @@ public record SensorValueEvent(
         String deviceModel,
         String deviceName,
         String deviceEui,
-        SensorType sensorType,
+        String sensorType,
+        String unit,
         Double value,
         LocalDateTime time,
         Long cultivationId
-        // String unit 추가필요
 ) {
 }

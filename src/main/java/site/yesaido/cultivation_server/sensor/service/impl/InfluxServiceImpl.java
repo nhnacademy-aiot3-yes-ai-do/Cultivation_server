@@ -45,7 +45,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> filter(fn: (r) => r._measurement == \"sensor_value\")"
                 + " |> filter(fn: (r) => r._field == \"value\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
-                + " |> group(columns: [\"sensorType\", \"deviceEui\"])"
+                + " |> group(columns: [\"sensorType\", \"unit\", \"deviceEui\"])"
                 + " |> last()";
 
         return influxDBClient.getQueryApi()
@@ -68,7 +68,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> filter(fn: (r) => r._measurement == \"sensor_value\")"
                 + " |> filter(fn: (r) => r._field == \"value\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
-                + " |> group(columns: [\"sensorType\"])"
+                + " |> group(columns: [\"sensorType\", \"unit\"])"
                 + " |> mean(column: \"_value\")";
 
         return influxDBClient.getQueryApi()
@@ -102,10 +102,20 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
                 + " |> sort(columns: [\"_time\"])";
 
-        return new SensorTrendPointListResponse(influxDBClient.getQueryApi()
+        List<FluxRecord> records = influxDBClient.getQueryApi()
                 .query(query, properties.getOrg())
                 .stream()
                 .flatMap(table -> table.getRecords().stream())
+                .toList();
+
+        String unit = records.stream()
+                .map(FluxRecord::getValues)
+                .map(values -> stringValue(values, "unit"))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+
+        List<SensorTrendPointResponse> responses = records.stream()
                 .map(record -> {
                     Object rawValue = record.getValue();
                     if (!(rawValue instanceof Number number)) {
@@ -113,7 +123,9 @@ public class InfluxServiceImpl implements InfluxService {
                     }
                     return new SensorTrendPointResponse(record.getTime(), number.doubleValue());
                 })
-                .toList());
+                .toList();
+
+        return new SensorTrendPointListResponse(unit, responses);
     }
 
     private SensorTypeAverageResponse toSensorTypeAverage(FluxRecord record) {
@@ -126,6 +138,7 @@ public class InfluxServiceImpl implements InfluxService {
         return new SensorTypeAverageResponse(
                 longValue(values, "cultivationId"),
                 stringValue(values, "sensorType"),
+                stringValue(values, "unit"),
                 number.doubleValue()
         );
     }
@@ -140,6 +153,7 @@ public class InfluxServiceImpl implements InfluxService {
         return new LatestSensorValueResponse(
                 longValue(values, "cultivationId"),
                 stringValue(values, "sensorType"),
+                stringValue(values, "unit"),
                 number.doubleValue(),
                 record.getTime(),
                 stringValue(values, "deviceEui"),
