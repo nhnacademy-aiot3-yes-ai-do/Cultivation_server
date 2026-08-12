@@ -41,21 +41,21 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
      *
      * 경작_접근권한_검사
      * 센터 타입 ID 리스트 = 요청에서 추출();
-     * 센서 타입 리스트 = 센서타입 서비스에서 조회();
-     * 경작 센서 = 경작센서 서비스에서 등록();
-     * <p>
-     * 경작 센서 타입 연결 서비스에서 연결(
-     * 경작 센서, 센서 타입 리스트
-     * );
-     * 환경설정 서비스에서 설정 반영(
-     * 경작 ID, 센서 추가 요청의 환경설정, 센서 타입 리스트
-     * );
-     * return 물리 센서 ID; (cultivation_sensor_id)
+     *    센서 타입 리스트 = 센서타입 서비스에서 조회();
+     *    경작 센서 = 경작센서 서비스에서 등록();
+     *
+     *    경작 센서 타입 연결 서비스에서 연결(
+     *         경작 센서, 센서 타입 리스트
+     *     );
+     *    환경설정 서비스에서 설정 반영(
+     *       경작 ID, 센서 추가 요청의 환경설정, 센서 타입 리스트
+     *     );
+     *     return 물리 센서 ID; (cultivation_sensor_id)
      */
     @Override
     @Transactional
     public long register(Long userId, long cultivationId, CreateCultivationSensorRequest request) {
-        validateAccess(userId, cultivationId);
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
         List<Long> sensorTypeIds = extractAndValidateSensorTypeIds(request.sensorSettings());
 
@@ -90,6 +90,7 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
                 .map(sensorType -> toSensorInfoUpsertEvent(cultivationId, sensor, sensorType, occurredAt))
                 .forEach(eventPublisher::publishEvent);
 
+
         return sensor.getId();
     }
 
@@ -118,7 +119,7 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     @Override
     @Transactional
     public void delete(Long userId, long cultivationId, long sensorId) {
-        validateAccess(userId, cultivationId);
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
         CultivationSensorResponse sensor = cultivationSensorService.findById(cultivationId, sensorId);
 
@@ -142,15 +143,11 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     @Override
     @Transactional(readOnly = true)
     public CultivationSensorListResponse findAll(Long userId, long cultivationId) {
-        validateAccess(userId, cultivationId);
+        cultivationMemberService.existCultivationMember(cultivationId, userId);
 
         return new CultivationSensorListResponse(
                 cultivationSensorService.findAll(cultivationId), environmentSettingService.findAll(cultivationId)
         );
-    }
-
-    private void validateAccess(Long userId, long cultivationId) {
-        cultivationMemberService.existCultivationMember(cultivationId, userId);
     }
 
     // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성

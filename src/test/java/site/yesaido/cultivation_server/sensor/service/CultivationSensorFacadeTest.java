@@ -11,11 +11,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoDeleteEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorRange;
-import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
@@ -29,8 +28,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 
@@ -150,8 +148,6 @@ class CultivationSensorFacadeTest {
                     "id",
                     SENSOR_ID
             );
-
-            // 멤버 확인 로직 아직 미구현으로 테스트 X
 
             when(sensorTypeService.getSensorTypeList(sensorTypeIds))
                     .thenReturn(sensorTypes);
@@ -291,6 +287,9 @@ class CultivationSensorFacadeTest {
                     eventPublisher
             );
 
+            inOrder.verify(cultivationMemberService).verifyManagerAccess(CULTIVATION_ID, USER_ID);
+
+            inOrder.verify(cultivationSensorService).findById(CULTIVATION_ID, SENSOR_ID);
             inOrder.verify(cultivationMemberService)
                     .existCultivationMember(CULTIVATION_ID, USER_ID);
 
@@ -335,8 +334,71 @@ class CultivationSensorFacadeTest {
                     cultivationSensorTypeService,
                     environmentSettingService
             );
+            verifyNoMoreInteractions(cultivationMemberService, cultivationSensorService, eventPublisher);
+            verifyNoInteractions(sensorTypeService, cultivationSensorTypeService, environmentSettingService);
         }
     }
 
+    @Nested
+    @DisplayName("조회")
+    class Facade_findAll {
 
+        @Test
+        @DisplayName("조회 성공 - 멤버면 누구나 가능")
+        void findAll_success() {
+            when(cultivationSensorService.findAll(CULTIVATION_ID)).thenReturn(List.of());
+            when(environmentSettingService.findAll(CULTIVATION_ID)).thenReturn(List.of());
+
+            cultivationSensorFacade.findAll(USER_ID, CULTIVATION_ID);
+
+            verify(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
+            verifyNoMoreInteractions(cultivationMemberService);
+        }
+
+        @Test
+        @DisplayName("조회 실패 - 멤버가 아니면 차단됨")
+        void findAll_failNotMember() {
+            doThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
+                    .when(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
+
+            assertThatThrownBy(() -> cultivationSensorFacade.findAll(USER_ID, CULTIVATION_ID))
+                    .isInstanceOf(CultivationAccessDeniedException.class);
+
+            verifyNoInteractions(cultivationSensorService, environmentSettingService);
+        }
+    }
+
+    @Nested
+    @DisplayName("권한 차단")
+    class Facade_accessDenied {
+
+        @Test
+        @DisplayName("등록 실패 - MEMBER 권한이면 차단됨")
+        void register_failMemberRole() {
+            doThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
+                    .when(cultivationMemberService).verifyManagerAccess(CULTIVATION_ID, USER_ID);
+
+            CreateCultivationSensorRequest request = new CreateCultivationSensorRequest(
+                    "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반",
+                    List.of(new SensorSettingRequest(10L, BigDecimal.valueOf(20), BigDecimal.valueOf(30)))
+            );
+
+            assertThatThrownBy(() -> cultivationSensorFacade.register(USER_ID, CULTIVATION_ID, request))
+                    .isInstanceOf(CultivationAccessDeniedException.class);
+
+            verifyNoInteractions(sensorTypeService, cultivationSensorService, cultivationSensorTypeService, environmentSettingService, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("삭제 실패 - MEMBER 권한이면 차단됨")
+        void delete_failMemberRole() {
+            doThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
+                    .when(cultivationMemberService).verifyManagerAccess(CULTIVATION_ID, USER_ID);
+
+            assertThatThrownBy(() -> cultivationSensorFacade.delete(USER_ID, CULTIVATION_ID, SENSOR_ID))
+                    .isInstanceOf(CultivationAccessDeniedException.class);
+
+            verifyNoInteractions(cultivationSensorService, eventPublisher);
+        }
+    }
 }

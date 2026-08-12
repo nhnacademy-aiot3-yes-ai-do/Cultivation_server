@@ -20,4 +20,7 @@ public interface CultivationMemberService {
 
     // 멤버십 검증
     void existCultivationMember(Long cultivationId, Long userId);
+
+    // 매니저 이상 권한 검증 (MEMBER 차단)
+    void verifyManagerAccess(Long cultivationId, Long userId);
 }
