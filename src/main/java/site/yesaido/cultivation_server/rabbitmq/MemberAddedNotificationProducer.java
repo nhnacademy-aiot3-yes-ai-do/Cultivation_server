@@ -8,6 +8,7 @@ import site.yesaido.cultivation_server.rabbitmq.event.NotificationEvent;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.NOTIFICATION_DONE_QUEUE;
@@ -28,7 +29,7 @@ public class MemberAddedNotificationProducer {
                 PRODUCER,
                 TARGET_TYPE,
                 addedUserId,
-                OffsetDateTime.now(ZoneId.of("Asia/Seoul")).toString(),
+                OffsetDateTime.now(ZoneOffset.UTC).withOffsetSameInstant(ZoneOffset.ofHours(9)).toString(),
                 payload
         );
         rabbitTemplate.convertAndSend(NOTIFICATION_EXCHANGE, NOTIFICATION_DONE_QUEUE, event);
