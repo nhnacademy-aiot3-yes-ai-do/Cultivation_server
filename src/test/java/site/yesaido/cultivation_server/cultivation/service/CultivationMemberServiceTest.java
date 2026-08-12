@@ -1,7 +1,5 @@
 package site.yesaido.cultivation_server.cultivation.service;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,7 +8,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
@@ -31,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
@@ -263,5 +261,42 @@ class CultivationMemberServiceTest {
         assertThat(newOwner.getRole()).isEqualTo(MemberRole.OWNER);
 
         assertThat(cultivation.getUserId()).isEqualTo(newUserId);
+    }
+
+    @Test
+    @DisplayName("매니저 권한 검증 성공 - MANAGER")
+    void verifyManagerAccessSuccessForManager() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember manager = CultivationMember.builder().userId(userId).role(MemberRole.MANAGER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(manager));
+
+        assertThatCode(() -> cultivationMemberService.verifyManagerAccess(cultivationId, userId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("매니저 권한 검증 성공 - OWNER")
+    void verifyManagerAccessSuccessForOwner() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember owner = CultivationMember.builder().userId(userId).role(MemberRole.OWNER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(owner));
+
+        assertThatCode(() -> cultivationMemberService.verifyManagerAccess(cultivationId, userId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("매니저 권한 검증 실패 - MEMBER면 차단됨")
+    void verifyManagerAccessFailForMember() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember member = CultivationMember.builder().userId(userId).role(MemberRole.MEMBER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> cultivationMemberService.verifyManagerAccess(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
     }
 }

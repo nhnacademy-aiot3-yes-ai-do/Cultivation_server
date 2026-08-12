@@ -51,7 +51,7 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     @Override
     @Transactional
     public long register(Long userId, long cultivationId, CreateCultivationSensorRequest request) {
-        validateAccess(userId, cultivationId);
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
         List<Long> sensorTypeIds = extractAndValidateSensorTypeIds(request.sensorSettings());
 
@@ -95,7 +95,7 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     @Override
     @Transactional
     public void delete(Long userId, long cultivationId, long sensorId) {
-        validateAccess(userId, cultivationId);
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
         CultivationSensorResponse sensor = cultivationSensorService.findById(cultivationId, sensorId);
 
@@ -117,22 +117,11 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     @Override
     @Transactional(readOnly = true)
     public CultivationSensorListResponse findAll(Long userId, long cultivationId) {
-        validateAccess(userId, cultivationId);
+        cultivationMemberService.existCultivationMember(cultivationId, userId);
 
         return new CultivationSensorListResponse(
                 cultivationSensorService.findAll(cultivationId), environmentSettingService.findAll(cultivationId)
         );
-    }
-
-    /**
-     * cultivationMemberService.existingMember
-     * //        if(!cultivationMemberService.existingMember(cultivationId, userId)) {
-     * //            throw new CultivationMemberNotFoundException();
-     * //        }
-     */
-    private void validateAccess(Long userId, long cultivationId) {
-
-
     }
 
     // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성
