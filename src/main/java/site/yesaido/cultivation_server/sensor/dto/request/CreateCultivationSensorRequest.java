@@ -23,9 +23,11 @@ public record CreateCultivationSensorRequest(
         @Size(max = 100, message = "센서 이름은 100자 이하여야 합니다.")
         String deviceName,
 
+        @NotBlank
         @Size(max = 10, message = "센서 위치는 10자 이하여야 합니다.")
         String location,
 
+        @NotBlank
         @Size(max = 100, message = "센서 상세 위치는 100자 이하여야 합니다.")
         String locationDetail,
 
