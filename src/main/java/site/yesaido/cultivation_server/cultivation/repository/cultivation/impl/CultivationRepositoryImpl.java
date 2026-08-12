@@ -51,7 +51,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
         QHarvest harvest = QHarvest.harvest;
 
         List<CultivationHistoryResponse> content = queryFactory
-                .select(Projections.constructor(CultivationHistoryResponse.class,
+                .select(Projections.constructor(CultivationHistoryResponse.class,                                       // DB에서 데이터들을 가져와서 이 DTO로 만들어줘.
                 cultivation.id,
                 cultivation.name,
                 cultivation.mushroomReference.id,
@@ -59,15 +59,15 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 harvest.harvestWeight,
                 harvest.productGrade,
                 cultivation.finishedAt))
-                .from(cultivation)
-                .join(member).on(member.cultivation.eq(cultivation))
-                .leftJoin(harvest).on(harvest.cultivation.eq(cultivation))
-                .where(member.userId.eq(userId), cultivation.cultivationStatus.eq(CultivationStatus.FINISHED))
-                .distinct()
-                .orderBy(cultivation.finishedAt.desc(), cultivation.id.desc())
-                .offset(pageable.getOffset())
-                .limit(pageable.getPageSize())
-                .fetch();
+                .from(cultivation)                                                                                      // 어떤 테이블을 기준으로 조회할 것인가?
+                .join(member).on(member.cultivation.eq(cultivation))                                                    // Member와 Cultivation 테이블을 연결해서 조회하겠다. on은 연결 조건 (현재 조회 중인 Cultivation과 Member의 Cultivation이 같은것만 가져옴)
+                .leftJoin(harvest).on(harvest.cultivation.eq(cultivation))                                              // Cultivation에 연결된 Harvest가 있으면 가져와라. Harvest가 없어도 Cultivation을 조회하겠다.
+                .where(member.userId.eq(userId), cultivation.cultivationStatus.eq(CultivationStatus.FINISHED))          // 현재 로그인한 사용자의 재배만 가져와라. 그리고 재배가 끝난 재배지만 가져와라.
+                .distinct()                                                                                             // 중복 제거
+                .orderBy(cultivation.finishedAt.desc(), cultivation.id.desc())                                          // 종료시간이 최신순, 두번째로 ID가 큰것부터
+                .offset(pageable.getOffset())                                                                           // 몇 개를 건너뛸 것인가?
+                .limit(pageable.getPageSize())                                                                          // 몇 개를 가져올건지
+                .fetch();                                                                                               // 쿼리를 실행하고 결과를 가져와라
 
         Long total = queryFactory
                 .select(cultivation.countDistinct())

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import site.yesaido.cultivation_server.cultivation.client.AiClient;
 import site.yesaido.cultivation_server.cultivation.dto.ai.ApiResponse;
 import site.yesaido.cultivation_server.cultivation.dto.ai.MushGuideResponse;

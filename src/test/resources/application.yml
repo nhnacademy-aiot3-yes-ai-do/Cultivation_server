@@ -15,35 +15,39 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
-        default_schema: ${CULTIVATION_DB_SCHEMA}
+        default_schema:
 
   cloud:
     kubernetes:
       discovery:
         enabled: ${K8S_DISCOVERY_ENABLED:false}
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - ${FRONT_URL:https://yes-nhn.site}
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders: "*"
+                allowCredentials: true
   servlet:
     multipart:
-      max-file-size: 8MB
-      max-request-size: 2MB
+      max-file-size: 12MB
+      max-request-size: 12MB
 
   rabbitmq:
     host: ${RABBITMQ_HOST}      # 로컬 Docker
     port: ${RABBITMQ_PORT}           # AMQP 포트
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
-
-    publisher-confirm-type: correlated
-    publisher-returns: true
-
-    template:
-      mandatory: true
-      retry:
-        enabled: true
-        max-retries: 3
-        initial-interval: 1s
-        multiplier: 2.0
-        max-interval: 10s
-
 
 eureka:
   client:

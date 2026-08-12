@@ -96,6 +96,22 @@ public class RabbitMQConfig {
                 .with(SENSOR_SENSOR_VALUE_QUEUE);
     }
 
+    @Bean
+    public Queue environmentComplianceRequestQueue() {
+        return QueueBuilder
+                .durable(ENVIRONMENT_COMPLIANCE_REQUEST_QUEUE)
+                .withArgument(DLX_KEY, DLX_NAME)
+                .build();
+    }
+
+    @Bean
+    public Binding environmentComplianceRequestBinding() {
+        return BindingBuilder
+                .bind(environmentComplianceRequestQueue())
+                .to(sensorExchange())
+                .with(ENVIRONMENT_COMPLIANCE_REQUEST_QUEUE);
+    }
+
     // AI 관련
     @Bean
     public DirectExchange harvestExchange() {

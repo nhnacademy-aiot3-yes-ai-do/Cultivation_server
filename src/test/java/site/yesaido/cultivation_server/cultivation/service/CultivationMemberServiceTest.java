@@ -1,5 +1,7 @@
 package site.yesaido.cultivation_server.cultivation.service;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,6 +9,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
@@ -21,6 +25,7 @@ import site.yesaido.cultivation_server.cultivation.exception.InvalidMemberRoleEx
 import site.yesaido.cultivation_server.cultivation.exception.InvalidOwnershipTransferException;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationMemberServiceImpl;
+import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedEvent;
 
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +38,9 @@ import static org.mockito.Mockito.*;
 class CultivationMemberServiceTest {
     @Mock
     private CultivationMemberRepository cultivationMemberRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
     private UserClient userClient;
@@ -74,19 +82,27 @@ class CultivationMemberServiceTest {
         Long requesterId = 100L;
         MemberAddRequest request = new MemberAddRequest(200L, MemberRole.MEMBER);
 
-        Cultivation cultivation = Cultivation.builder().id(cultivationId).build();
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).name("테스트 경작").build();
         CultivationMember owner = CultivationMember.builder()
                 .userId(requesterId)
                 .role(MemberRole.OWNER)
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId,requesterId)).thenReturn(Optional.of(owner));
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, requesterId)).thenReturn(Optional.of(owner));
         when(cultivationMemberRepository.existsByCultivationIdAndUserId(cultivationId, request.userId())).thenReturn(false);
 
         cultivationMemberService.addMember(cultivationId, requesterId, request);
 
         verify(cultivationMemberRepository, times(1)).save(any(CultivationMember.class));
+
+        ArgumentCaptor<MemberAddedEvent> captor = ArgumentCaptor.forClass(MemberAddedEvent.class);
+        verify(eventPublisher, times(1)).publishEvent(captor.capture());
+
+        MemberAddedEvent event = captor.getValue();
+        assertThat(event.addedUserId()).isEqualTo(200L);
+        assertThat(event.payload().cultivationId()).isEqualTo(cultivationId);
+        assertThat(event.payload().role()).isEqualTo(MemberRole.MEMBER);
     }
 
     @Test

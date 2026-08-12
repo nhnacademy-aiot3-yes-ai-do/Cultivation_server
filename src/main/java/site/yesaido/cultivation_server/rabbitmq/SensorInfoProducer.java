@@ -15,7 +15,8 @@ import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
 
 import java.util.UUID;
 
-import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
+import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.RULE_ENGINE_SENSOR_INFO_QUEUE;
+import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.SENSOR_EXCHANGE;
 
 @Slf4j
 @RequiredArgsConstructor
