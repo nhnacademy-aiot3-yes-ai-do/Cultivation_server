@@ -1,5 +1,7 @@
 package site.yesaido.cultivation_server.cultivation.service;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,6 +9,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
@@ -39,6 +42,20 @@ class CultivationMemberServiceTest {
 
     @InjectMocks
     private CultivationMemberServiceImpl cultivationMemberService;
+
+    @BeforeEach
+    void setUpTransactionSynchronization() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.initSynchronization();
+        }
+    }
+
+    @AfterEach
+    void tearDownTransactionSynchronization() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
 
     @Test
     @DisplayName("멤버 추가 실패 - 요청자가 방장이 아님")

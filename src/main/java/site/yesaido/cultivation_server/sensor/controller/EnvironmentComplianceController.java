@@ -28,7 +28,9 @@ public class EnvironmentComplianceController {
     @GetMapping("/daily")
     public ResponseEntity<EnvironmentComplianceResponse> getDaily(@PathVariable("cultivation-id") Long cultivationId,
                                                                   @RequestParam(value = "date", required = false)
-                                                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+                                                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                                                  @RequestHeader("X-User-Id") Long userId) {
+        cultivationMemberService.existCultivationMember(cultivationId, userId);
         LocalDate targetDate = date != null ? date : LocalDate.now(ZoneId.of("Asia/Seoul"));
         return ResponseEntity.ok(environmentComplianceService.getDailyCompliance(cultivationId, targetDate));
     }
@@ -36,7 +38,9 @@ public class EnvironmentComplianceController {
     @GetMapping("/period")
     public ResponseEntity<EnvironmentComplianceResponse> getPeriod(@PathVariable("cultivation-id") Long cultivationId,
                                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+                                                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                                                   @RequestHeader("X-User-Id") Long userId) {
+        cultivationMemberService.existCultivationMember(cultivationId, userId);
         return ResponseEntity.ok(environmentComplianceService.getComplianceForPeriod(cultivationId, startDate, endDate));
     }
 }
