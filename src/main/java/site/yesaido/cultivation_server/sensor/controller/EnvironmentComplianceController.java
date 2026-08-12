@@ -30,8 +30,8 @@ public class EnvironmentComplianceController {
                                                                   @RequestParam(value = "date", required = false)
                                                                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                                                   @RequestHeader("X-User-Id") Long userId) {
-        cultivationMemberService.existCultivationMember(cultivationId, userId);
         LocalDate targetDate = date != null ? date : LocalDate.now(ZoneId.of("Asia/Seoul"));
+        cultivationMemberService.existCultivationMember(cultivationId, userId);
         return ResponseEntity.ok(environmentComplianceService.getDailyCompliance(cultivationId, targetDate));
     }
 

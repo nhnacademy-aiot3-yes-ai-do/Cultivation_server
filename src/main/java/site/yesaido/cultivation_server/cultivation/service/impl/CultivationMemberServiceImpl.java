@@ -1,6 +1,7 @@
 package site.yesaido.cultivation_server.cultivation.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.rabbitmq.MemberAddedNotificationProducer;
+import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedPayload;
 
 import java.util.List;
@@ -29,7 +31,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CultivationMemberServiceImpl implements CultivationMemberService {
     private final CultivationMemberRepository cultivationMemberRepository;
-    private final MemberAddedNotificationProducer memberAddedNotificationProducer;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserClient userClient;
 
     @Override
@@ -68,14 +70,7 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         }
 
         MemberAddedPayload payload = new MemberAddedPayload(cultivation.getId(), cultivation.getName(), request.role());
-        Long addedUserId = request.userId();
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
-            @Override
-            public void afterCommit() {
-                memberAddedNotificationProducer.send(addedUserId, payload);
-            }
-        });
-
+        eventPublisher.publishEvent(new MemberAddedEvent(request.userId(), payload));
     }
 
     @Override

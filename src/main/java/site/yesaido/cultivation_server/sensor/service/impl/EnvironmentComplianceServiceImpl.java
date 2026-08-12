@@ -22,13 +22,13 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class EnvironmentComplianceServiceImpl implements EnvironmentComplianceService {
     private final EnvironmentSettingRepository environmentSettingRepository;
     private final InfluxSensorQueryRepository influxSensorQueryRepository;
     private final CultivationRepository cultivationRepository;
 
     @Override
-    @Transactional(readOnly = true)
     public EnvironmentComplianceResponse getCompliance(Long cultivationId) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
@@ -40,13 +40,11 @@ public class EnvironmentComplianceServiceImpl implements EnvironmentComplianceSe
     }
 
     @Override
-    @Transactional(readOnly = true)
     public EnvironmentComplianceResponse getDailyCompliance(Long cultivationId, LocalDate date) {
         return getComplianceForPeriod(cultivationId, date, date);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public EnvironmentComplianceResponse getComplianceForPeriod(Long cultivationId, LocalDate startDate, LocalDate endDate) {
         cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));

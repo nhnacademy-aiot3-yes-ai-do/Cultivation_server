@@ -23,7 +23,7 @@ public class EnvironmentComplianceRpcListener {
             return environmentComplianceService.getComplianceForPeriod(
                     request.cultivationId(), request.startDate(), request.endDate());
         } catch (Exception e) {
-            log.error("환경유지율 RPC 처리 실패: cultivationId={}, startDate={}, endDate={}",
+            log.warn("환경유지율 RPC 처리 실패: cultivationId={}, startDate={}, endDate={}",
                     request.cultivationId(), request.startDate(), request.endDate(), e);
             throw e;
         }
