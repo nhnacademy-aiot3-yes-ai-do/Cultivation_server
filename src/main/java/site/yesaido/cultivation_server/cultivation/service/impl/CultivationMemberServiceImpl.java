@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
@@ -15,6 +17,8 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.Memb
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
+import site.yesaido.cultivation_server.rabbitmq.MemberAddedNotificationProducer;
+import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedPayload;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +29,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CultivationMemberServiceImpl implements CultivationMemberService {
     private final CultivationMemberRepository cultivationMemberRepository;
+    private final MemberAddedNotificationProducer memberAddedNotificationProducer;
     private final UserClient userClient;
 
     @Override
@@ -50,16 +55,27 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
             throw new CultivationMemberAlreadyExistException(request.userId());
         }
 
+        Cultivation cultivation = owner.getCultivation();
         CultivationMember newMember = CultivationMember.builder()
                 .userId(request.userId())
                 .role(request.role())
-                .cultivation(owner.getCultivation())
+                .cultivation(cultivation)
                 .build();
         try {
             cultivationMemberRepository.save(newMember);
         } catch (DataIntegrityViolationException e) {
             throw new CultivationMemberAlreadyExistException(request.userId());
         }
+
+        MemberAddedPayload payload = new MemberAddedPayload(cultivation.getId(), cultivation.getName(), request.role());
+        Long addedUserId = request.userId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
+            @Override
+            public void afterCommit() {
+                memberAddedNotificationProducer.send(addedUserId, payload);
+            }
+        });
+
     }
 
     @Override
