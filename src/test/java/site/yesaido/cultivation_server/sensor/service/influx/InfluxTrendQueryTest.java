@@ -6,7 +6,6 @@ import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.config.InfluxProperties;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorType;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
@@ -40,7 +39,7 @@ class InfluxTrendQueryTest {
                 "cultivationId", "42",
                 "deviceEui", "eui-01",
                 "sensorType", "TEMPERATURE",
-                "unit", "°C"
+                "unit", ".°C"
         ));
 
         InfluxServiceImpl service = new InfluxServiceImpl(
@@ -48,10 +47,10 @@ class InfluxTrendQueryTest {
         );
 
         SensorTrendPointListResponse result = service.findTrend(
-                42L, "eui-01", SensorType.TEMPERATURE
+                42L, "eui-01", "TEMPERATURE"
         );
 
-        assertThat(result.unit()).isEqualTo("°C");
+        assertThat(result.unit()).isEqualTo(".°C");
         assertThat(result.responses())
                 .containsExactly(new SensorTrendPointResponse(measuredAt, 24.25));
         verify(queryApi).query(argThat((String query) ->

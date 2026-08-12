@@ -8,6 +8,8 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationMemberServ
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoDeleteEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
 
+import site.yesaido.cultivation_server.rabbitmq.event.SensorRange;
+import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
@@ -17,6 +19,8 @@ import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.DuplicateSensorTypeException;
 import site.yesaido.cultivation_server.sensor.service.*;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -37,16 +41,16 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
      *
      * 경작_접근권한_검사
      * 센터 타입 ID 리스트 = 요청에서 추출();
-     *    센서 타입 리스트 = 센서타입 서비스에서 조회();
-     *    경작 센서 = 경작센서 서비스에서 등록();
-     *
-     *    경작 센서 타입 연결 서비스에서 연결(
-     *         경작 센서, 센서 타입 리스트
-     *     );
-     *    환경설정 서비스에서 설정 반영(
-     *       경작 ID, 센서 추가 요청의 환경설정, 센서 타입 리스트
-     *     );
-     *     return 물리 센서 ID; (cultivation_sensor_id)
+     * 센서 타입 리스트 = 센서타입 서비스에서 조회();
+     * 경작 센서 = 경작센서 서비스에서 등록();
+     * <p>
+     * 경작 센서 타입 연결 서비스에서 연결(
+     * 경작 센서, 센서 타입 리스트
+     * );
+     * 환경설정 서비스에서 설정 반영(
+     * 경작 ID, 센서 추가 요청의 환경설정, 센서 타입 리스트
+     * );
+     * return 물리 센서 ID; (cultivation_sensor_id)
      */
     @Override
     @Transactional
@@ -73,23 +77,42 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         // [예외] 요청한 센서세팅에 정해둔 센서 타입이 없는 경우
         environmentSettingService.apply(cultivationId, request.sensorSettings(), sensorTypeMap);
 
-        sensorTypes.stream()
-                .map(sensorType -> toSensorInfoUpsertEvent(cultivationId, sensor, sensorType))
-                .forEach(eventPublisher::publishEvent);
+        // 서울 시간대 기준
+        OffsetDateTime occurredAt = OffsetDateTime.now(ZoneOffset.UTC).withOffsetSameInstant(ZoneOffset.ofHours(9));
 
+        // 1. 임계값 발행
+        eventPublisher.publishEvent(
+                toThresholdInfoEvent(cultivationId, request.sensorSettings(), sensorTypeMap, occurredAt)
+        );
+
+        // 2. 센서 정보 발행(1,2 둘다 순서보장은 X)
+        sensorTypes.stream()
+                .map(sensorType -> toSensorInfoUpsertEvent(cultivationId, sensor, sensorType, occurredAt))
+                .forEach(eventPublisher::publishEvent);
 
         return sensor.getId();
     }
 
-    private SensorInfoUpsertEvent toSensorInfoUpsertEvent(long cultivationId, CultivationSensor sensor, SensorType sensorType) {
-        site.yesaido.cultivation_server.rabbitmq.event.SensorType sensorTypeEnum = site.yesaido.cultivation_server.rabbitmq.event.SensorType
-                .fromString(sensorType.getType());
+    private SensorInfoUpsertEvent toSensorInfoUpsertEvent(long cultivationId, CultivationSensor sensor, SensorType sensorType, OffsetDateTime occurredAt) {
 
         return new SensorInfoUpsertEvent(
                 cultivationId,
                 sensor.getLocation(), sensor.getLocationDetail(), sensor.getDeviceModel(), sensor.getDeviceName(), sensor.getDeviceEui(),
-                sensorTypeEnum, sensorType.getValueUnit()
-                );
+                sensorType.getType(), sensorType.getValueUnit(), occurredAt
+        );
+    }
+
+    private ThresholdInfoEvent toThresholdInfoEvent(long cultivationId, List<SensorSettingRequest> settingRequests, Map<Long, SensorType> sensorTypeMap, OffsetDateTime occurredAt) {
+
+        List<SensorRange> sensorRangeList = settingRequests.stream()
+                .map(settingRequest -> {
+                    SensorType sensorType = sensorTypeMap.get(settingRequest.sensorTypeId());
+
+                    return new SensorRange(sensorType.getType(), sensorType.getValueUnit(),
+                            settingRequest.thresholdMin(), settingRequest.thresholdMax());
+                }).toList();
+
+        return new ThresholdInfoEvent(cultivationId, sensorRangeList, occurredAt);
     }
 
     @Override
@@ -99,13 +122,15 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
 
         CultivationSensorResponse sensor = cultivationSensorService.findById(cultivationId, sensorId);
 
+        OffsetDateTime occurredAt = OffsetDateTime.now(ZoneOffset.UTC).withOffsetSameInstant(ZoneOffset.ofHours(9));
+
         List<SensorInfoDeleteEvent> events = sensor.sensorTypes().stream()
                 .map(type -> new SensorInfoDeleteEvent(
                         cultivationId,
                         sensor.deviceEui(),
-                        site.yesaido.cultivation_server.rabbitmq.event.SensorType
-                                .fromString(type.type()),
-                        type.valueUnit()
+                        type.type(),
+                        type.valueUnit(),
+                        occurredAt
                 ))
                 .toList();
 
@@ -124,15 +149,8 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         );
     }
 
-    /**
-     * cultivationMemberService.existingMember
-     * //        if(!cultivationMemberService.existingMember(cultivationId, userId)) {
-     * //            throw new CultivationMemberNotFoundException();
-     * //        }
-     */
     private void validateAccess(Long userId, long cultivationId) {
-
-
+        cultivationMemberService.existCultivationMember(cultivationId, userId);
     }
 
     // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성

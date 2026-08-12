@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.rabbitmq;
 
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -8,50 +9,45 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class SensorInfoUpsertProducerTest {
-
-    private SensorInfoUpsertEvent event;
+class ThresholdInfoProducerTest {
+    private ThresholdInfoEvent event;
 
     @Mock
     RabbitTemplate rabbitTemplate;
 
     @InjectMocks
-    SensorInfoUpsertProducer producer;
+    ThresholdInfoProducer producer;
 
     @BeforeEach
     void setUp() {
-        event = new SensorInfoUpsertEvent(
+        event = new ThresholdInfoEvent(
                 10L,
-                "배양실",
-                "북쪽",
-                "MODEL-A",
-                "온도센서1",
-                "EUI-001",
-                "TEMPERATURE",
-                "C",
+                List.of(),
                 OffsetDateTime.now(ZoneOffset.UTC).withOffsetSameInstant(ZoneOffset.ofHours(9))
         );
     }
 
     @Test
-    void sendsSensorInfoUpsertEvent() {
-
-        producer.sendSensorInfo(event);
+    void sendsThresholdInfoEvent() {
+        producer.sendThresholdInfo(event);
 
         verify(rabbitTemplate).convertAndSend(
                 eq(RabbitMQConstants.SENSOR_EXCHANGE),
-                eq(RabbitMQConstants.RULE_ENGINE_SENSOR_INFO_QUEUE),
+                eq(RabbitMQConstants.RULE_ENGINE_THRESHOLD_INFO_QUEUE),
                 same(event),
                 any(CorrelationData.class)
         );
     }
+
+
 }

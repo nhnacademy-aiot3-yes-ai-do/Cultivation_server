@@ -5,7 +5,6 @@ import com.influxdb.query.FluxRecord;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import site.yesaido.cultivation_server.config.InfluxProperties;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorType;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
@@ -86,7 +85,7 @@ public class InfluxServiceImpl implements InfluxService {
     public SensorTrendPointListResponse findTrend(
             long cultivationId,
             String deviceEui,
-            SensorType sensorType
+            String sensorType
     ) {
         Objects.requireNonNull(deviceEui, "deviceEui must not be null");
         Objects.requireNonNull(sensorType, "sensorType must not be null");
@@ -97,7 +96,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
                 + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
-                + " |> filter(fn: (r) => r.sensorType == \"" + sensorType.name() + "\")"
+                + " |> filter(fn: (r) => r.sensorType == \"" + sensorType + "\")"
                 + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
                 + " |> sort(columns: [\"_time\"])";
 

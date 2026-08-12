@@ -39,6 +39,7 @@ public class SensorInfoUpsertProducer {
                 new CorrelationData(UUID.randomUUID().toString());
 
         try {
+            // RuleEngine 뿐만아닌 DataSource에도 전송됨
             rabbitTemplate.convertAndSend(
                     SENSOR_EXCHANGE, RULE_ENGINE_SENSOR_INFO_QUEUE, event, correlationData
             );

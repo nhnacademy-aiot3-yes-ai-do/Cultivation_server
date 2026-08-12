@@ -53,7 +53,7 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(dataSourceSensorInfoQueue())
                 .to(sensorExchange())
-                .with(SENSOR_INFO_ROUTING_KEY_PATTERN);
+                .with(SENSOR_INFO_BINDING_KEY_PATTERN);
     }
 
     @Bean
@@ -61,7 +61,7 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(ruleEngineSensorInfoQueue())
                 .to(sensorExchange())
-                .with(SENSOR_INFO_ROUTING_KEY_PATTERN);
+                .with(SENSOR_INFO_BINDING_KEY_PATTERN);
     }
 
     @Bean
@@ -77,7 +77,22 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(ruleEngineThresholdInfoQueue())
                 .to(sensorExchange())
-                .with(RULE_ENGINE_THRESHOLD_INFO_QUEUE);
+                .with(THRESHOLD_INFO_BINDING_KEY_PATTERN);
+    }
+
+    @Bean
+    public Queue dataSourceThresholdInfoQueue() {
+        return QueueBuilder
+                .durable(DATA_SOURCE_THRESHOLD_INFO_QUEUE)
+                .withArgument(DLX_KEY, DLX_NAME)
+                .build();
+    }
+
+    @Bean Binding dataSourceThresholdInfoBinding() {
+        return BindingBuilder
+                .bind(dataSourceThresholdInfoQueue())
+                .to(sensorExchange())
+                .with(THRESHOLD_INFO_BINDING_KEY_PATTERN);
     }
 
     @Bean
