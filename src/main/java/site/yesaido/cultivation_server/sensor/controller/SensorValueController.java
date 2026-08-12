@@ -23,7 +23,7 @@ public class SensorValueController {
             @RequestParam(name = "sensor-type", required = true) SensorType sensorType,
             @RequestHeader(name = "X-User-Id") Long userId
     ) {
-//        cultivationMemberService.existCultivationMember(cultivationId, userId);
+        cultivationMemberService.existCultivationMember(cultivationId, userId);
         SensorTrendPointListResponse trend = influxService.findTrend(cultivationId, deviceEui, sensorType);
         return ResponseEntity.ok(trend);
     }

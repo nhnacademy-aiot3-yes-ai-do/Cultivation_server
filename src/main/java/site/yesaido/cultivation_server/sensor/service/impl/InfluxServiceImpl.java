@@ -9,8 +9,8 @@ import site.yesaido.cultivation_server.rabbitmq.event.SensorType;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 
@@ -38,12 +38,11 @@ public class InfluxServiceImpl implements InfluxService {
 
     @Override
     public List<LatestSensorValueResponse> findLatestByCultivationId(long cultivationId) {
-        Objects.requireNonNull(cultivationId, "cultivationId must not be null");
 
         String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
                 + " |> range(start: 0)"
-                + " |> filter(fn: (r) => r._measurement == \"sensor_value\")"
-                + " |> filter(fn: (r) => r._field == \"value\")"
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
                 + " |> group(columns: [\"sensorType\", \"unit\", \"deviceEui\"])"
                 + " |> last()";
@@ -65,8 +64,8 @@ public class InfluxServiceImpl implements InfluxService {
 
         String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
                 + " |> range(start: -24h)"
-                + " |> filter(fn: (r) => r._measurement == \"sensor_value\")"
-                + " |> filter(fn: (r) => r._field == \"value\")"
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
                 + " |> group(columns: [\"sensorType\", \"unit\"])"
                 + " |> mean(column: \"_value\")";
@@ -94,8 +93,8 @@ public class InfluxServiceImpl implements InfluxService {
 
         String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
                 + " |> range(start: -24h)"
-                + " |> filter(fn: (r) => r._measurement == \"sensor_value\")"
-                + " |> filter(fn: (r) => r._field == \"value\")"
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
                 + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
                 + " |> filter(fn: (r) => r.sensorType == \"" + sensorType.name() + "\")"
@@ -116,25 +115,25 @@ public class InfluxServiceImpl implements InfluxService {
                 .orElse(null);
 
         List<SensorTrendPointResponse> responses = records.stream()
-                .map(record -> {
-                    Object rawValue = record.getValue();
+                .map(fluxRecord -> {
+                    Object rawValue = fluxRecord.getValue();
                     if (!(rawValue instanceof Number number)) {
                         throw new IllegalStateException("Influx trend value is not numeric: " + rawValue);
                     }
-                    return new SensorTrendPointResponse(record.getTime(), number.doubleValue());
+                    return new SensorTrendPointResponse(fluxRecord.getTime(), number.doubleValue());
                 })
                 .toList();
 
         return new SensorTrendPointListResponse(unit, responses);
     }
 
-    private SensorTypeAverageResponse toSensorTypeAverage(FluxRecord record) {
-        Object rawValue = record.getValue();
+    private SensorTypeAverageResponse toSensorTypeAverage(FluxRecord fluxRecord) {
+        Object rawValue = fluxRecord.getValue();
         if (!(rawValue instanceof Number number)) {
             throw new IllegalStateException("Influx average value is not numeric: " + rawValue);
         }
 
-        Map<String, Object> values = record.getValues();
+        Map<String, Object> values = fluxRecord.getValues();
         return new SensorTypeAverageResponse(
                 longValue(values, "cultivationId"),
                 stringValue(values, "sensorType"),
@@ -143,9 +142,9 @@ public class InfluxServiceImpl implements InfluxService {
         );
     }
 
-    private LatestSensorValueResponse toLatestSensorValue(FluxRecord record) {
-        Map<String, Object> values = record.getValues();
-        Object rawValue = record.getValue();
+    private LatestSensorValueResponse toLatestSensorValue(FluxRecord fluxRecord) {
+        Map<String, Object> values = fluxRecord.getValues();
+        Object rawValue = fluxRecord.getValue();
         if (!(rawValue instanceof Number number)) {
             throw new IllegalStateException("Influx sensor value is not numeric: " + rawValue);
         }
@@ -155,7 +154,7 @@ public class InfluxServiceImpl implements InfluxService {
                 stringValue(values, "sensorType"),
                 stringValue(values, "unit"),
                 number.doubleValue(),
-                record.getTime(),
+                fluxRecord.getTime(),
                 stringValue(values, "deviceEui"),
                 stringValue(values, "deviceModel"),
                 stringValue(values, "deviceName"),

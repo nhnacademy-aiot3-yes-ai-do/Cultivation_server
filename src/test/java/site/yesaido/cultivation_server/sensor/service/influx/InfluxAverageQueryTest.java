@@ -10,6 +10,8 @@ import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAver
 import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -33,8 +35,7 @@ class InfluxAverageQueryTest {
         when(record.getValue()).thenReturn(23.75);
         when(record.getValues()).thenReturn(Map.of(
                 "cultivationId", "42",
-                "sensorType", "TEMPERATURE",
-                "unit", "°C"
+                "sensorType", "TEMPERATURE"
         ));
 
         InfluxServiceImpl service = new InfluxServiceImpl(
@@ -45,13 +46,13 @@ class InfluxAverageQueryTest {
                 service.findAverageByCultivationIdForLast24Hours(42L);
 
         assertThat(result).containsExactly(
-                new SensorTypeAverageResponse(42L, "TEMPERATURE", "°C", 23.75)
+                new SensorTypeAverageResponse(42L, "TEMPERATURE", 23.75)
         );
         verify(queryApi).query(argThat((String query) ->
                 query.contains("range(start: -24h)")
                         && query.contains("r.cultivationId == \"42\"")
                         && query.contains("r._field == \"value\"")
-                        && query.contains("group(columns: [\"sensorType\", \"unit\"])")
+                        && query.contains("group(columns: [\"sensorType\"])")
                         && query.contains("|> mean(column: \"_value\")")
                         && !query.contains("deviceEui")
         ), eq("yes-nhn"));

@@ -65,7 +65,9 @@ class CultivationPhotoServiceTest {
 
     @AfterEach
     void tearDown() {
-        TransactionSynchronizationManager.clearSynchronization();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

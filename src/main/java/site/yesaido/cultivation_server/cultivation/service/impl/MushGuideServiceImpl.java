@@ -3,7 +3,6 @@ package site.yesaido.cultivation_server.cultivation.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import site.yesaido.cultivation_server.cultivation.client.AiClient;
 import site.yesaido.cultivation_server.cultivation.dto.ai.ApiResponse;
 import site.yesaido.cultivation_server.cultivation.dto.ai.MushGuideResponse;

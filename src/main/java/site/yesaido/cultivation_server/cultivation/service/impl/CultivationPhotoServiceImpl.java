@@ -92,10 +92,13 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
             );
         }
 
+        // 지금 진행중인 트랜잭션에, 끝날 때 실행할 콜백 하나 등록
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCompletion(int status) {
+                // 트랜잭션이 커밋 또는 롤백이 완전히 끝났을 떄 Spring 한 번 호출함.
                 if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                    // 롤백이 된 경우 compensateMinioUpload를 실행시킴.
                     compensateMinioUpload(objectKey);
                 }
             }
@@ -170,6 +173,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
 
     // Helper Method
     private void compensateMinioUpload(String objectKey) {
+        // 방금 올린 Minio 파일을 지움. <- DB에 없는 파일이 스토리지에 남지 않게 정리함.
         try {
             minioClient.removeObject(
                     RemoveObjectArgs.builder()

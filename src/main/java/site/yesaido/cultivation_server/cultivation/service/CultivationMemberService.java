@@ -17,4 +17,7 @@ public interface CultivationMemberService {
 
     // 소유권 이전
     void transferOwnership(Long cultivationId, Long requesterId, Long newUserId);
+
+    // 멤버십 검증
+    void existCultivationMember(Long cultivationId, Long userId);
 }

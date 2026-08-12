@@ -7,8 +7,8 @@ import com.influxdb.query.FluxTable;
 import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
-import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
+import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,15 +25,15 @@ class InfluxLatestQueryTest {
         InfluxDBClient client = mock(InfluxDBClient.class);
         QueryApi queryApi = mock(QueryApi.class);
         FluxTable table = mock(FluxTable.class);
-        FluxRecord record = mock(FluxRecord.class);
+        FluxRecord fluxRecord = mock(FluxRecord.class);
         InfluxProperties properties = properties();
 
         when(client.getQueryApi()).thenReturn(queryApi);
         when(queryApi.query(anyString(), eq("yes-nhn"))).thenReturn(List.of(table));
-        when(table.getRecords()).thenReturn(List.of(record));
-        when(record.getValue()).thenReturn(23.5);
-        when(record.getTime()).thenReturn(Instant.parse("2026-08-09T12:34:56Z"));
-        when(record.getValues()).thenReturn(Map.of(
+        when(table.getRecords()).thenReturn(List.of(fluxRecord));
+        when(fluxRecord.getValue()).thenReturn(23.5);
+        when(fluxRecord.getTime()).thenReturn(Instant.parse("2026-08-09T12:34:56Z"));
+        when(fluxRecord.getValues()).thenReturn(Map.of(
                 "cultivationId", "42",
                 "sensorType", "TEMPERATURE",
                 "unit", "°C",
