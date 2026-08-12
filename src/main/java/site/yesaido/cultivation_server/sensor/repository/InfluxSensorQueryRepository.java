@@ -2,6 +2,7 @@ package site.yesaido.cultivation_server.sensor.repository;
 
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.QueryApi;
+import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Repository
 @RequiredArgsConstructor
@@ -23,7 +25,9 @@ public class InfluxSensorQueryRepository {
     private final InfluxProperties properties;
 
     public Long countTotal(Long cultivationId, String sensorType, LocalDate startDate, LocalDate endDate) {
-        String flux = baseFilter(cultivationId, sensorType, startDate, endDate) + "  |> count()";
+        String flux = baseFilter(cultivationId, sensorType, startDate, endDate)
+                + "  |> group()\n"
+                + "  |> count()";
         return executeCount(flux);
     }
 
@@ -31,6 +35,7 @@ public class InfluxSensorQueryRepository {
                              BigDecimal thresholdMin, BigDecimal thresholdMax) {
         String flux = baseFilter(cultivationId, sensorType, startDate, endDate)
                 + "  |> filter(fn: (r) => r._value >= " + thresholdMin + " and r._value <= " + thresholdMax + ")\n"
+                + "  |> group()\n"
                 + "  |> count()";
         return executeCount(flux);
     }
@@ -55,11 +60,12 @@ public class InfluxSensorQueryRepository {
     private long executeCount(String flux) {
         QueryApi queryApi = influxDBClient.getQueryApi();
         List<FluxTable> tables = queryApi.query(flux, properties.getOrg());
-        if (tables.isEmpty() || tables.getFirst().getRecords().isEmpty()) {
-            return 0L;
-        }
-        Object value = tables.getFirst().getRecords().getFirst().getValue();
-        return value == null ? 0L : ((Number) value).longValue();
+        return tables.stream()
+                .flatMap(table -> table.getRecords().stream())
+                .map(FluxRecord::getValue)
+                .filter(Objects::nonNull)
+                .mapToLong(value -> ((Number) value).longValue())
+                .sum();
     }
 
     private String escape(String value) {
