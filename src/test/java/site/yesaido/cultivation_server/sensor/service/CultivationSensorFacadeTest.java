@@ -15,6 +15,8 @@ import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDe
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoDeleteEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorRange;
+import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
@@ -213,7 +215,7 @@ class CultivationSensorFacadeTest {
             );
 
             inOrder.verify(cultivationMemberService)
-                    .existCultivationMember(CULTIVATION_ID, USER_ID);
+                    .verifyManagerAccess(CULTIVATION_ID, USER_ID);
 
             inOrder.verify(sensorTypeService)
                     .getSensorTypeList(sensorTypeIds);
@@ -256,7 +258,6 @@ class CultivationSensorFacadeTest {
         // 접근 권한 확인 후 센서 삭제
         void delete_success() {
 
-
             List<CultivationSensorTypeResponse> sensorTypes = List.of(
                     new CultivationSensorTypeResponse(10L, "TEMPERATURE", "C"),
                     new CultivationSensorTypeResponse(20L, "HUMIDITY", "%")
@@ -290,17 +291,10 @@ class CultivationSensorFacadeTest {
             inOrder.verify(cultivationMemberService).verifyManagerAccess(CULTIVATION_ID, USER_ID);
 
             inOrder.verify(cultivationSensorService).findById(CULTIVATION_ID, SENSOR_ID);
-            inOrder.verify(cultivationMemberService)
-                    .existCultivationMember(CULTIVATION_ID, USER_ID);
 
-            inOrder.verify(cultivationSensorService)
-                    .findById(CULTIVATION_ID, SENSOR_ID);
+            inOrder.verify(cultivationSensorService).delete(CULTIVATION_ID, SENSOR_ID);
 
-            inOrder.verify(cultivationSensorService)
-                    .delete(CULTIVATION_ID, SENSOR_ID);
-
-            inOrder.verify(eventPublisher, times(2))
-                    .publishEvent(eventCaptor.capture());
+            inOrder.verify(eventPublisher, times(2)).publishEvent(eventCaptor.capture());
 
             assertThat(eventCaptor.getAllValues()).extracting(
                     SensorInfoDeleteEvent::cultivationId,
