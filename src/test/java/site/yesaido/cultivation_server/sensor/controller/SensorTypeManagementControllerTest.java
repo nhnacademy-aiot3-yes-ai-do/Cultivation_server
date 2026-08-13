@@ -139,7 +139,7 @@ public class SensorTypeManagementControllerTest {
                             .content(s))
                     .andExpect(status().isBadRequest());
 
-            verify(sensorTypeService, never()).registerSensorType(any());
+            verify(sensorTypeService, never()).updateSensorType(anyLong(), any(SensorTypeRequest.class));
         }
     }
 
