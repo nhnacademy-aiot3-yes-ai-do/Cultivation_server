@@ -14,6 +14,8 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.Culti
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
@@ -121,13 +123,15 @@ class CultivationServiceTest {
                 .name("경작 상세")
                 .mushroomReference(mushroom)
                 .build();
+        CultivationMember member = CultivationMember.builder().userId(userId).role(MemberRole.OWNER).build();
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(member));
 
         CultivationDetailResponse response = service.getCultivation(userId, cultivationId);
         assertThat(response).isNotNull();
         assertThat(response.name()).isEqualTo(cultivation.getName());
+        assertThat(response.myRole()).isEqualTo(MemberRole.OWNER);
     }
 
     @Test
@@ -138,7 +142,7 @@ class CultivationServiceTest {
         Cultivation cultivation = Cultivation.builder().name("남의 농장").build();
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, unauthorizedUserId)).thenReturn(false);
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, unauthorizedUserId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getCultivation(unauthorizedUserId, cultivationId)).isInstanceOf(CultivationAccessDeniedException.class);
     }

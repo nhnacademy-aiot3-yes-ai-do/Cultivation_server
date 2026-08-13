@@ -101,11 +101,11 @@ public class CultivationServiceImpl implements CultivationService {
     public CultivationDetailResponse getCultivation(Long userId, Long cultivationId) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-        if (!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
 
-        return toDetail(cultivation);
+        CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
+                .orElseThrow(() -> new CultivationAccessDeniedException(cultivationId));
+
+        return toDetail(cultivation, member.getRole());
     }
 
     @Override
@@ -164,13 +164,14 @@ public class CultivationServiceImpl implements CultivationService {
                 cultivation.getCreatedAt());
     }
 
-    private CultivationDetailResponse toDetail(Cultivation cultivation) {
+    private CultivationDetailResponse toDetail(Cultivation cultivation, MemberRole myRole) {
         return new CultivationDetailResponse(
                 cultivation.getId(),
                 cultivation.getName(),
                 cultivation.getMushroomReference().getId(),
                 cultivation.getCultivationStatus(),
                 cultivation.getMode(),
+                myRole,
                 cultivation.getStartedAt(),
                 cultivation.getFinishedAt(),
                 cultivation.getCreatedAt(),

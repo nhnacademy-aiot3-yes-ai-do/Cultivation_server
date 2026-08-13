@@ -58,7 +58,7 @@ public class CultivationController {
     }
 
     // 재배 삭제
-    @DeleteMapping("/{cultivation-id}/delete")
+    @DeleteMapping("/{cultivation-id}")
     public ResponseEntity<Void> deleteCultivation(@RequestHeader("X-User-Id") Long userId,
                                                   @PathVariable("cultivation-id") Long cultivationId) {
         cultivationService.delete(userId, cultivationId);
