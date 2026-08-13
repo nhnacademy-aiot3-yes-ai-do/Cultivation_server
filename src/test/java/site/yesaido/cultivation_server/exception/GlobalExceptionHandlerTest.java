@@ -84,7 +84,7 @@ class GlobalExceptionHandlerTest {
             Assertions.assertAll(
                     () -> Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode()),
                     () -> Assertions.assertEquals(
-                            "사진 파일 크기는 10MB를 초과할 수 없습니다.",
+                            "사진 파일 크기는 8MB를 초과할 수 없습니다.",
                             Objects.requireNonNull(response.getBody()).getDetail()
                     )
             );

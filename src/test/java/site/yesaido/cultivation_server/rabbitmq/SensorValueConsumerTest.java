@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import static org.mockito.Mockito.*;
 
@@ -16,7 +18,7 @@ class SensorValueConsumerTest {
     private final SensorValueConsumer consumer = new SensorValueConsumer(influxService);
     private final SensorValueEvent event = new SensorValueEvent(
             "farm-a", "room-1", "model-x", "sensor-01", "eui-01",
-            "TEMPERATURE", "°C", 23.5, LocalDateTime.of(2026, 8, 9, 12, 34), 42L
+            "TEMPERATURE", "°C", BigDecimal.valueOf(23.5), OffsetDateTime.of(2026, 8, 9, 12, 34, 56, 0, ZoneOffset.UTC), 42L
     );
 
     @Test

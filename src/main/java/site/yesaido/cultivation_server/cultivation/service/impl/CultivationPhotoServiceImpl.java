@@ -39,7 +39,7 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/jpg", "image/png", "image/webp");
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    private static final long MAX_FILE_SIZE = 8 * 1024 * 1024;
     private static final String DOMAIN = "cultivation-photo";
 
     private final CultivationPhotoRepository cultivationPhotoRepository;
@@ -70,7 +70,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         }
 
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new BadRequestException("사진 파일 크기는 10MB를 초과할 수 없습니다.");
+            throw new BadRequestException("사진 파일 크기는 8MB를 초과할 수 없습니다.");
         }
 
         String objectKey = ObjectKeyGenerator.generate(DOMAIN, cultivationId, file.getOriginalFilename());

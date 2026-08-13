@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,7 +17,7 @@ class SensorValuePointMapperTest {
 
     @Test
     void mapsSensorEventToInfluxPoint() {
-        LocalDateTime time = LocalDateTime.of(2026, 8, 9, 12, 34, 56);
+        OffsetDateTime time = OffsetDateTime.of(2026, 8, 9, 12, 34, 56, 0, ZoneOffset.UTC);
         SensorValueEvent event = new SensorValueEvent(
                 "farm-a",
                 "room-1",
@@ -24,7 +26,7 @@ class SensorValuePointMapperTest {
                 "eui-01",
                 "TEMPERATURE",
                 "°C",
-                23.5,
+                BigDecimal.valueOf(23.5),
                 time,
                 42L
         );
@@ -68,7 +70,7 @@ class SensorValuePointMapperTest {
         SensorValueEvent event = event(42L, "eui-01", null);
 
         assertThatThrownBy(() -> mapper.toPoint(event))
-                .isInstanceOf(NullPointerException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("event.sensorType must not be null");
     }
 
@@ -81,8 +83,8 @@ class SensorValuePointMapperTest {
                 deviceEui,
                 sensorType,
                 "°C",
-                23.5,
-                LocalDateTime.of(2026, 8, 9, 12, 34, 56),
+                BigDecimal.valueOf(23.5),
+                OffsetDateTime.of(2026, 8, 9, 12, 34, 56, 0, ZoneOffset.UTC),
                 cultivationId
         );
     }

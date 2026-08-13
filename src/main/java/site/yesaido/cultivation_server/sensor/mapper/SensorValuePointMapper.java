@@ -4,7 +4,6 @@ import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 
-import java.time.ZoneOffset;
 import java.util.Objects;
 
 public class SensorValuePointMapper {
@@ -23,7 +22,8 @@ public class SensorValuePointMapper {
 
         Point point = Point.measurement(MEASUREMENT)
                 .addField(VALUE_FIELD, event.value())
-                .time(event.time().toInstant(ZoneOffset.UTC), WritePrecision.MS);
+                .time(event.time().toInstant(), WritePrecision.MS);
+
 
         addTag(point, "place", event.place());
         addTag(point, "location", event.location());
