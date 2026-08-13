@@ -1,6 +1,7 @@
 package site.yesaido.cultivation_server.rabbitmq.event;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 public record SensorValueEvent(
         String place,
@@ -8,10 +9,10 @@ public record SensorValueEvent(
         String deviceModel,
         String deviceName,
         String deviceEui,
-        SensorType sensorType,
-        Double value,
-        LocalDateTime time,
+        String sensorType,
+        String unit,
+        BigDecimal value,
+        OffsetDateTime time,
         Long cultivationId
-        // String unit 추가필요
 ) {
 }

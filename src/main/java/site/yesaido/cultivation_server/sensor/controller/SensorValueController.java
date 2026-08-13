@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorType;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 
@@ -20,7 +19,7 @@ public class SensorValueController {
     public ResponseEntity<SensorTrendPointListResponse> getTrend(
             @PathVariable("cultivation-id") Long cultivationId,
             @RequestParam(name = "device-eui", required = true) String deviceEui,
-            @RequestParam(name = "sensor-type", required = true) SensorType sensorType,
+            @RequestParam(name = "sensor-type", required = true) String sensorType,
             @RequestHeader(name = "X-User-Id") Long userId
     ) {
         cultivationMemberService.existCultivationMember(cultivationId, userId);

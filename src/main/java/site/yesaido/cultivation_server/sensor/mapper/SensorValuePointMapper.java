@@ -4,7 +4,6 @@ import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 
-import java.time.ZoneOffset;
 import java.util.Objects;
 
 public class SensorValuePointMapper {
@@ -18,18 +17,21 @@ public class SensorValuePointMapper {
         Objects.requireNonNull(event.time(), "event.time must not be null");
         Objects.requireNonNull(event.cultivationId(), "event.cultivationId must not be null");
         requireText(event.deviceEui(), "event.deviceEui must not be blank");
-        Objects.requireNonNull(event.sensorType(), "event.sensorType must not be null");
+        requireText(event.sensorType(), "event.sensorType must not be null");
+        requireText(event.unit(), "event.unit must not be null");
 
         Point point = Point.measurement(MEASUREMENT)
                 .addField(VALUE_FIELD, event.value())
-                .time(event.time().toInstant(ZoneOffset.UTC), WritePrecision.MS);
+                .time(event.time().toInstant(), WritePrecision.MS);
+
 
         addTag(point, "place", event.place());
         addTag(point, "location", event.location());
         addTag(point, "deviceModel", event.deviceModel());
         addTag(point, "deviceName", event.deviceName());
         addTag(point, "deviceEui", event.deviceEui());
-        addTag(point, "sensorType", event.sensorType().name());
+        addTag(point, "sensorType", event.sensorType());
+        addTag(point, "unit", event.unit());
         addTag(point, "cultivationId", event.cultivationId().toString());
 
         return point;
