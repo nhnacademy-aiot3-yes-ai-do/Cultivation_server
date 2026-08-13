@@ -13,7 +13,6 @@ import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 
 import java.util.UUID;
 
-import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
 import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.RULE_ENGINE_THRESHOLD_INFO_QUEUE;
 import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.SENSOR_EXCHANGE;
 

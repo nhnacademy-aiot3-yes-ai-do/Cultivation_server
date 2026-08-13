@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedPayload;
 import site.yesaido.cultivation_server.rabbitmq.event.NotificationEvent;
 
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
