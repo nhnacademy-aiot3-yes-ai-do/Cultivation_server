@@ -15,6 +15,7 @@ import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRepository;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.HarvestService;
 
 import java.math.BigDecimal;
@@ -27,6 +28,7 @@ import java.time.ZoneId;
 public class HarvestServiceImpl implements HarvestService {
     private final HarvestRepository harvestRepository;
     private final CultivationRepository cultivationRepository;
+    private final CultivationMemberService cultivationMemberService;
 
     @Override
     @Transactional
@@ -34,9 +36,7 @@ public class HarvestServiceImpl implements HarvestService {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        if (!cultivation.getUserId().equals(userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
         if (cultivation.getCultivationStatus() == CultivationStatus.FINISHED) {
             throw new CultivationAlreadyFinishedException(cultivationId);
         }
@@ -87,12 +87,12 @@ public class HarvestServiceImpl implements HarvestService {
     @Override
     @Transactional
     public ProductScoreUpdateResponse updateProductScore(Long cultivationId, Long userId, ProductScoreUpdateRequest request) {
-        Cultivation cultivation = cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        if (!cultivation.getUserId().equals(userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
+        if (!cultivationRepository.existsById(cultivationId)) {
+            throw new CultivationNotFoundException(cultivationId);
         }
+
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
 
         Harvest harvest = harvestRepository.findByCultivationId(cultivationId)
                 .orElseThrow(() -> new HarvestNotFoundException(cultivationId));

@@ -56,4 +56,12 @@ public class CultivationController {
         Page<CultivationHistoryResponse> response = cultivationService.getHistory(userId, pageable);
         return ResponseEntity.ok(CultivationHistoryPageResponse.from(response));
     }
+
+    // 재배 삭제
+    @DeleteMapping("/{cultivation-id}")
+    public ResponseEntity<Void> deleteCultivation(@RequestHeader("X-User-Id") Long userId,
+                                                  @PathVariable("cultivation-id") Long cultivationId) {
+        cultivationService.delete(cultivationId, userId);
+        return ResponseEntity.noContent().build();
+    }
 }

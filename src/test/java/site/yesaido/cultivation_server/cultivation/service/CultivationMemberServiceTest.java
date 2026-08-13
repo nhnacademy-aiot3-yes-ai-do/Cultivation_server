@@ -299,4 +299,54 @@ class CultivationMemberServiceTest {
         assertThatThrownBy(() -> cultivationMemberService.verifyManagerAccess(cultivationId, userId))
                 .isInstanceOf(CultivationAccessDeniedException.class);
     }
+
+    @Test
+    @DisplayName("Owner 권한 검증 성공")
+    void verifyOwnerAccessSuccess() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember owner = CultivationMember.builder().userId(userId).role(MemberRole.OWNER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(owner));
+
+        assertThatCode(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Owner 권한 검증 실패 - MANAGER면 차단됨")
+    void verifyOwnerAccessFailForManager() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember manager = CultivationMember.builder().userId(userId).role(MemberRole.MANAGER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(manager));
+
+        assertThatThrownBy(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("Owner 권한 검증 실패 - MEMBER면 차단됨")
+    void verifyOwnerAccessFailForMember() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember member = CultivationMember.builder().userId(userId).role(MemberRole.MEMBER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("Owner 권한 검증 실패 - 소속되지 않은 경우")
+    void verifyOwnerAccessFailNotMember() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId))
+                .isInstanceOf(CultivationMemberNotFoundException.class);
+    }
 }

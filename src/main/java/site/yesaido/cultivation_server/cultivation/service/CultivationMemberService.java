@@ -23,4 +23,7 @@ public interface CultivationMemberService {
 
     // 매니저 이상 권한 검증 (MEMBER 차단)
     void verifyManagerAccess(Long cultivationId, Long userId);
+
+    // Owner 권한 검증 (OWNER만 허용)
+    void verifyOwnerAccess(Long cultivationId, Long userId);
 }

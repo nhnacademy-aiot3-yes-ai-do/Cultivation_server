@@ -23,4 +23,7 @@ public interface CultivationService {
 
     // 경작 이력 조회
     Page<CultivationHistoryResponse> getHistory(Long userId, Pageable pageable);
+
+    // 경작 삭제 (OWNER만 가능)
+    void delete(Long cultivationId, Long userId);
 }

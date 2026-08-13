@@ -37,6 +37,9 @@ class HarvestServiceTest {
     @Mock
     private CultivationRepository cultivationRepository;
 
+    @Mock
+    private CultivationMemberService cultivationMemberService;
+
     @InjectMocks
     private HarvestServiceImpl harvestService;
 
@@ -93,6 +96,8 @@ class HarvestServiceTest {
                 .build();
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        doThrow(new CultivationAccessDeniedException(cultivationId))
+                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, otherUserId);
 
         assertThatThrownBy(() -> harvestService.createHarvest(cultivationId, otherUserId, request))
                 .isInstanceOf(CultivationAccessDeniedException.class);
@@ -232,6 +237,8 @@ class HarvestServiceTest {
         Cultivation cultivation = Cultivation.builder().userId(ownerId).name("버섯 농장").build();
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        doThrow(new CultivationAccessDeniedException(cultivationId))
+                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, otherUserId);
 
         assertThatThrownBy(() -> harvestService.updateProductScore(cultivationId, otherUserId, request))
                 .isInstanceOf(CultivationAccessDeniedException.class);
