@@ -18,8 +18,8 @@ public class SensorValuePointMapper {
         Objects.requireNonNull(event.time(), "event.time must not be null");
         Objects.requireNonNull(event.cultivationId(), "event.cultivationId must not be null");
         requireText(event.deviceEui(), "event.deviceEui must not be blank");
-        Objects.requireNonNull(event.sensorType(), "event.sensorType must not be null");
-        Objects.requireNonNull(event.unit(), "event.unit must not be null");
+        requireText(event.sensorType(), "event.sensorType must not be null");
+        requireText(event.unit(), "event.unit must not be null");
 
         Point point = Point.measurement(MEASUREMENT)
                 .addField(VALUE_FIELD, event.value())

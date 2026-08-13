@@ -11,7 +11,7 @@ public record SensorInfoDeleteEvent(
         Long cultivationId,
         @NotBlank
         String deviceEui,
-        @NotNull
+        @NotBlank
         String sensorType,
         @NotBlank
         String unit,

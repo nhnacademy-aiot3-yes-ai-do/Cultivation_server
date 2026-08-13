@@ -206,6 +206,12 @@ class CultivationSensorFacadeTest {
                                     )
                             );
 
+            assertThat(upserts)
+                    .allSatisfy(upsert ->
+                            assertThat(upsert.occurredAt())
+                                .isEqualTo(threshold.occurredAt())
+                    );
+
             InOrder inOrder = inOrder(
                     cultivationMemberService,
                     cultivationSensorService,

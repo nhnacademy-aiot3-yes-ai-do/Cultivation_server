@@ -1,5 +1,8 @@
 package site.yesaido.cultivation_server.rabbitmq.test.controller;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorRange;
 import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
@@ -9,25 +12,25 @@ import java.util.List;
 import java.util.Locale;
 
 public record RabbitSmokeRequest(
-        //@NotNull
+        @NotNull
         Long cultivationId,
 
-        //@NotBlank
+        @NotBlank
         String location,
 
-        //@NotBlank
+        @NotBlank
         String locationDetail,
 
-        //@NotBlank
+        @NotBlank
         String deviceModel,
 
-        //@NotBlank
+        @NotBlank
         String deviceName,
 
-        //@NotBlank
+        @NotBlank
         String deviceEui,
 
-        //@Valid
+        @Valid
         List<RabbitSmokeSensorSettingRequest> sensorSettings
 ) {
 

@@ -229,6 +229,9 @@ class GlobalExceptionHandlerTest {
 
         ErrorResponse response = handler.handleException(exception);
 
-        Assertions.assertTrue(Objects.requireNonNull(Objects.requireNonNull(response.getBody()).getDetail()).contains("서버 오류가 발생했습니다."));
+        Assertions.assertEquals(
+                "서버 오류가 발생했습니다.",
+                Objects.requireNonNull(response.getBody()).getDetail()
+        );
     }
 }

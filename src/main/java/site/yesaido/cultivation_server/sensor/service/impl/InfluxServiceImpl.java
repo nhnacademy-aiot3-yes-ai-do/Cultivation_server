@@ -96,7 +96,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
                 + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
                 + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
-                + " |> filter(fn: (r) => r.sensorType == \"" + sensorType + "\")"
+                + " |> filter(fn: (r) => r.sensorType == \"" + escape(sensorType) + "\")"
                 + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
                 + " |> sort(columns: [\"_time\"])";
 

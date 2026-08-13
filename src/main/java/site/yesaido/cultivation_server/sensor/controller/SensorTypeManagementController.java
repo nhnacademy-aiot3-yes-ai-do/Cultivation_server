@@ -18,6 +18,7 @@ import java.net.URI;
 public class SensorTypeManagementController {
     private final SensorTypeService sensorTypeService;
 
+
     @PostMapping
     public ResponseEntity<Void> registerSensorType(@Valid @RequestBody SensorTypeRequest request) {
         long savedId = sensorTypeService.registerSensorType(request);

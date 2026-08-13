@@ -27,7 +27,7 @@ public record SensorInfoUpsertEvent(
         @NotBlank
         String deviceEui,
 
-        @NotNull
+        @NotBlank
         String sensorType,
 
         @NotBlank

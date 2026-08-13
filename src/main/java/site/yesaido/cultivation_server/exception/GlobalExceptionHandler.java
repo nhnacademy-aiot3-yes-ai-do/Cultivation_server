@@ -107,7 +107,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ErrorResponse handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
-        return ErrorResponse.create(e, HttpStatus.BAD_REQUEST, "사진 파일 크기는 10MB를 초과할 수 없습니다.");
+        return ErrorResponse.create(e, HttpStatus.BAD_REQUEST, "사진 파일 크기는 8MB를 초과할 수 없습니다.");
     }
 
     @ExceptionHandler(FeignException.class)
