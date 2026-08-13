@@ -1,6 +1,7 @@
 package site.yesaido.cultivation_server.cultivation.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.request.HarvestCreateRequest;
@@ -17,6 +18,8 @@ import site.yesaido.cultivation_server.cultivation.repository.cultivation.Cultiv
 import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.HarvestService;
+import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedPayload;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,6 +32,7 @@ public class HarvestServiceImpl implements HarvestService {
     private final HarvestRepository harvestRepository;
     private final CultivationRepository cultivationRepository;
     private final CultivationMemberService cultivationMemberService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -51,6 +55,9 @@ public class HarvestServiceImpl implements HarvestService {
                 .build();
         harvestRepository.save(harvest);
         cultivation.finish();
+
+        HarvestCompletedPayload payload = new HarvestCompletedPayload(cultivation.getName(), harvest.getHarvestWeight());
+        eventPublisher.publishEvent(new HarvestCompletedEvent(cultivationId, payload));
 
         return new HarvestCreateResponse(
                 harvest.getId(),

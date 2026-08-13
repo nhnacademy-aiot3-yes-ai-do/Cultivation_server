@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.request.HarvestCreateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.request.ProductScoreUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.HarvestCreateResponse;
@@ -19,6 +20,7 @@ import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.HarvestServiceImpl;
+import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,6 +38,9 @@ class HarvestServiceTest {
 
     @Mock
     private CultivationRepository cultivationRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
     private CultivationMemberService cultivationMemberService;
@@ -66,6 +71,7 @@ class HarvestServiceTest {
         assertThat(response.productScore()).isNull();
         assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.FINISHED);
         verify(harvestRepository, times(1)).save(any(Harvest.class));
+        verify(eventPublisher).publishEvent(any(HarvestCompletedEvent.class));
     }
 
     @Test
