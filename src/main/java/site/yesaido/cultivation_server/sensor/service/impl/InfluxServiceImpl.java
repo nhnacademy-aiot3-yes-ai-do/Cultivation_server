@@ -106,6 +106,21 @@ public class InfluxServiceImpl implements InfluxService {
                 .flatMap(table -> table.getRecords().stream())
                 .toList();
 
+        long cultivationIdFromInfluxDB = toCultivationId(records);
+
+        String deviceEuiFromDB = records.stream()
+                .map(FluxRecord::getValues)
+                .map(values -> stringValue(values, "deviceEui"))
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
+
+
+        String sensorTypeFromDB = records.stream()
+                .map(FluxRecord::getValues)
+                .map(values -> stringValue(values, "sensorType"))
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
+
         String unit = records.stream()
                 .map(FluxRecord::getValues)
                 .map(values -> stringValue(values, "unit"))
@@ -123,7 +138,18 @@ public class InfluxServiceImpl implements InfluxService {
                 })
                 .toList();
 
-        return new SensorTrendPointListResponse(unit, responses);
+        return new SensorTrendPointListResponse(
+                cultivationIdFromInfluxDB, deviceEuiFromDB, sensorTypeFromDB, unit, responses
+        );
+    }
+
+    private long toCultivationId(List<FluxRecord>  records) {
+        String cultivationIdFromInfluxDB = records.stream()
+                .map(FluxRecord::getValues)
+                .map(vaules -> stringValue(vaules, "cultivationId"))
+                .filter(Objects::nonNull).findFirst().orElse(null);
+
+        return Long.parseLong(Objects.requireNonNull(cultivationIdFromInfluxDB));
     }
 
     private SensorTypeAverageResponse toSensorTypeAverage(FluxRecord fluxRecord) {
