@@ -217,7 +217,7 @@ class HarvestServiceTest {
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
         when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.of(harvest));
 
         ProductScoreUpdateResponse response = harvestService.updateProductScore(cultivationId, userId, request);
@@ -236,7 +236,7 @@ class HarvestServiceTest {
 
         Cultivation cultivation = Cultivation.builder().userId(ownerId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
         doThrow(new CultivationAccessDeniedException(cultivationId))
                 .when(cultivationMemberService).verifyOwnerAccess(cultivationId, otherUserId);
 
@@ -253,7 +253,7 @@ class HarvestServiceTest {
 
         Cultivation cultivation = Cultivation.builder().userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
         when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> harvestService.updateProductScore(cultivationId, userId, request))

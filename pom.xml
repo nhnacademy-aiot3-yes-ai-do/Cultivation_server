@@ -166,11 +166,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.influxdb</groupId>
-            <artifactId>influxdb-client-java</artifactId>
-            <version>8.0.0</version>
-        </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
