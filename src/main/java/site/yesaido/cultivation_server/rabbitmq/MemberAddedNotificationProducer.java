@@ -8,7 +8,6 @@ import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedPayload;
 import site.yesaido.cultivation_server.rabbitmq.event.NotificationEvent;
 
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.UUID;
 

@@ -5,8 +5,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronizationAdapter;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
@@ -18,7 +16,6 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.Memb
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
-import site.yesaido.cultivation_server.rabbitmq.MemberAddedNotificationProducer;
 import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedPayload;
 
