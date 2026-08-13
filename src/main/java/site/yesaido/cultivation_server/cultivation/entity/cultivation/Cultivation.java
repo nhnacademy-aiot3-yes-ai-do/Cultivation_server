@@ -67,7 +67,7 @@ public class Cultivation {
 
     public void delete() {
         this.cultivationStatus = CultivationStatus.DELETED;
-        this.finishedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        this.deletedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
     }
 
     // 소유권 이전

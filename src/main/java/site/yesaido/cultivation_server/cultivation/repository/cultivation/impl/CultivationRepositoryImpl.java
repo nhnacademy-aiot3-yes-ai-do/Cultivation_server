@@ -72,7 +72,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 cultivation.cultivationStatus,
                 harvest.harvestWeight,
                 harvest.productGrade,
-                cultivation.finishedAt))
+                endedAt))
                 .from(cultivation)                                                                                      // 어떤 테이블을 기준으로 조회할 것인가?
                 .join(member).on(member.cultivation.eq(cultivation))                                                    // Member와 Cultivation 테이블을 연결해서 조회하겠다. on은 연결 조건 (현재 조회 중인 Cultivation과 Member의 Cultivation이 같은것만 가져옴)
                 .leftJoin(harvest).on(harvest.cultivation.eq(cultivation))                                              // Cultivation에 연결된 Harvest가 있으면 가져와라. Harvest가 없어도 Cultivation을 조회하겠다.
