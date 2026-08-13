@@ -42,7 +42,7 @@ public class HarvestCompletedNotificationProducer {
             } catch (Exception e) {
                 if (attempt == MAX_ATTEMPTS) {
                     log.warn("HARVEST_COMPLETED 알림 발행 실패, best-effort 정책에 따라 포기함: eventId={}, cultivationId={}, attempts={}, cause={}",
-                            event.eventId(), attempt, MAX_ATTEMPTS, e.getMessage());
+                            event.eventId(), cultivationId, attempt + 1, e.getMessage());
                     return;
                 }
                 log.warn("HARVEST_COMPLETED 알림 발행 실패, 재시도함: eventId={}, attempt={}/{}, cause={}",
