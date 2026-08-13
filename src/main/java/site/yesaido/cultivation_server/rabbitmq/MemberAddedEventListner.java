@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedEvent;
-import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedPayload;
 
 @Component
 @RequiredArgsConstructor
