@@ -26,6 +26,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -172,5 +173,18 @@ class CultivationControllerTest {
                 .andExpect(jsonPath("$.content[0].name").value("마지막 이력"))
                 .andExpect(jsonPath("$.number").value(2));
 
+    }
+
+    @Test
+    @DisplayName("재배 삭제 API - 정상 요청 시 204 No Content 반환 (cultivationId/userId 인자 순서 검증)")
+    void deleteCultivationSuccess() throws Exception {
+        Long userId = 1L;
+        Long cultivationId = 100L; // userId와 다른 값으로 둬서 인자 순서가 바뀌면 검증에서 걸리게 함
+
+        mockMvc.perform(delete("/api/cultivations/{cultivation-id}", cultivationId)
+                        .header("X-User-Id", userId))
+                .andExpect(status().isNoContent());
+
+        verify(cultivationService).delete(cultivationId, userId);
     }
 }

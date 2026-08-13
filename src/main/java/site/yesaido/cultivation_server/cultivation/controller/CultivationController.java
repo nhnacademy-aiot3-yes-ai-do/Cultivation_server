@@ -61,7 +61,7 @@ public class CultivationController {
     @DeleteMapping("/{cultivation-id}")
     public ResponseEntity<Void> deleteCultivation(@RequestHeader("X-User-Id") Long userId,
                                                   @PathVariable("cultivation-id") Long cultivationId) {
-        cultivationService.delete(userId, cultivationId);
+        cultivationService.delete(cultivationId, userId);
         return ResponseEntity.noContent().build();
     }
 }
