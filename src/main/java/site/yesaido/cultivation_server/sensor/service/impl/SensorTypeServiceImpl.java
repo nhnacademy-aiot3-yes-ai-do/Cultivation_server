@@ -33,12 +33,16 @@ public class SensorTypeServiceImpl implements SensorTypeService {
         return saveSensorType.getId();
     }
 
-    @Override
-    @Transactional
-    public void updateSensorType(long sensorTypeId, SensorTypeRequest dto) {
+    public void existSensorTypeById(long sensorTypeId) {
         if(!sensorTypeRepository.existsSensorTypeById(sensorTypeId)) {
             throw new SensorTypeNotFoundException("sensorTypeId:%d".formatted(sensorTypeId));
         }
+    }
+
+    @Override
+    @Transactional
+    public void updateSensorType(long sensorTypeId, SensorTypeRequest dto) {
+        existSensorTypeById(sensorTypeId);
 
         SensorType sensorType = sensorTypeRepository.findSensorTypeById(sensorTypeId);
 
@@ -55,11 +59,19 @@ public class SensorTypeServiceImpl implements SensorTypeService {
     @Override
     @Transactional
     public void deleteSensorType(long sensorTypeId) {
-        if(!sensorTypeRepository.existsSensorTypeById(sensorTypeId)) {
-            throw new SensorTypeNotFoundException("sensorTypeId:%d".formatted(sensorTypeId));
-        }
+        existSensorTypeById(sensorTypeId);
 
         sensorTypeRepository.deleteById(sensorTypeId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SensorTypeInfoResponse getSensorTypeById(long sensorTypeId) {
+        existSensorTypeById(sensorTypeId);
+
+        SensorType sensorType = sensorTypeRepository.findSensorTypeById(sensorTypeId);
+
+        return SensorTypeInfoResponse.from(sensorType);
     }
 
     @Override

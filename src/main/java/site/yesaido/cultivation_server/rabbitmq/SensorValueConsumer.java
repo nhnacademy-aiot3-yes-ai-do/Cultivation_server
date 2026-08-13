@@ -27,7 +27,7 @@ public class SensorValueConsumer {
     ) throws IOException {
         try {
             influxService.save(event);
-            channel.basicAck(deliveryTag, false);
+            channel.basicAck(deliveryTag, false); // 배치 작업시 true
         } catch (Exception e) {
             channel.basicNack(deliveryTag, false, false);
         }

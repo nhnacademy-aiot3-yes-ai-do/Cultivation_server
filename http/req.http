@@ -1,5 +1,11 @@
 @cultivation = http://localhost:9001
 @auth = http://localhost:9002
+@rabbitSmoke = http://localhost:8080
+
+# RabbitMQ smoke 요청 실행 전 애플리케이션 시작:
+# SPRING_PROFILES_ACTIVE=rabbit-smoke ./mvnw spring-boot:run
+# RabbitSmokeController는 rabbit-smoke 프로필에서만 등록됩니다.
+# 기본 대상 포트는 8080이며 프로필 미활성화 시 아래 경로는 404를 반환합니다.
 
 ### 1. 재배 생성 (OWNER = userId 100)
 POST {{cultivation}}/api/cultivations
@@ -176,3 +182,74 @@ X-User-Id: 100
 ### 23. 사진 삭제 실패 - 존재하지 않는 사진 (404)
 DELETE {{cultivation}}/api/cultivations/1/photos/9999
 X-User-Id: 100
+
+### 25. 센서와 임계값 RabbitMQ 발행 (성공)
+POST {{rabbitSmoke}}/internal/test/rabbit/sensor-created
+Content-Type: application/json
+
+{
+  "cultivationId": 10,
+  "location": "실습실",
+  "locationDetail": "후방 오른쪽",
+  "deviceModel": "EM500-CO2",
+  "deviceName": "EM500-CO2-152862",
+  "deviceEui": "24e124126d152862",
+  "sensorSettings": [
+    {
+      "sensorType": "TEMPERATURE",
+      "unit": "C",
+      "thresholdMin": 18,
+      "thresholdMax": 25
+    },
+    {
+      "sensorType": "HUMIDITY",
+      "unit": "%",
+      "thresholdMin": 60,
+      "thresholdMax": 80
+    },
+    {
+      "sensorType": "CO2",
+      "unit": "ppm",
+      "thresholdMin": 400,
+      "thresholdMax": 1500
+    },
+    {
+      "sensorType": "LIGHT",
+      "unit": "lux",
+      "thresholdMin": 300,
+      "thresholdMax": 1000
+    }
+  ]
+}
+
+### 25. 센서와 임계값 RabbitMQ 발행 (예외, 임계값 1개만 들어옴)
+POST {{rabbitSmoke}}/internal/test/rabbit/sensor-created
+Content-Type: application/json
+
+{
+  "cultivationId": 10,
+  "location": "배양실",
+  "locationDetail": "북쪽 선반",
+  "deviceModel": "MODEL-A",
+  "deviceName": "온도 센서 1",
+  "deviceEui": "EUI-SMOKE-001",
+  "sensorType": "TEMPERATURE",
+  "unit": "C",
+  "thresholdMin": 18.0,
+  "thresholdMax": 25.0
+}
+
+### 26. 임계값 삭제 RabbitMQ 발행
+POST {{rabbitSmoke}}/internal/test/rabbit/sensor-created
+Content-Type: application/json
+
+{
+  "cultivationId": 10,
+  "location": "배양실",
+  "locationDetail": "북쪽 선반",
+  "deviceModel": "MODEL-A",
+  "deviceName": "복합 환경 센서",
+  "deviceEui": "EUI-SMOKE-001",
+  "sensorSettings": [
+  ]
+}

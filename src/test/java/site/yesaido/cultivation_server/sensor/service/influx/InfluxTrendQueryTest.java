@@ -6,7 +6,6 @@ import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.config.InfluxProperties;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorType;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
@@ -27,19 +26,20 @@ class InfluxTrendQueryTest {
         InfluxDBClient client = mock(InfluxDBClient.class);
         QueryApi queryApi = mock(QueryApi.class);
         FluxTable table = mock(FluxTable.class);
-        FluxRecord record = mock(FluxRecord.class);
+        FluxRecord fluxRecord = mock(FluxRecord.class);
         InfluxProperties properties = properties();
         Instant measuredAt = Instant.parse("2026-08-09T12:00:00Z");
 
         when(client.getQueryApi()).thenReturn(queryApi);
         when(queryApi.query(anyString(), eq("yes-nhn"))).thenReturn(List.of(table));
-        when(table.getRecords()).thenReturn(List.of(record));
-        when(record.getTime()).thenReturn(measuredAt);
-        when(record.getValue()).thenReturn(24.25);
-        when(record.getValues()).thenReturn(Map.of(
+        when(table.getRecords()).thenReturn(List.of(fluxRecord));
+        when(fluxRecord.getTime()).thenReturn(measuredAt);
+        when(fluxRecord.getValue()).thenReturn(24.25);
+        when(fluxRecord.getValues()).thenReturn(Map.of(
                 "cultivationId", "42",
                 "deviceEui", "eui-01",
-                "sensorType", "TEMPERATURE"
+                "sensorType", "TEMPERATURE",
+                "unit", ".°C"
         ));
 
         InfluxServiceImpl service = new InfluxServiceImpl(
@@ -47,9 +47,10 @@ class InfluxTrendQueryTest {
         );
 
         SensorTrendPointListResponse result = service.findTrend(
-                42L, "eui-01", SensorType.TEMPERATURE
+                42L, "eui-01", "TEMPERATURE"
         );
 
+        assertThat(result.unit()).isEqualTo(".°C");
         assertThat(result.responses())
                 .containsExactly(new SensorTrendPointResponse(measuredAt, 24.25));
         verify(queryApi).query(argThat((String query) ->

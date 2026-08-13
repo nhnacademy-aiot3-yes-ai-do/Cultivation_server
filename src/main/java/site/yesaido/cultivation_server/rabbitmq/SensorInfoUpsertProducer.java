@@ -21,7 +21,7 @@ import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.SENSOR_
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class SensorInfoProducer {
+public class SensorInfoUpsertProducer {
     private final RabbitTemplate rabbitTemplate;
 
     /**
@@ -39,6 +39,7 @@ public class SensorInfoProducer {
                 new CorrelationData(UUID.randomUUID().toString());
 
         try {
+            // RuleEngine 뿐만아닌 DataSource에도 전송됨
             rabbitTemplate.convertAndSend(
                     SENSOR_EXCHANGE, RULE_ENGINE_SENSOR_INFO_QUEUE, event, correlationData
             );

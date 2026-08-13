@@ -15,6 +15,8 @@ import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDe
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoDeleteEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorRange;
+import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
@@ -152,7 +154,9 @@ class CultivationSensorFacadeTest {
             when(sensorTypeService.getSensorTypeList(sensorTypeIds))
                     .thenReturn(sensorTypes);
 
-            when(cultivationSensorService.register(CULTIVATION_ID, request)).thenReturn(sensor);
+            when(cultivationSensorService.register(CULTIVATION_ID, request))
+                    .thenReturn(sensor);
+
 
             // when
             long registeredSensorId = cultivationSensorFacade.register(USER_ID, CULTIVATION_ID, request);
@@ -160,46 +164,64 @@ class CultivationSensorFacadeTest {
             // then
             assertThat(registeredSensorId).isEqualTo(SENSOR_ID);
 
+            ArgumentCaptor<Object> eventCaptor =
+                    ArgumentCaptor.forClass(Object.class);
+
+            verify(eventPublisher, times(3))
+                    .publishEvent(eventCaptor.capture());
+
+            List<Object> events = eventCaptor.getAllValues();
+
+            List<SensorInfoUpsertEvent> upserts = events.stream()
+                            .filter(SensorInfoUpsertEvent.class::isInstance)
+                            .map(SensorInfoUpsertEvent.class::cast)
+                            .toList();
+
+            ThresholdInfoEvent threshold = events.stream()
+                    .filter(ThresholdInfoEvent.class::isInstance)
+                    .map(ThresholdInfoEvent.class::cast)
+                    .findFirst()
+                    .orElseThrow();
+
+            assertThat(upserts).hasSize(2);
+            assertThat(threshold.cultivationId()).isEqualTo(CULTIVATION_ID);
+
+            assertThat(threshold.sensorRangeList())
+                    .extracting(
+                            SensorRange::sensorType,
+                            SensorRange::unit,
+                            SensorRange::minValue,
+                            SensorRange::maxValue
+                    )
+                            .containsExactly(
+                                    tuple(
+                                            "TEMPERATURE",
+                                            "C",
+                                            BigDecimal.valueOf(20), BigDecimal.valueOf(30)
+                                    ),
+                                    tuple(
+                                            "HUMIDITY",
+                                            "%",
+                                            BigDecimal.valueOf(40), BigDecimal.valueOf(70)
+                                    )
+                            );
+
+            assertThat(upserts)
+                    .allSatisfy(upsert ->
+                            assertThat(upsert.occurredAt())
+                                .isEqualTo(threshold.occurredAt())
+                    );
+
             InOrder inOrder = inOrder(
                     cultivationMemberService,
-                    sensorTypeService,
                     cultivationSensorService,
+                    sensorTypeService,
                     cultivationSensorTypeService,
                     environmentSettingService
             );
 
             inOrder.verify(cultivationMemberService)
                     .verifyManagerAccess(CULTIVATION_ID, USER_ID);
-
-            ArgumentCaptor<SensorInfoUpsertEvent> eventCaptor =
-                    ArgumentCaptor.forClass(SensorInfoUpsertEvent.class);
-
-            verify(eventPublisher, times(2))
-                    .publishEvent(eventCaptor.capture());
-
-            List<SensorInfoUpsertEvent> events = eventCaptor.getAllValues();
-
-            assertThat(events)
-                    .extracting(
-                            SensorInfoUpsertEvent::cultivationId,
-                            SensorInfoUpsertEvent::deviceEui,
-                            SensorInfoUpsertEvent::sensorType,
-                            SensorInfoUpsertEvent::unit
-                    )
-                    .containsExactly(
-                            tuple(
-                                    CULTIVATION_ID,
-                                    "EUI-001",
-                                    site.yesaido.cultivation_server.rabbitmq.event.SensorType.TEMPERATURE,
-                                    "C"
-                            ),
-                            tuple(
-                                    CULTIVATION_ID,
-                                    "EUI-001",
-                                    site.yesaido.cultivation_server.rabbitmq.event.SensorType.HUMIDITY,
-                                    "%"
-                            )
-                    );
 
             inOrder.verify(sensorTypeService)
                     .getSensorTypeList(sensorTypeIds);
@@ -241,7 +263,6 @@ class CultivationSensorFacadeTest {
         @DisplayName("삭제 성공")
         // 접근 권한 확인 후 센서 삭제
         void delete_success() {
-
 
             List<CultivationSensorTypeResponse> sensorTypes = List.of(
                     new CultivationSensorTypeResponse(10L, "TEMPERATURE", "C"),
@@ -291,17 +312,28 @@ class CultivationSensorFacadeTest {
                     tuple(
                             CULTIVATION_ID,
                             "EUI-001",
-                            site.yesaido.cultivation_server.rabbitmq.event.SensorType.TEMPERATURE,
+                            "TEMPERATURE",
                             "C"
                     ),
                     tuple(
                             CULTIVATION_ID,
                             "EUI-001",
-                            site.yesaido.cultivation_server.rabbitmq.event.SensorType.HUMIDITY,
+                            "HUMIDITY",
                             "%"
                     )
             );
 
+            verifyNoMoreInteractions(
+                    cultivationMemberService,
+                    cultivationSensorService,
+                    eventPublisher
+            );
+
+            verifyNoInteractions(
+                    sensorTypeService,
+                    cultivationSensorTypeService,
+                    environmentSettingService
+            );
             verifyNoMoreInteractions(cultivationMemberService, cultivationSensorService, eventPublisher);
             verifyNoInteractions(sensorTypeService, cultivationSensorTypeService, environmentSettingService);
         }

@@ -94,8 +94,10 @@ public class HarvestServiceImpl implements HarvestService {
     @Override
     @Transactional
     public ProductScoreUpdateResponse updateProductScore(Long cultivationId, Long userId, ProductScoreUpdateRequest request) {
-        Cultivation cultivation = cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
+        if (!cultivationRepository.existsById(cultivationId)) {
+            throw new CultivationNotFoundException(cultivationId);
+        }
 
         cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
 
