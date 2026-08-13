@@ -46,6 +46,8 @@ public class Cultivation {
 
     private LocalDateTime finishedAt;
 
+    private LocalDateTime deletedAt;
+
     @Column(nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -60,6 +62,11 @@ public class Cultivation {
 
     public void finish() {
         this.cultivationStatus = CultivationStatus.FINISHED;
+        this.finishedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+    }
+
+    public void delete() {
+        this.cultivationStatus = CultivationStatus.DELETED;
         this.finishedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
     }
 

@@ -162,6 +162,15 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         }
     }
 
+    @Override
+    public void verifyOwnerAccess(Long cultivationId, Long userId) {
+        CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
+                .orElseThrow(CultivationMemberNotFoundException::new);
+        if (member.getRole() != MemberRole.OWNER) {
+            throw new CultivationAccessDeniedException(cultivationId);
+        }
+    }
+
     // Helper Method
     private CultivationMember verifyOwner(Long cultivationId, Long userId) {
         CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)

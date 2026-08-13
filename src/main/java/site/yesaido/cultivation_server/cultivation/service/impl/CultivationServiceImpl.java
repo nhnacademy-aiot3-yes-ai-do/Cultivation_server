@@ -114,9 +114,7 @@ public class CultivationServiceImpl implements CultivationService {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        if (!cultivation.getUserId().equals(userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
 
         if (cultivation.getCultivationStatus() == CultivationStatus.FINISHED) {
             throw new CultivationAlreadyFinishedException(cultivationId);
@@ -137,6 +135,20 @@ public class CultivationServiceImpl implements CultivationService {
             return cultivationRepository.findHistoryByMemberUserId(userId, lastPageable);
         }
         return page;
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long cultivationId, Long userId) {
+        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
+
+        if (cultivation.getCultivationStatus() == CultivationStatus.DELETED) {
+            throw new CultivationAlreadyDeletedException(cultivationId);
+        }
+        cultivation.delete();
     }
 
     // Helper Method

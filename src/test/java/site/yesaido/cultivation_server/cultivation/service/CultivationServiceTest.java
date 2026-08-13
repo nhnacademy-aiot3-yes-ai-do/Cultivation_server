@@ -14,10 +14,7 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.Culti
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
-import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
-import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyExist;
-import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
-import site.yesaido.cultivation_server.cultivation.exception.MushroomNotFoundException;
+import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationMemberServiceImpl;
@@ -174,6 +171,7 @@ class CultivationServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.status()).isEqualTo(CultivationStatus.FINISHED);
+        verify(cultivationMemberService).verifyOwnerAccess(cultivationId, userId);
     }
 
     @Test
@@ -189,5 +187,91 @@ class CultivationServiceTest {
 
         assertThat(result).isNotNull();
         assertThat(result.getTotalElements()).isEqualTo(emptyPage.getTotalElements());
+    }
+
+    @Test
+    @DisplayName("재배 종료 실패 - Owner가 아닌 경우")
+    void finishFailAccessDenied() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.CREATED)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        doThrow(new CultivationAccessDeniedException(cultivationId))
+                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, userId);
+
+        assertThatThrownBy(() -> service.finish(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("경작 삭제 성공 - 상태가 DELETED로 변경됨")
+    void deleteSuccess() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.RUNNING)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        service.delete(cultivationId, userId);
+
+        assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.DELETED);
+        verify(cultivationMemberService).verifyOwnerAccess(cultivationId, userId);
+    }
+
+    @Test
+    @DisplayName("경작 삭제 실패 - Owner가 아닌 경우")
+    void deleteFailAccessDenied() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.RUNNING)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        doThrow(new CultivationAccessDeniedException(cultivationId))
+                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, userId);
+
+        assertThatThrownBy(() -> service.delete(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("경작 삭제 실패 - 이미 삭제된 경작")
+    void deleteFailAlreadyDeleted() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.DELETED)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        assertThatThrownBy(() -> service.delete(cultivationId, userId))
+                .isInstanceOf(CultivationAlreadyDeletedException.class);
+    }
+
+    @Test
+    @DisplayName("경작 삭제 실패 - 없는 경작 ID")
+    void deleteFailNotFound() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.delete(cultivationId, userId))
+                .isInstanceOf(CultivationNotFoundException.class);
     }
 }
