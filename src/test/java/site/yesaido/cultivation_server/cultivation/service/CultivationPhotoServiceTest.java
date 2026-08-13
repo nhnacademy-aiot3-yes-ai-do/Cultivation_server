@@ -28,9 +28,9 @@ import site.yesaido.cultivation_server.cultivation.exception.PhotoNotFoundExcept
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoServiceImpl;
-import site.yesaido.cultivation_server.exception.client.BadRequestException;
-import site.yesaido.cultivation_server.exception.client.UnsupportedMediaTypeException;
-import site.yesaido.cultivation_server.exception.server.CustomServerException;
+import site.yesaido.common.exception.client.BadRequestException;
+import site.yesaido.common.exception.client.UnsupportedMediaTypeException;
+import site.yesaido.common.exception.server.CustomServerException;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;

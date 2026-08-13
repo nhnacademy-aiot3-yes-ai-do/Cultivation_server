@@ -10,9 +10,9 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import site.yesaido.cultivation_server.exception.client.*;
-import site.yesaido.cultivation_server.exception.server.CustomServerException;
-import site.yesaido.cultivation_server.exception.server.ServerErrorLevel;
+import site.yesaido.common.exception.client.*;
+import site.yesaido.common.exception.server.CustomServerException;
+import site.yesaido.common.exception.server.ServerErrorLevel;
 
 import java.util.Objects;
 
