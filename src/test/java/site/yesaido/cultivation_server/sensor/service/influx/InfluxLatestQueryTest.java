@@ -10,6 +10,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorVa
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,7 @@ class InfluxLatestQueryTest {
         List<LatestSensorValueResponse> result = service.findLatestByCultivationId(42L);
 
         assertThat(result).containsExactly(new LatestSensorValueResponse(
-                42L, "TEMPERATURE", "°C", 23.5,
+                42L, "TEMPERATURE", "°C", BigDecimal.valueOf(23.5),
                 Instant.parse("2026-08-09T12:34:56Z"),
                 "eui-01", "model-x", "sensor-01", "room-1", "farm-a"
         ));

@@ -49,4 +49,17 @@ class SensorTypeControllerTest {
 
         verify(sensorTypeService).findAll();
     }
+
+    @Test
+    @DisplayName("센서 모두 조회 API - 서비스 오류 발생 시 500 반환")
+    void getAllSensorTypeFailWhenServiceThrowsException() throws Exception {
+        when(sensorTypeService.findAll())
+                .thenThrow(new RuntimeException("센서 타입 조회 실패"));
+
+        mockMvc.perform(get("/api/v1/sensor-types")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError());
+
+        verify(sensorTypeService).findAll();
+    }
 }

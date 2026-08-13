@@ -15,7 +15,6 @@ public record SensorInfoDeleteEvent(
         String sensorType,
         @NotBlank
         String unit,
-        //OffsetDateTime.now(ZoneOffset.UTC)
         @NotNull
         OffsetDateTime occurredAt
 ) {

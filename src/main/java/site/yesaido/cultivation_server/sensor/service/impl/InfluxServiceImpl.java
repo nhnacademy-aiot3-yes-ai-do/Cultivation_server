@@ -4,6 +4,7 @@ import com.influxdb.client.InfluxDBClient;
 import com.influxdb.query.FluxRecord;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.NumberUtils;
 import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
@@ -13,6 +14,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAver
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -178,7 +180,7 @@ public class InfluxServiceImpl implements InfluxService {
                 longValue(values, "cultivationId"),
                 stringValue(values, "sensorType"),
                 stringValue(values, "unit"),
-                number.doubleValue(),
+                NumberUtils.convertNumberToTargetClass(number, BigDecimal.class),
                 fluxRecord.getTime(),
                 stringValue(values, "deviceEui"),
                 stringValue(values, "deviceModel"),

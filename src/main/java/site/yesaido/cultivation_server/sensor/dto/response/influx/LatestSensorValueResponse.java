@@ -1,12 +1,13 @@
 package site.yesaido.cultivation_server.sensor.dto.response.influx;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 public record LatestSensorValueResponse(
         Long cultivationId,
         String sensorType,
         String unit,
-        Double value,
+        BigDecimal value,
         Instant measuredAt,
         String deviceEui,
         String deviceModel,
