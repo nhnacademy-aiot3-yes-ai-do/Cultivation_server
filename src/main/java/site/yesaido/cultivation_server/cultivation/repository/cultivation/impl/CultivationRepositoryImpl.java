@@ -78,8 +78,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 .leftJoin(harvest).on(harvest.cultivation.eq(cultivation))                                              // Cultivation에 연결된 Harvest가 있으면 가져와라. Harvest가 없어도 Cultivation을 조회하겠다.
                 .where(member.userId.eq(userId), cultivation.cultivationStatus.
                         in(CultivationStatus.FINISHED, CultivationStatus.DELETED))                                      // 현재 로그인한 사용자의 재배만 가져와라. 그리고 재배가 끝난 재배지만 가져와라.
-                .distinct()                                                                                             // 중복 제거
-                .orderBy(endedAt.desc(), cultivation.id.desc())                                          // 종료시간이 최신순, 두번째로 ID가 큰것부터
+                .orderBy(endedAt.desc(), cultivation.id.desc())                                                         // 종료시간이 최신순, 두번째로 ID가 큰것부터
                 .offset(pageable.getOffset())                                                                           // 몇 개를 건너뛸 것인가?
                 .limit(pageable.getPageSize())                                                                          // 몇 개를 가져올건지
                 .fetch();                                                                                               // 쿼리를 실행하고 결과를 가져와라

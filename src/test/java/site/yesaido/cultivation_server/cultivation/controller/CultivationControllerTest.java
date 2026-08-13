@@ -15,6 +15,7 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.Culti
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 
@@ -85,6 +86,7 @@ class CultivationControllerTest {
                 1L,
                 CultivationStatus.CREATED,
                 CultivationMode.GROWTH,
+                MemberRole.MEMBER,
                 LocalDateTime.now(),
                 null,
                 LocalDateTime.now(),
