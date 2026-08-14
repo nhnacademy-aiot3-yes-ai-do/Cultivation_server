@@ -36,8 +36,8 @@ public interface CultivationSensorRepository extends JpaRepository<CultivationSe
     @Query("""
               SELECT DISTINCT cultivationSensor
               FROM CultivationSensor cultivationSensor
-              JOIN FETCH cultivationSensor.cultivationSensorTypes cultivationSensorType
-              JOIN FETCH cultivationSensorType.sensorType
+              LEFT JOIN FETCH cultivationSensor.cultivationSensorTypes cultivationSensorType
+              LEFT JOIN FETCH cultivationSensorType.sensorType
               WHERE cultivationSensor.isDeleted = false
                 AND cultivationSensor.cultivationId IN (
                     SELECT cultivation.id
