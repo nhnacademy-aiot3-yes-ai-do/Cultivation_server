@@ -1,9 +1,13 @@
 package site.yesaido.cultivation_server.sensor.repository;
 
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,4 +31,21 @@ public interface CultivationSensorRepository extends JpaRepository<CultivationSe
             "cultivationSensorTypes.sensorType"
     })
     List<CultivationSensor> findAllByCultivationIdAndIsDeletedFalseOrderByCreatedAtAsc(long cultivationId);
+
+    // 활성 재배의 삭제되지 않은 센서와 측정 채널을 snapshot으로 조회합니다.
+    @Query("""
+              SELECT DISTINCT cultivationSensor
+              FROM CultivationSensor cultivationSensor
+              JOIN FETCH cultivationSensor.cultivationSensorTypes cultivationSensorType
+              JOIN FETCH cultivationSensorType.sensorType
+              WHERE cultivationSensor.isDeleted = false
+                AND cultivationSensor.cultivationId IN (
+                    SELECT cultivation.id
+                    FROM Cultivation cultivation
+                    WHERE cultivation.cultivationStatus IN :activeStatuses
+                )
+              ORDER BY cultivationSensor.cultivationId ASC,
+                       cultivationSensor.deviceEui ASC
+              """)
+    List<CultivationSensor> findAllForDataGeneratorSnapshot(@Param("activeStatuses") Collection<CultivationStatus> activeStatuses);
 }
