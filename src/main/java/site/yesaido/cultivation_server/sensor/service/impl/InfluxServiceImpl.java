@@ -1,7 +1,9 @@
 package site.yesaido.cultivation_server.sensor.service.impl;
 
 import com.influxdb.client.InfluxDBClient;
+import com.influxdb.exceptions.InfluxException;
 import com.influxdb.query.FluxRecord;
+import com.influxdb.query.FluxTable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.NumberUtils;
@@ -37,8 +39,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> group(columns: [\"sensorType\", \"unit\", \"deviceEui\"])"
                 + " |> last()";
 
-        return influxDBClient.getQueryApi()
-                .query(query, properties.getOrg())
+        return queryTablesSafely(query)
                 .stream()
                 .flatMap(table -> table.getRecords().stream())
                 .map(this::toLatestSensorValue)
@@ -60,8 +61,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> group(columns: [\"sensorType\", \"unit\"])"
                 + " |> mean(column: \"_value\")";
 
-        return influxDBClient.getQueryApi()
-                .query(query, properties.getOrg())
+        return queryTablesSafely(query)
                 .stream()
                 .flatMap(table -> table.getRecords().stream())
                 .map(this::toSensorTypeAverage)
@@ -91,8 +91,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
                 + " |> sort(columns: [\"_time\"])";
 
-        List<FluxRecord> records = influxDBClient.getQueryApi()
-                .query(query, properties.getOrg())
+        List<FluxRecord> records = queryTablesSafely(query)
                 .stream()
                 .flatMap(table -> table.getRecords().stream())
                 .toList();
@@ -191,5 +190,16 @@ public class InfluxServiceImpl implements InfluxService {
 
     private String escape(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private List<FluxTable> queryTablesSafely(String query) {
+        try {
+            return influxDBClient.getQueryApi().query(query, properties.getOrg());
+        } catch (InfluxException e) {
+            if (e.getMessage() != null && e.getMessage().contains("FluxTable definition was not found")) {
+                return List.of();
+            }
+            throw e;
+        }
     }
 }
