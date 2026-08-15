@@ -7,7 +7,6 @@ import com.influxdb.query.FluxTable;
 import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
-import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
 import java.math.BigDecimal;
@@ -46,7 +45,7 @@ class InfluxLatestQueryTest {
         ));
 
         InfluxServiceImpl service = new InfluxServiceImpl(
-                client, properties, new SensorValuePointMapper()
+                client, properties
         );
 
         List<LatestSensorValueResponse> result = service.findLatestByCultivationId(42L);

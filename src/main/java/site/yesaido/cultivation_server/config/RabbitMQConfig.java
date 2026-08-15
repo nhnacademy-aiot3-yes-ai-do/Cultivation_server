@@ -95,21 +95,21 @@ public class RabbitMQConfig {
                 .with(THRESHOLD_INFO_BINDING_KEY_PATTERN);
     }
 
-    @Bean
-    public Queue sensorSensorValueQueue() {
-        return QueueBuilder
-                .durable(SENSOR_SENSOR_VALUE_QUEUE)
-                .withArgument(DLX_KEY, DLX_NAME)
-                .build();
-    }
+//    @Bean
+//    public Queue sensorSensorValueQueue() {
+//        return QueueBuilder
+//                .durable(SENSOR_SENSOR_VALUE_QUEUE)
+//                .withArgument(DLX_KEY, DLX_NAME)
+//                .build();
+//    }
 
-    @Bean
-    public Binding sensorSensorValueBinding() {
-        return BindingBuilder
-                .bind(sensorSensorValueQueue())   // 수정됨
-                .to(sensorExchange())
-                .with(SENSOR_SENSOR_VALUE_QUEUE);
-    }
+//    @Bean
+//    public Binding sensorSensorValueBinding() {
+//        return BindingBuilder
+//                .bind(sensorSensorValueQueue())   // 수정됨
+//                .to(sensorExchange())
+//                .with(SENSOR_SENSOR_VALUE_QUEUE);
+//    }
 
     @Bean
     public Queue environmentComplianceRequestQueue() {

@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.NumberUtils;
 import site.yesaido.cultivation_server.config.InfluxProperties;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorValueEvent;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
@@ -26,16 +25,6 @@ public class InfluxServiceImpl implements InfluxService {
 
     private final InfluxDBClient influxDBClient;
     private final InfluxProperties properties;
-    private final SensorValuePointMapper pointMapper;
-
-    @Override
-    public void save(SensorValueEvent event) {
-        influxDBClient.getWriteApiBlocking().writePoint(
-                properties.getOrg(),
-                properties.getBucket(),
-                pointMapper.toPoint(event)
-        );
-    }
 
     @Override
     public List<LatestSensorValueResponse> findLatestByCultivationId(long cultivationId) {
