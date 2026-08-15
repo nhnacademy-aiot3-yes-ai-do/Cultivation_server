@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
-import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
 import java.time.Instant;
@@ -43,7 +42,7 @@ class InfluxTrendQueryTest {
         ));
 
         InfluxServiceImpl service = new InfluxServiceImpl(
-                client, properties, new SensorValuePointMapper()
+                client, properties
         );
 
         SensorTrendPointListResponse result = service.findTrend(

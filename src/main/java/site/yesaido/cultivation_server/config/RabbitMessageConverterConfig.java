@@ -6,7 +6,10 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.EnvironmentComplianceResponse;
-import site.yesaido.cultivation_server.rabbitmq.event.*;
+import site.yesaido.cultivation_server.rabbitmq.event.EnvironmentComplianceRequest;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoDeleteEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,7 +26,7 @@ public class RabbitMessageConverterConfig {
         idClassMapping.put("threshold.crud", ThresholdInfoEvent.class);
         idClassMapping.put("sensor.upsert", SensorInfoUpsertEvent.class);
         idClassMapping.put("sensor.delete", SensorInfoDeleteEvent.class);
-        idClassMapping.put("sensorValueEvent", SensorValueEvent.class);
+//        idClassMapping.put("sensorValueEvent", SensorValueEvent.class);
         idClassMapping.put("environmentComplianceRequest", EnvironmentComplianceRequest.class);
         idClassMapping.put("environmentComplianceResponse", EnvironmentComplianceResponse.class);
         classMapper.setIdClassMapping(idClassMapping);
