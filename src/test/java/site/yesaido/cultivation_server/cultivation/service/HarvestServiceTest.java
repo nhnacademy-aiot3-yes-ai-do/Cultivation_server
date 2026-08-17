@@ -254,8 +254,6 @@ class HarvestServiceTest {
         Long cultivationId = 100L;
         ProductScoreUpdateRequest request = new ProductScoreUpdateRequest(new BigDecimal("95"));
 
-        Cultivation cultivation = Cultivation.builder().userId(userId).name("버섯 농장").build();
-
         when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
         when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.empty());
 
