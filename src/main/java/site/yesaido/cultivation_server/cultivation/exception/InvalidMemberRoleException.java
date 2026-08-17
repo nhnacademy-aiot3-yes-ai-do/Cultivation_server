@@ -1,6 +1,6 @@
 package site.yesaido.cultivation_server.cultivation.exception;
 
-import site.yesaido.cultivation_server.exception.client.BadRequestException;
+import site.yesaido.common.exception.client.BadRequestException;
 
 public class InvalidMemberRoleException extends BadRequestException {
     public InvalidMemberRoleException() {

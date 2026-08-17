@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.request.HarvestCreateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.request.ProductScoreUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.HarvestCreateResponse;
@@ -19,6 +20,7 @@ import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.HarvestServiceImpl;
+import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,6 +38,12 @@ class HarvestServiceTest {
 
     @Mock
     private CultivationRepository cultivationRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private CultivationMemberService cultivationMemberService;
 
     @InjectMocks
     private HarvestServiceImpl harvestService;
@@ -63,6 +71,7 @@ class HarvestServiceTest {
         assertThat(response.productScore()).isNull();
         assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.FINISHED);
         verify(harvestRepository, times(1)).save(any(Harvest.class));
+        verify(eventPublisher).publishEvent(any(HarvestCompletedEvent.class));
     }
 
     @Test
@@ -93,6 +102,8 @@ class HarvestServiceTest {
                 .build();
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        doThrow(new CultivationAccessDeniedException(cultivationId))
+                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, otherUserId);
 
         assertThatThrownBy(() -> harvestService.createHarvest(cultivationId, otherUserId, request))
                 .isInstanceOf(CultivationAccessDeniedException.class);
@@ -212,7 +223,7 @@ class HarvestServiceTest {
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
         when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.of(harvest));
 
         ProductScoreUpdateResponse response = harvestService.updateProductScore(cultivationId, userId, request);
@@ -231,7 +242,9 @@ class HarvestServiceTest {
 
         Cultivation cultivation = Cultivation.builder().userId(ownerId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
+        doThrow(new CultivationAccessDeniedException(cultivationId))
+                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, otherUserId);
 
         assertThatThrownBy(() -> harvestService.updateProductScore(cultivationId, otherUserId, request))
                 .isInstanceOf(CultivationAccessDeniedException.class);
@@ -246,7 +259,7 @@ class HarvestServiceTest {
 
         Cultivation cultivation = Cultivation.builder().userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
         when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> harvestService.updateProductScore(cultivationId, userId, request))

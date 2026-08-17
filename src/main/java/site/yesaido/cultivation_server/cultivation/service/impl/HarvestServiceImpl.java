@@ -1,6 +1,7 @@
 package site.yesaido.cultivation_server.cultivation.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.request.HarvestCreateRequest;
@@ -15,10 +16,14 @@ import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRepository;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.HarvestService;
+import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
+import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedPayload;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +31,8 @@ import java.time.LocalDateTime;
 public class HarvestServiceImpl implements HarvestService {
     private final HarvestRepository harvestRepository;
     private final CultivationRepository cultivationRepository;
+    private final CultivationMemberService cultivationMemberService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -33,9 +40,7 @@ public class HarvestServiceImpl implements HarvestService {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        if (!cultivation.getUserId().equals(userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
         if (cultivation.getCultivationStatus() == CultivationStatus.FINISHED) {
             throw new CultivationAlreadyFinishedException(cultivationId);
         }
@@ -45,11 +50,14 @@ public class HarvestServiceImpl implements HarvestService {
         Harvest harvest = Harvest.builder()
                 .harvestWeight(harvestCreateRequest.harvestWeight())
                 .memo(harvestCreateRequest.memo())
-                .harvestedAt(LocalDateTime.now())
+                .harvestedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .cultivation(cultivation)
                 .build();
         harvestRepository.save(harvest);
         cultivation.finish();
+
+        HarvestCompletedPayload payload = new HarvestCompletedPayload(cultivation.getName(), harvest.getHarvestWeight());
+        eventPublisher.publishEvent(new HarvestCompletedEvent(cultivationId, payload));
 
         return new HarvestCreateResponse(
                 harvest.getId(),
@@ -86,12 +94,12 @@ public class HarvestServiceImpl implements HarvestService {
     @Override
     @Transactional
     public ProductScoreUpdateResponse updateProductScore(Long cultivationId, Long userId, ProductScoreUpdateRequest request) {
-        Cultivation cultivation = cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        if (!cultivation.getUserId().equals(userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
+        if (!cultivationRepository.existsById(cultivationId)) {
+            throw new CultivationNotFoundException(cultivationId);
         }
+
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
 
         Harvest harvest = harvestRepository.findByCultivationId(cultivationId)
                 .orElseThrow(() -> new HarvestNotFoundException(cultivationId));

@@ -7,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Getter
@@ -45,6 +46,8 @@ public class Cultivation {
 
     private LocalDateTime finishedAt;
 
+    private LocalDateTime deletedAt;
+
     @Column(nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -59,7 +62,12 @@ public class Cultivation {
 
     public void finish() {
         this.cultivationStatus = CultivationStatus.FINISHED;
-        this.finishedAt = LocalDateTime.now();
+        this.finishedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+    }
+
+    public void delete() {
+        this.cultivationStatus = CultivationStatus.DELETED;
+        this.deletedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
     }
 
     // 소유권 이전

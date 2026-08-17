@@ -51,9 +51,17 @@ public class CultivationController {
 
     // 이력 조회
     @GetMapping("/history")
-    public ResponseEntity<Page<CultivationHistoryResponse>> getHistory(@RequestHeader("X-User-Id") Long userId,
-                                                                       @PageableDefault(size = 20) Pageable pageable) {
+    public ResponseEntity<CultivationHistoryPageResponse> getHistory(@RequestHeader("X-User-Id") Long userId,
+                                                                     @PageableDefault(size = 20) Pageable pageable) {
         Page<CultivationHistoryResponse> response = cultivationService.getHistory(userId, pageable);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.ok(CultivationHistoryPageResponse.from(response));
+    }
+
+    // 재배 삭제
+    @DeleteMapping("/{cultivation-id}")
+    public ResponseEntity<Void> deleteCultivation(@RequestHeader("X-User-Id") Long userId,
+                                                  @PathVariable("cultivation-id") Long cultivationId) {
+        cultivationService.delete(cultivationId, userId);
+        return ResponseEntity.noContent().build();
     }
 }

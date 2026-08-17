@@ -17,12 +17,13 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.Memb
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
-import site.yesaido.cultivation_server.cultivation.repository.mushroomreference.MushroomReferenceRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
+import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -55,7 +56,7 @@ public class CultivationServiceImpl implements CultivationService {
                 .name(request.name())
                 .userId(userId)
                 .mushroomReference(mushroomReference)
-                .startedAt(LocalDateTime.now())
+                .startedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .build();
         cultivationRepository.save(cultivation);
 
@@ -100,11 +101,11 @@ public class CultivationServiceImpl implements CultivationService {
     public CultivationDetailResponse getCultivation(Long userId, Long cultivationId) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-        if (!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
 
-        return toDetail(cultivation);
+        CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
+                .orElseThrow(() -> new CultivationAccessDeniedException(cultivationId));
+
+        return toDetail(cultivation, member.getRole());
     }
 
     @Override
@@ -113,9 +114,7 @@ public class CultivationServiceImpl implements CultivationService {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        if (!cultivation.getUserId().equals(userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
 
         if (cultivation.getCultivationStatus() == CultivationStatus.FINISHED) {
             throw new CultivationAlreadyFinishedException(cultivationId);
@@ -138,6 +137,20 @@ public class CultivationServiceImpl implements CultivationService {
         return page;
     }
 
+    @Override
+    @Transactional
+    public void delete(Long cultivationId, Long userId) {
+        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
+
+        if (cultivation.getCultivationStatus() == CultivationStatus.DELETED) {
+            throw new CultivationAlreadyDeletedException(cultivationId);
+        }
+        cultivation.delete();
+    }
+
     // Helper Method
     private CultivationSummaryResponse toSummary(Cultivation cultivation, int memberCount, String ownerNickname) {
         return new CultivationSummaryResponse(
@@ -151,13 +164,14 @@ public class CultivationServiceImpl implements CultivationService {
                 cultivation.getCreatedAt());
     }
 
-    private CultivationDetailResponse toDetail(Cultivation cultivation) {
+    private CultivationDetailResponse toDetail(Cultivation cultivation, MemberRole myRole) {
         return new CultivationDetailResponse(
                 cultivation.getId(),
                 cultivation.getName(),
                 cultivation.getMushroomReference().getId(),
                 cultivation.getCultivationStatus(),
                 cultivation.getMode(),
+                myRole,
                 cultivation.getStartedAt(),
                 cultivation.getFinishedAt(),
                 cultivation.getCreatedAt(),

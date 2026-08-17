@@ -7,6 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
@@ -21,11 +22,13 @@ import site.yesaido.cultivation_server.cultivation.exception.InvalidMemberRoleEx
 import site.yesaido.cultivation_server.cultivation.exception.InvalidOwnershipTransferException;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationMemberServiceImpl;
+import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedEvent;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
@@ -33,6 +36,9 @@ import static org.mockito.Mockito.*;
 class CultivationMemberServiceTest {
     @Mock
     private CultivationMemberRepository cultivationMemberRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
     private UserClient userClient;
@@ -74,19 +80,27 @@ class CultivationMemberServiceTest {
         Long requesterId = 100L;
         MemberAddRequest request = new MemberAddRequest(200L, MemberRole.MEMBER);
 
-        Cultivation cultivation = Cultivation.builder().id(cultivationId).build();
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).name("테스트 경작").build();
         CultivationMember owner = CultivationMember.builder()
                 .userId(requesterId)
                 .role(MemberRole.OWNER)
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId,requesterId)).thenReturn(Optional.of(owner));
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, requesterId)).thenReturn(Optional.of(owner));
         when(cultivationMemberRepository.existsByCultivationIdAndUserId(cultivationId, request.userId())).thenReturn(false);
 
         cultivationMemberService.addMember(cultivationId, requesterId, request);
 
         verify(cultivationMemberRepository, times(1)).save(any(CultivationMember.class));
+
+        ArgumentCaptor<MemberAddedEvent> captor = ArgumentCaptor.forClass(MemberAddedEvent.class);
+        verify(eventPublisher, times(1)).publishEvent(captor.capture());
+
+        MemberAddedEvent event = captor.getValue();
+        assertThat(event.addedUserId()).isEqualTo(200L);
+        assertThat(event.payload().cultivationId()).isEqualTo(cultivationId);
+        assertThat(event.payload().role()).isEqualTo(MemberRole.MEMBER);
     }
 
     @Test
@@ -247,5 +261,92 @@ class CultivationMemberServiceTest {
         assertThat(newOwner.getRole()).isEqualTo(MemberRole.OWNER);
 
         assertThat(cultivation.getUserId()).isEqualTo(newUserId);
+    }
+
+    @Test
+    @DisplayName("매니저 권한 검증 성공 - MANAGER")
+    void verifyManagerAccessSuccessForManager() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember manager = CultivationMember.builder().userId(userId).role(MemberRole.MANAGER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(manager));
+
+        assertThatCode(() -> cultivationMemberService.verifyManagerAccess(cultivationId, userId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("매니저 권한 검증 성공 - OWNER")
+    void verifyManagerAccessSuccessForOwner() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember owner = CultivationMember.builder().userId(userId).role(MemberRole.OWNER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(owner));
+
+        assertThatCode(() -> cultivationMemberService.verifyManagerAccess(cultivationId, userId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("매니저 권한 검증 실패 - MEMBER면 차단됨")
+    void verifyManagerAccessFailForMember() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember member = CultivationMember.builder().userId(userId).role(MemberRole.MEMBER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> cultivationMemberService.verifyManagerAccess(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("Owner 권한 검증 성공")
+    void verifyOwnerAccessSuccess() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember owner = CultivationMember.builder().userId(userId).role(MemberRole.OWNER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(owner));
+
+        assertThatCode(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Owner 권한 검증 실패 - MANAGER면 차단됨")
+    void verifyOwnerAccessFailForManager() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember manager = CultivationMember.builder().userId(userId).role(MemberRole.MANAGER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(manager));
+
+        assertThatThrownBy(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("Owner 권한 검증 실패 - MEMBER면 차단됨")
+    void verifyOwnerAccessFailForMember() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+        CultivationMember member = CultivationMember.builder().userId(userId).role(MemberRole.MEMBER).build();
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("Owner 권한 검증 실패 - 소속되지 않은 경우")
+    void verifyOwnerAccessFailNotMember() {
+        Long cultivationId = 1L;
+        Long userId = 100L;
+
+        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId))
+                .isInstanceOf(CultivationMemberNotFoundException.class);
     }
 }
