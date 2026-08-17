@@ -12,7 +12,7 @@ public record DataGeneratorSnapshotResponse(
 ) {
 
     public DataGeneratorSnapshotResponse {
-        snapshotAt = Objects.requireNonNull(snapshotAt, "snapshotAt은 null일 수 없습니다.");
+        Objects.requireNonNull(snapshotAt, "snapshotAt은 null일 수 없습니다.");
 
         sensors = List.copyOf(Objects.requireNonNull(sensors, "sensors는 null일 수 없습니다."));
 

@@ -28,14 +28,14 @@ public class InfluxServiceImpl implements InfluxService {
     private final InfluxDBClient influxDBClient;
     private final InfluxProperties properties;
 
+    private static final String FIELD_SENSOR_TYPE = "sensorType";
+    private static final String FIELD_CULTIVATION_ID = "cultivationId";
+    private static final String FIELD_UNIT = "unit";
+
     @Override
     public List<LatestSensorValueResponse> findLatestByCultivationId(long cultivationId) {
 
-        String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
-                + " |> range(start: 0)"
-                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
-                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
-                + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
+        String query = baseQuery(cultivationId, " |> range(start: 0)")
                 + " |> group(columns: [\"sensorType\", \"unit\", \"deviceEui\"])"
                 + " |> last()";
 
@@ -53,11 +53,7 @@ public class InfluxServiceImpl implements InfluxService {
     @Override
     public List<SensorTypeAverageResponse> findAverageByCultivationIdForLast24Hours(long cultivationId) {
 
-        String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
-                + " |> range(start: -24h)"
-                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
-                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
-                + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
+        String query = baseQuery(cultivationId, " |> range(start: -24h)")
                 + " |> group(columns: [\"sensorType\", \"unit\"])"
                 + " |> mean(column: \"_value\")";
 
@@ -81,11 +77,7 @@ public class InfluxServiceImpl implements InfluxService {
         Objects.requireNonNull(deviceEui, "deviceEui must not be null");
         Objects.requireNonNull(sensorType, "sensorType must not be null");
 
-        String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
-                + " |> range(start: -24h)"
-                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
-                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
-                + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")"
+        String query = baseQuery(cultivationId, " |> range(start: -24h)")
                 + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
                 + " |> filter(fn: (r) => r.sensorType == \"" + escape(sensorType) + "\")"
                 + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
@@ -107,13 +99,13 @@ public class InfluxServiceImpl implements InfluxService {
 
         String sensorTypeFromDB = records.stream()
                 .map(FluxRecord::getValues)
-                .map(values -> stringValue(values, "sensorType"))
+                .map(values -> stringValue(values, FIELD_SENSOR_TYPE))
                 .filter(Objects::nonNull)
                 .findFirst().orElse(null);
 
         String unit = records.stream()
                 .map(FluxRecord::getValues)
-                .map(values -> stringValue(values, "unit"))
+                .map(values -> stringValue(values, FIELD_UNIT))
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
@@ -133,10 +125,10 @@ public class InfluxServiceImpl implements InfluxService {
         );
     }
 
-    private long toCultivationId(List<FluxRecord>  records) {
+    private long toCultivationId(List<FluxRecord> records) {
         String cultivationIdFromInfluxDB = records.stream()
                 .map(FluxRecord::getValues)
-                .map(vaules -> stringValue(vaules, "cultivationId"))
+                .map(vaules -> stringValue(vaules, FIELD_CULTIVATION_ID))
                 .filter(Objects::nonNull).findFirst().orElse(null);
 
         return Long.parseLong(Objects.requireNonNull(cultivationIdFromInfluxDB));
@@ -150,9 +142,9 @@ public class InfluxServiceImpl implements InfluxService {
 
         Map<String, Object> values = fluxRecord.getValues();
         return new SensorTypeAverageResponse(
-                longValue(values, "cultivationId"),
-                stringValue(values, "sensorType"),
-                stringValue(values, "unit"),
+                longValue(values, FIELD_CULTIVATION_ID),
+                stringValue(values, FIELD_SENSOR_TYPE),
+                stringValue(values, FIELD_UNIT),
                 number.doubleValue()
         );
     }
@@ -165,9 +157,9 @@ public class InfluxServiceImpl implements InfluxService {
         }
 
         return new LatestSensorValueResponse(
-                longValue(values, "cultivationId"),
-                stringValue(values, "sensorType"),
-                stringValue(values, "unit"),
+                longValue(values, FIELD_CULTIVATION_ID),
+                stringValue(values, FIELD_SENSOR_TYPE),
+                stringValue(values, FIELD_UNIT),
                 NumberUtils.convertNumberToTargetClass(number, BigDecimal.class),
                 fluxRecord.getTime(),
                 stringValue(values, "deviceEui"),
@@ -201,5 +193,13 @@ public class InfluxServiceImpl implements InfluxService {
             }
             throw e;
         }
+    }
+
+    private String baseQuery(long cultivationId, String rangeClause) {
+        return "from(bucket: \"" + escape(properties.getBucket()) + "\")"
+                + rangeClause
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
+                + " |> filter(fn: (r) => r.cultivationId == \"" + cultivationId + "\")";
     }
 }

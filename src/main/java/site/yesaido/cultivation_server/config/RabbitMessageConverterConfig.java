@@ -26,7 +26,6 @@ public class RabbitMessageConverterConfig {
         idClassMapping.put("threshold.crud", ThresholdInfoEvent.class);
         idClassMapping.put("sensor.upsert", SensorInfoUpsertEvent.class);
         idClassMapping.put("sensor.delete", SensorInfoDeleteEvent.class);
-//        idClassMapping.put("sensorValueEvent", SensorValueEvent.class);
         idClassMapping.put("environmentComplianceRequest", EnvironmentComplianceRequest.class);
         idClassMapping.put("environmentComplianceResponse", EnvironmentComplianceResponse.class);
         classMapper.setIdClassMapping(idClassMapping);

@@ -1,6 +1,5 @@
 package site.yesaido.cultivation_server.config;
 
-
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 import com.influxdb.client.InfluxDBClientOptions;
@@ -8,7 +7,6 @@ import okhttp3.OkHttpClient;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 
 @Configuration
 @EnableConfigurationProperties(InfluxProperties.class)
@@ -36,11 +34,6 @@ public class InfluxConfig {
                 .build();
 
         return InfluxDBClientFactory.create(options);
-    }
-
-    @Bean
-    public SensorValuePointMapper sensorValuePointMapper() {
-        return new SensorValuePointMapper();
     }
 
     private String required(String value, String property) {
