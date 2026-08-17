@@ -235,12 +235,9 @@ class HarvestServiceTest {
     @Test
     @DisplayName("상품 점수 업데이트 실패 - 재배 소유자가 아닌 경우")
     void updateProductScoreFailAccessDenied() {
-        Long ownerId = 1L;
         Long otherUserId = 2L;
         Long cultivationId = 100L;
         ProductScoreUpdateRequest request = new ProductScoreUpdateRequest(new BigDecimal("95"));
-
-        Cultivation cultivation = Cultivation.builder().userId(ownerId).name("버섯 농장").build();
 
         when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
         doThrow(new CultivationAccessDeniedException(cultivationId))

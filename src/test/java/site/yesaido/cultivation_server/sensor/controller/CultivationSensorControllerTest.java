@@ -10,6 +10,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
 import java.math.BigDecimal;
@@ -19,8 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CultivationSensorController.class)
@@ -139,6 +139,26 @@ class CultivationSensorControllerTest {
         then(cultivationSensorFacade).shouldHaveNoInteractions();
     }
 
+    // 목록 조회 성공
+    @Test
+    @DisplayName("재배지 센서 목록 조회 성공 시 200 OK와 결과를 반환한다")
+    void getAllCultivationSensorSuccess() throws Exception {
+        long userId = 1L;
+        long cultivationId = 10L;
 
+        CultivationSensorListResponse response = new CultivationSensorListResponse(List.of(), List.of());
+
+        given(cultivationSensorFacade.findAll(userId, cultivationId)).willReturn(response);
+
+        mockMvc.perform(get(
+                        "/api/cultivations/{cultivation-id}/sensors",
+                        cultivationId
+                )
+                        .header("X-User-Id", userId))
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(response)));
+
+        then(cultivationSensorFacade).should().findAll(userId, cultivationId);
+    }
 
 }

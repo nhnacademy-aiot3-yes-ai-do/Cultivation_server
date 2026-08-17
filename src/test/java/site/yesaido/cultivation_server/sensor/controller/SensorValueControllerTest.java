@@ -1,0 +1,109 @@
+package site.yesaido.cultivation_server.sensor.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
+import site.yesaido.cultivation_server.sensor.service.InfluxService;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(SensorValueController.class)
+class SensorValueControllerTest {
+
+    private static final Long CULTIVATION_ID = 10L;
+    private static final Long USER_ID = 1L;
+
+    @Autowired
+    MockMvc mockMvc;
+
+    @Autowired
+    ObjectMapper objectMapper;
+
+    @MockitoBean
+    InfluxService influxService;
+
+    @MockitoBean
+    CultivationMemberService cultivationMemberService;
+
+    @Test
+    @DisplayName("최근 센서값 조회 성공 시 200 OK와 결과를 반환한다")
+    void getLatestSuccess() throws Exception {
+        List<LatestSensorValueResponse> response = List.of(new LatestSensorValueResponse(
+                CULTIVATION_ID, "TEMPERATURE", "C", new BigDecimal("22.5"), Instant.now(),
+                "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반"
+        ));
+        given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willReturn(response);
+
+        mockMvc.perform(get("/api/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(response)));
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
+        then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
+    }
+
+    @Test
+    @DisplayName("재배 멤버가 아니면 최근 센서값 조회 없이 403을 반환한다")
+    void getLatestFailsWhenNotMember() throws Exception {
+        willThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
+                .given(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
+
+        mockMvc.perform(get("/api/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isForbidden());
+
+        then(influxService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("센서 트렌드 조회 성공 시 200 OK와 결과를 반환한다")
+    void getTrendSuccess() throws Exception {
+        String deviceEui = "EUI-001";
+        String sensorType = "TEMPERATURE";
+        SensorTrendPointListResponse response = new SensorTrendPointListResponse(
+                CULTIVATION_ID, deviceEui, sensorType, "C",
+                List.of(new SensorTrendPointResponse(Instant.now(), 22.5))
+        );
+        given(influxService.findTrend(CULTIVATION_ID, deviceEui, sensorType)).willReturn(response);
+
+        mockMvc.perform(get("/api/cultivations/{cultivation-id}/sensor-values/trend", CULTIVATION_ID)
+                        .param("device-eui", deviceEui)
+                        .param("sensor-type", sensorType)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(response)));
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
+        then(influxService).should().findTrend(CULTIVATION_ID, deviceEui, sensorType);
+    }
+
+    @Test
+    @DisplayName("device-eui 또는 sensor-type 파라미터가 없으면 400 Bad Request를 반환한다")
+    void getTrendFailsWhenRequiredParamMissing() throws Exception {
+        mockMvc.perform(get("/api/cultivations/{cultivation-id}/sensor-values/trend", CULTIVATION_ID)
+                        .param("device-eui", "EUI-001")
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isBadRequest());
+
+        then(influxService).shouldHaveNoInteractions();
+    }
+}
