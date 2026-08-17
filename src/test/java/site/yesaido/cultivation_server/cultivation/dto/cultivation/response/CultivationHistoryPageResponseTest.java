@@ -24,7 +24,7 @@ class CultivationHistoryPageResponseTest {
         assertThat(response.content()).containsExactly(content);
         assertThat(response.totalPages()).isEqualTo(1);
         assertThat(response.totalElements()).isEqualTo(1L);
-        assertThat(response.number()).isEqualTo(0);
+        assertThat(response.number()).isZero();
         assertThat(response.size()).isEqualTo(20);
     }
 }
