@@ -116,7 +116,7 @@ public class InfluxServiceImpl implements InfluxService {
                     if (!(rawValue instanceof Number number)) {
                         throw new IllegalStateException("Influx trend value is not numeric: " + rawValue);
                     }
-                    return new SensorTrendPointResponse(fluxRecord.getTime(), number.doubleValue());
+                    return new SensorTrendPointResponse(fluxRecord.getTime(), NumberUtils.convertNumberToTargetClass(number, BigDecimal.class));
                 })
                 .toList();
 
