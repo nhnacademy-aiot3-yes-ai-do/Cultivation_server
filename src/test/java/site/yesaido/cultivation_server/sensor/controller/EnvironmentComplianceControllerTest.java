@@ -48,7 +48,7 @@ class EnvironmentComplianceControllerTest {
                 BigDecimal.valueOf(90), BigDecimal.valueOf(85), BigDecimal.valueOf(95), BigDecimal.valueOf(80));
         given(environmentComplianceService.getCompliance(CULTIVATION_ID)).willReturn(response);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/environment-compliance", CULTIVATION_ID)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
@@ -63,7 +63,7 @@ class EnvironmentComplianceControllerTest {
         willThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
                 .given(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/environment-compliance", CULTIVATION_ID)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isForbidden());
 
@@ -78,7 +78,7 @@ class EnvironmentComplianceControllerTest {
                 BigDecimal.valueOf(90), BigDecimal.valueOf(85), BigDecimal.valueOf(95), BigDecimal.valueOf(80));
         given(environmentComplianceService.getDailyCompliance(CULTIVATION_ID, date)).willReturn(response);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/environment-compliance/daily", CULTIVATION_ID)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance/daily", CULTIVATION_ID)
                         .param("date", "2026-08-01")
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
@@ -95,7 +95,7 @@ class EnvironmentComplianceControllerTest {
                 BigDecimal.valueOf(90), BigDecimal.valueOf(85), BigDecimal.valueOf(95), BigDecimal.valueOf(80));
         given(environmentComplianceService.getDailyCompliance(CULTIVATION_ID, today)).willReturn(response);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/environment-compliance/daily", CULTIVATION_ID)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance/daily", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk());
 
@@ -111,7 +111,7 @@ class EnvironmentComplianceControllerTest {
                 BigDecimal.valueOf(90), BigDecimal.valueOf(85), BigDecimal.valueOf(95), BigDecimal.valueOf(80));
         given(environmentComplianceService.getComplianceForPeriod(CULTIVATION_ID, startDate, endDate)).willReturn(response);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/environment-compliance/period", CULTIVATION_ID)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance/period", CULTIVATION_ID)
                         .param("startDate", "2026-08-01")
                         .param("endDate", "2026-08-17")
                         .header("X-User-Id", USER_ID))

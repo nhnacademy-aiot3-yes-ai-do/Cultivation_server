@@ -8,10 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.NumberUtils;
 import site.yesaido.cultivation_server.config.InfluxProperties;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 
@@ -33,14 +30,13 @@ public class InfluxServiceImpl implements InfluxService {
     private static final String FIELD_UNIT = "unit";
 
     @Override
-    public List<LatestSensorValueResponse> findLatestByCultivationId(long cultivationId) {
+    public LatestSensorValueListResponse findLatestByCultivationId(long cultivationId) {
 
         String query = baseQuery(cultivationId, " |> range(start: 0)")
                 + " |> group(columns: [\"sensorType\", \"unit\", \"deviceEui\"])"
                 + " |> last()";
 
-        return queryTablesSafely(query)
-                .stream()
+        List<LatestSensorValueResponse> list = queryTablesSafely(query).stream()
                 .flatMap(table -> table.getRecords().stream())
                 .map(this::toLatestSensorValue)
                 .sorted(Comparator.comparing(
@@ -48,6 +44,8 @@ public class InfluxServiceImpl implements InfluxService {
                         Comparator.nullsLast(String::compareTo)
                 ))
                 .toList();
+
+        return new LatestSensorValueListResponse(list);
     }
 
     @Override
@@ -57,8 +55,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> group(columns: [\"sensorType\", \"unit\"])"
                 + " |> mean(column: \"_value\")";
 
-        return queryTablesSafely(query)
-                .stream()
+        return queryTablesSafely(query).stream()
                 .flatMap(table -> table.getRecords().stream())
                 .map(this::toSensorTypeAverage)
                 .sorted(Comparator.comparing(
@@ -83,8 +80,7 @@ public class InfluxServiceImpl implements InfluxService {
                 + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
                 + " |> sort(columns: [\"_time\"])";
 
-        List<FluxRecord> records = queryTablesSafely(query)
-                .stream()
+        List<FluxRecord> records = queryTablesSafely(query).stream()
                 .flatMap(table -> table.getRecords().stream())
                 .toList();
 

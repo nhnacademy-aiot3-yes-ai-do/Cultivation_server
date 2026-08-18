@@ -11,6 +11,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
 import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
@@ -119,11 +120,11 @@ class CultivationMemberServiceTest {
                 new UserSummaryResponse(200L, "member-nick")
         ));
 
-        List<MemberResponse> responses = cultivationMemberService.getMembers(cultivationId, requesterId);
+        MemberListResponse responses = cultivationMemberService.getMembers(cultivationId, requesterId);
 
-        assertThat(responses).hasSize(2);
-        assertThat(responses.getFirst().userId()).isEqualTo(100L);
-        assertThat(responses.getFirst().nickname()).isEqualTo("owner-nick");
+        assertThat(responses.memberResponses()).hasSize(2);
+        assertThat(responses.memberResponses().getFirst().userId()).isEqualTo(100L);
+        assertThat(responses.memberResponses().getFirst().nickname()).isEqualTo("owner-nick");
     }
 
     @Test

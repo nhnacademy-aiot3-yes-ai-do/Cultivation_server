@@ -14,7 +14,7 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 
 import java.util.List;
 
-@RequestMapping("/api/cultivations")
+@RequestMapping("/api/v1/cultivations")
 @RestController
 @RequiredArgsConstructor
 public class CultivationController {
@@ -30,8 +30,8 @@ public class CultivationController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CultivationSummaryResponse>> getCultivations(@RequestHeader("X-User-Id") Long userId) {
-        List<CultivationSummaryResponse> response = cultivationService.getCultivations(userId);
+    public ResponseEntity<CultivationSummaryListResponse> getCultivations(@RequestHeader("X-User-Id") Long userId) {
+        CultivationSummaryListResponse response = cultivationService.getCultivations(userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

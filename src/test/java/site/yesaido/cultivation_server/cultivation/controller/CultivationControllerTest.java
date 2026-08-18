@@ -53,7 +53,7 @@ class CultivationControllerTest {
 
         when(cultivationService.create(any(CultivationCreateRequest.class), eq(userId))).thenReturn(response);
 
-        mockMvc.perform(post("/api/cultivations")
+        mockMvc.perform(post("/api/v1/cultivations")
                 .header("X-User-Id", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -66,14 +66,15 @@ class CultivationControllerTest {
     void getCultivationSuccess() throws Exception {
         Long userId = 1L;
         CultivationSummaryResponse summary = new CultivationSummaryResponse(100L, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH, 1, "테스트 유저", LocalDateTime.now());
+        CultivationSummaryListResponse response = new CultivationSummaryListResponse(List.of(summary));
 
-        when(cultivationService.getCultivations(userId)).thenReturn(List.of(summary));
+        when(cultivationService.getCultivations(userId)).thenReturn(response);
 
-        mockMvc.perform(get("/api/cultivations")
+        mockMvc.perform(get("/api/v1/cultivations")
                 .header("X-User-Id", userId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].cultivationId").value(100L))
-                .andExpect(jsonPath("$[0].name").value("테스트 버섯"));
+                .andExpect(jsonPath("$.cultivationSummaryResponses[0].cultivationId").value(100L))
+                .andExpect(jsonPath("$.cultivationSummaryResponses[0].name").value("테스트 버섯"));
     }
 
     @Test
@@ -96,7 +97,7 @@ class CultivationControllerTest {
 
         when(cultivationService.getCultivation(userId, cultivationId)).thenReturn(detail);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}", cultivationId)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
                 .header("X-User-Id", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cultivationId").value(cultivationId))
@@ -116,7 +117,7 @@ class CultivationControllerTest {
 
         when(cultivationService.finish(cultivationId, userId)).thenReturn(response);
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/finish", cultivationId)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/finish", cultivationId)
                 .header("X-User-Id", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cultivationId").value(cultivationId))
@@ -140,7 +141,7 @@ class CultivationControllerTest {
         Page<CultivationHistoryResponse> historyPage = new PageImpl<>(List.of(history), PageRequest.of(0, 20), 1);
         when(cultivationService.getHistory(eq(userId), any())).thenReturn(historyPage);
 
-        mockMvc.perform(get("/api/cultivations/history")
+        mockMvc.perform(get("/api/v1/cultivations/history")
                 .header("X-User-Id", userId)
                 .param("page", "0")
                 .param("size", "20"))
@@ -164,7 +165,7 @@ class CultivationControllerTest {
 
         when(cultivationService.getHistory(eq(userId), any())).thenReturn(lastPage);
 
-        mockMvc.perform(get("/api/cultivations/history")
+        mockMvc.perform(get("/api/v1/cultivations/history")
                 .header("X-User-Id", userId)
                 .param("page", String.valueOf(outOfBoundsPage))
                 .param("size", "20"))
@@ -181,7 +182,7 @@ class CultivationControllerTest {
         Long userId = 1L;
         Long cultivationId = 100L; // userId와 다른 값으로 둬서 인자 순서가 바뀌면 검증에서 걸리게 함
 
-        mockMvc.perform(delete("/api/cultivations/{cultivation-id}", cultivationId)
+        mockMvc.perform(delete("/api/v1/cultivations/{cultivation-id}", cultivationId)
                         .header("X-User-Id", userId))
                 .andExpect(status().isNoContent());
 

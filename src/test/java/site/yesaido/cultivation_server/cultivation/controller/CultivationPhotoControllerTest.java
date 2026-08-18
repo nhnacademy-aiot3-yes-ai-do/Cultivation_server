@@ -8,6 +8,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.common.storage.StorageType;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoServiceImpl;
 
@@ -42,7 +43,7 @@ class CultivationPhotoControllerTest {
 
         when(cultivationPhotoService.uploadPhoto(eq(cultivationId), eq(userId), any())).thenReturn(response);
 
-        mockMvc.perform(multipart("/api/cultivations/{cultivation-id}/photos", cultivationId)
+        mockMvc.perform(multipart("/api/v1/cultivations/{cultivation-id}/photos", cultivationId)
                         .file(file)
                         .header("X-User-Id", userId))
                 .andExpect(status().isCreated())
@@ -59,13 +60,14 @@ class CultivationPhotoControllerTest {
                 200L, "cultivation-photo/100/uuid.jpg", "http://storage.example.com/test-bucket/uuid.jpg",
                 StorageType.MINIO, LocalDateTime.now()
         );
+        PhotoUploadListResponse responseList = new PhotoUploadListResponse(List.of(response));
 
-        when(cultivationPhotoService.getPhotos(cultivationId, userId)).thenReturn(List.of(response));
+        when(cultivationPhotoService.getPhotos(cultivationId, userId)).thenReturn(responseList);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/photos", cultivationId)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/photos", cultivationId)
                         .header("X-User-Id", userId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].photoId").value(200L));
+                .andExpect(jsonPath("$.photoUploadResponses[0].photoId").value(200L));
     }
 
     @Test
@@ -75,7 +77,7 @@ class CultivationPhotoControllerTest {
         Long cultivationId = 100L;
         Long photoId = 200L;
 
-        mockMvc.perform(delete("/api/cultivations/{cultivation-id}/photos/{photo-id}", cultivationId, photoId)
+        mockMvc.perform(delete("/api/v1/cultivations/{cultivation-id}/photos/{photo-id}", cultivationId, photoId)
                         .header("X-User-Id", userId))
                 .andExpect(status().isNoContent());
     }

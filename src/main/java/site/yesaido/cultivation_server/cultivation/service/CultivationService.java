@@ -13,7 +13,7 @@ public interface CultivationService {
     CultivationCreateResponse create(CultivationCreateRequest request, Long userId);
 
     // 경작 목록 보기
-    List<CultivationSummaryResponse> getCultivations(Long userId);
+    CultivationSummaryListResponse getCultivations(Long userId);
 
     // 경작 상세 조회
     CultivationDetailResponse getCultivation(Long userId, Long cultivationId);

@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
 import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
@@ -71,21 +72,23 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
     }
 
     @Override
-    public List<MemberResponse> getMembers(Long cultivationId, Long requesterId) {
+    public MemberListResponse getMembers(Long cultivationId, Long requesterId) {
         existCultivationMember(cultivationId, requesterId);
 
         List<CultivationMember> members = cultivationMemberRepository.findAllByCultivationId(cultivationId);
         if (members.isEmpty()) {
-            return List.of();
+            return new MemberListResponse(List.of());
         }
 
         Map<Long, String> nicknameByUserId = userClient.getUsers(
                 members.stream().map(CultivationMember::getUserId).toList()
         ).stream().collect(Collectors.toMap(UserSummaryResponse::userId, UserSummaryResponse::nickname));
 
-        return members.stream()
+        List<MemberResponse> list = members.stream()
                 .map(member -> toResponse(member, nicknameByUserId.get(member.getUserId())))
                 .toList();
+
+        return new MemberListResponse(list);
     }
 
     @Override

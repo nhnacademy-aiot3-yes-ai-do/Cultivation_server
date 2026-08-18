@@ -68,7 +68,7 @@ class CultivationSensorControllerTest {
 
         // when
         mockMvc.perform(post(
-                        "/api/cultivations/{cultivation-id}/sensors",
+                        "/api/v1/cultivations/{cultivation-id}/sensors",
                         cultivationId
                 )
                 .header("X-User-Id", userId)
@@ -77,7 +77,7 @@ class CultivationSensorControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string(
                         "Location",
-                        "http://localhost/api/cultivations/10/sensors/100"
+                        "http://localhost/api/v1/cultivations/10/sensors/100"
                 ));
 
         then(cultivationSensorFacade).should().register(
@@ -98,7 +98,7 @@ class CultivationSensorControllerTest {
 
         // when
         mockMvc.perform(delete(
-                "/api/cultivations/{cultivation-id}/sensors/{sensor-id}",
+                "/api/v1/cultivations/{cultivation-id}/sensors/{sensor-id}",
                         cultivationId,
                         sensorId
                 )
@@ -128,7 +128,7 @@ class CultivationSensorControllerTest {
                 );
 
         mockMvc.perform(post(
-                "/api/cultivations/{cultivation-id}/sensors",
+                "/api/v1/cultivations/{cultivation-id}/sensors",
                 10L
                 )
                 .header("X-User-Id", 1L)
@@ -151,7 +151,7 @@ class CultivationSensorControllerTest {
         given(cultivationSensorFacade.findAll(userId, cultivationId)).willReturn(response);
 
         mockMvc.perform(get(
-                        "/api/cultivations/{cultivation-id}/sensors",
+                        "/api/v1/cultivations/{cultivation-id}/sensors",
                         cultivationId
                 )
                         .header("X-User-Id", userId))

@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 
 @RestController
-@RequestMapping("/api/cultivations/{cultivation-id}/environment-compliance")
+@RequestMapping("/api/v1/cultivations/{cultivation-id}/environment-compliance")
 @RequiredArgsConstructor
 public class EnvironmentComplianceController {
     private final EnvironmentComplianceService environmentComplianceService;

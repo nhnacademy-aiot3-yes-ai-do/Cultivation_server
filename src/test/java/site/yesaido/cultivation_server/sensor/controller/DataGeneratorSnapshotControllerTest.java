@@ -41,7 +41,7 @@ class DataGeneratorSnapshotControllerTest {
         );
         given(dataGeneratorSnapshotService.getSnapshot()).willReturn(response);
 
-        mockMvc.perform(get("/api/internal/data-generator/snapshot"))
+        mockMvc.perform(get("/api/v1/internal/data-generator/snapshot"))
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
 
