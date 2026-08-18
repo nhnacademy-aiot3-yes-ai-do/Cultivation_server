@@ -42,7 +42,7 @@ class CultivationPhotoControllerTest {
 
         when(cultivationPhotoService.uploadPhoto(eq(cultivationId), eq(userId), any())).thenReturn(response);
 
-        mockMvc.perform(multipart("/api/cultivations/{cultivation-id}/photos", cultivationId)
+        mockMvc.perform(multipart("/api/v1/cultivations/{cultivation-id}/photos", cultivationId)
                         .file(file)
                         .header("X-User-Id", userId))
                 .andExpect(status().isCreated())
@@ -62,7 +62,7 @@ class CultivationPhotoControllerTest {
 
         when(cultivationPhotoService.getPhotos(cultivationId, userId)).thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/photos", cultivationId)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/photos", cultivationId)
                         .header("X-User-Id", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].photoId").value(200L));
@@ -75,7 +75,7 @@ class CultivationPhotoControllerTest {
         Long cultivationId = 100L;
         Long photoId = 200L;
 
-        mockMvc.perform(delete("/api/cultivations/{cultivation-id}/photos/{photo-id}", cultivationId, photoId)
+        mockMvc.perform(delete("/api/v1/cultivations/{cultivation-id}/photos/{photo-id}", cultivationId, photoId)
                         .header("X-User-Id", userId))
                 .andExpect(status().isNoContent());
     }

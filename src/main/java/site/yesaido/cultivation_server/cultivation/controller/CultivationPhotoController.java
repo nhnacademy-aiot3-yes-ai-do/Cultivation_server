@@ -11,7 +11,7 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationPhotoServi
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/cultivations/{cultivation-id}/photos")
+@RequestMapping("/api/v1/cultivations/{cultivation-id}/photos")
 @RequiredArgsConstructor
 public class CultivationPhotoController {
     private final CultivationPhotoService cultivationPhotoService;

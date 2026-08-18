@@ -47,7 +47,7 @@ class HarvestControllerTest {
 
         when(harvestService.createHarvest(eq(cultivationId), eq(userId), any(HarvestCreateRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/cultivations/{cultivation-id}/harvest", cultivationId)
+        mockMvc.perform(post("/api/v1/cultivations/{cultivation-id}/harvest", cultivationId)
                         .header("X-User-Id", userId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -66,7 +66,7 @@ class HarvestControllerTest {
 
         when(harvestService.getHarvest(cultivationId, userId)).thenReturn(response);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/harvest", cultivationId)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/harvest", cultivationId)
                         .header("X-User-Id", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.harvestId").value(200L))
@@ -83,7 +83,7 @@ class HarvestControllerTest {
 
         when(harvestService.updateProductScore(eq(cultivationId), eq(userId), any(ProductScoreUpdateRequest.class))).thenReturn(response);
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/harvest/product-score", cultivationId)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/harvest/product-score", cultivationId)
                         .header("X-User-Id", userId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

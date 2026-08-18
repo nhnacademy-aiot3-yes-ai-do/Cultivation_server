@@ -10,7 +10,7 @@ import site.yesaido.cultivation_server.sensor.service.DataGeneratorSnapshotServi
 
 // Data Generator의 초기 복구용 내부 snapshot API를 제공합니다.
 @RestController
-@RequestMapping("/api/internal/data-generator")
+@RequestMapping("/api/v1/internal/data-generator")
 @RequiredArgsConstructor
 public class DataGeneratorSnapshotController {
 

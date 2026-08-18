@@ -13,7 +13,7 @@ import site.yesaido.cultivation_server.cultivation.dto.harvest.response.ProductS
 import site.yesaido.cultivation_server.cultivation.service.HarvestService;
 
 @RestController
-@RequestMapping("/api/cultivations/{cultivation-id}/harvest")
+@RequestMapping("/api/v1/cultivations/{cultivation-id}/harvest")
 @RequiredArgsConstructor
 public class HarvestController {
     private final HarvestService harvestService;

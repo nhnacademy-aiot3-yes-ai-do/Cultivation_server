@@ -53,7 +53,7 @@ class CultivationMemberControllerTest {
 
         doNothing().when(cultivationMemberService).addMember(eq(CULTIVATION_ID), eq(REQUESTER_ID), any(MemberAddRequest.class));
 
-        mockMvc.perform(post("/api/cultivations/{cultivation-id}/members", CULTIVATION_ID)
+        mockMvc.perform(post("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -70,7 +70,7 @@ class CultivationMemberControllerTest {
         doThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
                 .when(cultivationMemberService).addMember(eq(CULTIVATION_ID), eq(REQUESTER_ID), any(MemberAddRequest.class));
 
-        mockMvc.perform(post("/api/cultivations/{cultivation-id}/members", CULTIVATION_ID)
+        mockMvc.perform(post("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -89,7 +89,7 @@ class CultivationMemberControllerTest {
 
         when(cultivationMemberService.getMembers(CULTIVATION_ID, REQUESTER_ID)).thenReturn(responseList);
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/members", CULTIVATION_ID)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size()").value(2))
@@ -102,7 +102,7 @@ class CultivationMemberControllerTest {
         when(cultivationMemberService.getMembers(CULTIVATION_ID, REQUESTER_ID))
                 .thenThrow(new CultivationAccessDeniedException(CULTIVATION_ID));
 
-        mockMvc.perform(get("/api/cultivations/{cultivation-id}/members", CULTIVATION_ID)
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID))
                 .andExpect(status().isForbidden());
     }
@@ -117,7 +117,7 @@ class CultivationMemberControllerTest {
         doNothing().when(cultivationMemberService)
                 .updateMember(eq(CULTIVATION_ID), eq(REQUESTER_ID), eq(TARGET_ID), any(MemberRoleUpdateRequest.class));
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -135,7 +135,7 @@ class CultivationMemberControllerTest {
                 .when(cultivationMemberService)
                 .updateMember(eq(CULTIVATION_ID), eq(REQUESTER_ID), eq(TARGET_ID), any(MemberRoleUpdateRequest.class));
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -151,7 +151,7 @@ class CultivationMemberControllerTest {
                 .when(cultivationMemberService)
                 .updateMember(eq(CULTIVATION_ID), eq(REQUESTER_ID), eq(TARGET_ID), any(MemberRoleUpdateRequest.class));
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -167,7 +167,7 @@ class CultivationMemberControllerTest {
                 .when(cultivationMemberService)
                 .updateMember(eq(CULTIVATION_ID), eq(REQUESTER_ID), eq(TARGET_ID), any(MemberRoleUpdateRequest.class));
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -183,7 +183,7 @@ class CultivationMemberControllerTest {
 
         doNothing().when(cultivationMemberService).transferOwnership(CULTIVATION_ID, REQUESTER_ID, TARGET_ID);
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/owner", CULTIVATION_ID)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/owner", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -200,7 +200,7 @@ class CultivationMemberControllerTest {
         doThrow(new InvalidOwnershipTransferException())
                 .when(cultivationMemberService).transferOwnership(CULTIVATION_ID, REQUESTER_ID, REQUESTER_ID);
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/owner", CULTIVATION_ID)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/owner", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -215,7 +215,7 @@ class CultivationMemberControllerTest {
         doThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
                 .when(cultivationMemberService).transferOwnership(CULTIVATION_ID, REQUESTER_ID, TARGET_ID);
 
-        mockMvc.perform(put("/api/cultivations/{cultivation-id}/owner", CULTIVATION_ID)
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/owner", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -229,7 +229,7 @@ class CultivationMemberControllerTest {
     void removeMemberSuccess() throws Exception {
         doNothing().when(cultivationMemberService).removeMember(CULTIVATION_ID, REQUESTER_ID, TARGET_ID);
 
-        mockMvc.perform(delete("/api/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
+        mockMvc.perform(delete("/api/v1/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
                         .header("X-User-Id", REQUESTER_ID))
                 .andExpect(status().isNoContent());
 
@@ -242,7 +242,7 @@ class CultivationMemberControllerTest {
         doThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
                 .when(cultivationMemberService).removeMember(CULTIVATION_ID, REQUESTER_ID, TARGET_ID);
 
-        mockMvc.perform(delete("/api/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
+        mockMvc.perform(delete("/api/v1/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
                         .header("X-User-Id", REQUESTER_ID))
                 .andExpect(status().isForbidden());
     }
@@ -253,7 +253,7 @@ class CultivationMemberControllerTest {
         doThrow(new CultivationMemberNotFoundException())
                 .when(cultivationMemberService).removeMember(CULTIVATION_ID, REQUESTER_ID, TARGET_ID);
 
-        mockMvc.perform(delete("/api/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
+        mockMvc.perform(delete("/api/v1/cultivations/{cultivation-id}/members/{user-id}", CULTIVATION_ID, TARGET_ID)
                         .header("X-User-Id", REQUESTER_ID))
                 .andExpect(status().isNotFound());
     }

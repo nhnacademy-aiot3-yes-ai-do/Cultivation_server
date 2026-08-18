@@ -4,15 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 
-import java.util.List;
-
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/cultivations/{cultivation-id}/sensor-values")
+@RequestMapping("/api/v1/cultivations/{cultivation-id}/sensor-values")
 public class SensorValueController {
 
     private final InfluxService influxService;
@@ -31,9 +29,10 @@ public class SensorValueController {
     }
 
     @GetMapping
-    public ResponseEntity<List<LatestSensorValueResponse>> getLatest(@PathVariable("cultivation-id") Long cultivationId,
-                                                                     @RequestHeader("X-User-Id") Long userId) {
+    public ResponseEntity<LatestSensorValueListResponse> getLatest(@PathVariable("cultivation-id") Long cultivationId,
+                                                                   @RequestHeader("X-User-Id") Long userId) {
         cultivationMemberService.existCultivationMember(cultivationId, userId);
-        return ResponseEntity.ok(influxService.findLatestByCultivationId(cultivationId));
+        LatestSensorValueListResponse response = influxService.findLatestByCultivationId(cultivationId);
+        return ResponseEntity.ok(response);
     }
 }

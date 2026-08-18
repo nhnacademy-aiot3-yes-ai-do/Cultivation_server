@@ -14,7 +14,7 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 
 import java.util.List;
 
-@RequestMapping("/api/cultivations")
+@RequestMapping("/api/v1/cultivations")
 @RestController
 @RequiredArgsConstructor
 public class CultivationController {

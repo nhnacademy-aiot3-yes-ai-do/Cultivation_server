@@ -14,7 +14,7 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationMemberServ
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/cultivations/{cultivation-id}")
+@RequestMapping("/api/v1/cultivations/{cultivation-id}")
 @RequiredArgsConstructor
 public class CultivationMemberController {
     private final CultivationMemberService cultivationMemberService;
