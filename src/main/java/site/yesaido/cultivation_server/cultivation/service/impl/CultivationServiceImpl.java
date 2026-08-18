@@ -66,10 +66,10 @@ public class CultivationServiceImpl implements CultivationService {
     }
 
     @Override
-    public List<CultivationSummaryResponse> getCultivations(Long userId) {
+    public CultivationSummaryListResponse getCultivations(Long userId) {
         List<Cultivation> cultivations = cultivationRepository.findAllByMemberUserId(userId);
         if (cultivations.isEmpty()) {
-            return List.of();
+            return new CultivationSummaryListResponse(List.of());
         }
 
         List<Long> cultivationIds = cultivations.stream().map(Cultivation::getId).toList();
@@ -84,7 +84,7 @@ public class CultivationServiceImpl implements CultivationService {
 
         Map<Long, String> nicknameByUserId = resolveOwnerNicknames(ownerIdByCultivationId.values());
 
-        return cultivations.stream()
+        List<CultivationSummaryResponse> list = cultivations.stream()
                 .map(c -> {
                     Long ownerId = ownerIdByCultivationId.get(c.getId());
                     String ownerNickname = ownerId != null ? nicknameByUserId.get(ownerId) : null;
@@ -95,6 +95,8 @@ public class CultivationServiceImpl implements CultivationService {
                     );
                 })
                 .toList();
+
+        return new CultivationSummaryListResponse(list);
     }
 
     @Override

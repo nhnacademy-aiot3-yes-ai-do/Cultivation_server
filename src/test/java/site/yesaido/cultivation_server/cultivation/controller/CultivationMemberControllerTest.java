@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.OwnerTransferRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
@@ -86,14 +87,15 @@ class CultivationMemberControllerTest {
                 new MemberResponse(1L, REQUESTER_ID, "owner", MemberRole.OWNER, LocalDateTime.now()),
                 new MemberResponse(2L, TARGET_ID, "member", MemberRole.MEMBER, LocalDateTime.now())
         );
+        MemberListResponse response = new MemberListResponse(responseList);
 
-        when(cultivationMemberService.getMembers(CULTIVATION_ID, REQUESTER_ID)).thenReturn(responseList);
+        when(cultivationMemberService.getMembers(CULTIVATION_ID, REQUESTER_ID)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.size()").value(2))
-                .andExpect(jsonPath("$[0].role").value("OWNER"));
+                .andExpect(jsonPath("$.memberResponses.size()").value(2))
+                .andExpect(jsonPath("$.memberResponses[0].role").value("OWNER"));
     }
 
     @Test

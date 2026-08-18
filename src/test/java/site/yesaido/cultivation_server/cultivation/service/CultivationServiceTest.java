@@ -106,11 +106,11 @@ class CultivationServiceTest {
 
         when(cultivationRepository.findAllByMemberUserId(userId)).thenReturn(List.of(cultivation1, cultivation2));
 
-        List<CultivationSummaryResponse> result = service.getCultivations(userId);
+        CultivationSummaryListResponse result = service.getCultivations(userId);
 
-        assertThat(result).hasSize(2);
-        assertThat(result.getFirst().name()).isEqualTo(cultivation1.getName());
-        assertThat(result.get(1).name()).isEqualTo(cultivation2.getName());
+        assertThat(result.cultivationSummaryResponses()).hasSize(2);
+        assertThat(result.cultivationSummaryResponses().getFirst().name()).isEqualTo(cultivation1.getName());
+        assertThat(result.cultivationSummaryResponses().get(1).name()).isEqualTo(cultivation2.getName());
     }
 
     @Test

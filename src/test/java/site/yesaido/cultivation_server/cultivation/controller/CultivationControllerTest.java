@@ -66,14 +66,15 @@ class CultivationControllerTest {
     void getCultivationSuccess() throws Exception {
         Long userId = 1L;
         CultivationSummaryResponse summary = new CultivationSummaryResponse(100L, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH, 1, "테스트 유저", LocalDateTime.now());
+        CultivationSummaryListResponse response = new CultivationSummaryListResponse(List.of(summary));
 
-        when(cultivationService.getCultivations(userId)).thenReturn(List.of(summary));
+        when(cultivationService.getCultivations(userId)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/cultivations")
                 .header("X-User-Id", userId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].cultivationId").value(100L))
-                .andExpect(jsonPath("$[0].name").value("테스트 버섯"));
+                .andExpect(jsonPath("$.cultivationSummaryResponses[0].cultivationId").value(100L))
+                .andExpect(jsonPath("$.cultivationSummaryResponses[0].name").value("테스트 버섯"));
     }
 
     @Test
