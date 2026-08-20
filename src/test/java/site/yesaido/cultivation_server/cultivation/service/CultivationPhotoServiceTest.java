@@ -23,6 +23,7 @@ import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.storage.StorageType;
 import site.yesaido.common.storage.StorageUrlResolver;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationphoto.CultivationPhoto;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
@@ -208,10 +209,10 @@ class CultivationPhotoServiceTest {
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
         when(storageUrlResolver.resolve(StorageType.MINIO, photo.getObjectKey())).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
-        List<PhotoUploadResponse> response = cultivationPhotoService.getPhotos(cultivationId, userId);
+        PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
 
-        assertThat(response).hasSize(1);
-        assertThat(response.getFirst().objectKey()).isEqualTo(photo.getObjectKey());
+        assertThat(response.photoUploadResponses()).hasSize(1);
+        assertThat(response.photoUploadResponses().getFirst().objectKey()).isEqualTo(photo.getObjectKey());
     }
 
     @Test

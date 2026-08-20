@@ -18,6 +18,7 @@ import site.yesaido.common.exception.server.ServerErrorLevel;
 import site.yesaido.common.storage.ObjectKeyGenerator;
 import site.yesaido.common.storage.StorageType;
 import site.yesaido.common.storage.StorageUrlResolver;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationphoto.CultivationPhoto;
@@ -124,7 +125,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     }
 
     @Override
-    public List<PhotoUploadResponse> getPhotos(Long cultivationId, Long userId) {
+    public PhotoUploadListResponse getPhotos(Long cultivationId, Long userId) {
         cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
@@ -132,9 +133,11 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
             throw new CultivationAccessDeniedException(cultivationId);
         }
 
-        return cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId).stream()
+        List<PhotoUploadResponse> list = cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId).stream()
                 .map(this::toResponse)
                 .toList();
+
+        return new PhotoUploadListResponse(list);
     }
 
     @Override

@@ -11,7 +11,7 @@ import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
 import java.net.URI;
 
-@RequestMapping("/api/cultivations/{cultivation-id}/sensors")
+@RequestMapping("/api/v1/cultivations/{cultivation-id}/sensors")
 @RestController
 @RequiredArgsConstructor
 public class CultivationSensorController {

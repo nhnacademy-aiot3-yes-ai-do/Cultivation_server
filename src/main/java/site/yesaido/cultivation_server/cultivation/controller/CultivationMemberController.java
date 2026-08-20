@@ -8,13 +8,14 @@ import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.OwnerTransferRequest;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/cultivations/{cultivation-id}")
+@RequestMapping("/api/v1/cultivations/{cultivation-id}")
 @RequiredArgsConstructor
 public class CultivationMemberController {
     private final CultivationMemberService cultivationMemberService;
@@ -28,9 +29,9 @@ public class CultivationMemberController {
     }
 
     @GetMapping("/members")
-    public ResponseEntity<List<MemberResponse>> getMembers(@PathVariable("cultivation-id") Long cultivationId,
-                                                             @RequestHeader("X-User-Id") Long userId) {
-        List<MemberResponse> response = cultivationMemberService.getMembers(cultivationId, userId);
+    public ResponseEntity<MemberListResponse> getMembers(@PathVariable("cultivation-id") Long cultivationId,
+                                                         @RequestHeader("X-User-Id") Long userId) {
+        MemberListResponse response = cultivationMemberService.getMembers(cultivationId, userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

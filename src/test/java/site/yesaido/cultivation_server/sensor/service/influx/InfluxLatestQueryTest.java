@@ -6,6 +6,7 @@ import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 import org.junit.jupiter.api.Test;
 import site.yesaido.cultivation_server.config.InfluxProperties;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
@@ -48,9 +49,9 @@ class InfluxLatestQueryTest {
                 client, properties
         );
 
-        List<LatestSensorValueResponse> result = service.findLatestByCultivationId(42L);
+        LatestSensorValueListResponse result = service.findLatestByCultivationId(42L);
 
-        assertThat(result).containsExactly(new LatestSensorValueResponse(
+        assertThat(result.latestSensorValueResponses()).containsExactly(new LatestSensorValueResponse(
                 42L, "TEMPERATURE", "°C", BigDecimal.valueOf(23.5),
                 Instant.parse("2026-08-09T12:34:56Z"),
                 "eui-01", "model-x", "sensor-01", "room-1", "farm-a"

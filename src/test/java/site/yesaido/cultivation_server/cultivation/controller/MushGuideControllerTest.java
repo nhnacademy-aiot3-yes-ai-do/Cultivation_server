@@ -43,7 +43,7 @@ class MushGuideControllerTest {
 
         when(mushGuideService.getMushroomGuide(mushroomId)).thenReturn(response);
 
-        mockMvc.perform(get("/api/mushrooms/{mushroom-id}/guide", mushroomId)
+        mockMvc.perform(get("/api/v1/mushrooms/{mushroom-id}/guide", mushroomId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()) // 200 OK 상태코드 검증
                 .andExpect(jsonPath("$.mushroomId").value(1L)) // JSON 데이터의 mushroomId 값 검증
@@ -65,7 +65,7 @@ class MushGuideControllerTest {
         // Service 메서드를 부르면 위에서 만든 503 FeignException이 터지도록 설정
         when(mushGuideService.getMushroomGuide(mushroomId)).thenThrow(feignException);
 
-        mockMvc.perform(get("/api/mushrooms/{mushroom-id}/guide", mushroomId)
+        mockMvc.perform(get("/api/v1/mushrooms/{mushroom-id}/guide", mushroomId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isServiceUnavailable()); // 503 상태코드 검증
     }

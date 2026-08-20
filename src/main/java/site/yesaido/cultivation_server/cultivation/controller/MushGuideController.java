@@ -11,7 +11,7 @@ import site.yesaido.cultivation_server.cultivation.dto.ai.MushGuideResponse;
 import site.yesaido.cultivation_server.cultivation.service.MushGuideService;
 
 @RestController
-@RequestMapping("/api/mushrooms")
+@RequestMapping("/api/v1/mushrooms")
 @RequiredArgsConstructor
 public class MushGuideController {
     private final MushGuideService mushGuideService;

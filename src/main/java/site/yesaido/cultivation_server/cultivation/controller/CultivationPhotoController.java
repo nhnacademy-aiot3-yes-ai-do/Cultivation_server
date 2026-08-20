@@ -5,13 +5,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.service.CultivationPhotoService;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/cultivations/{cultivation-id}/photos")
+@RequestMapping("/api/v1/cultivations/{cultivation-id}/photos")
 @RequiredArgsConstructor
 public class CultivationPhotoController {
     private final CultivationPhotoService cultivationPhotoService;
@@ -25,9 +26,9 @@ public class CultivationPhotoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PhotoUploadResponse>> getPhotos(@PathVariable("cultivation-id") Long cultivationId,
+    public ResponseEntity<PhotoUploadListResponse> getPhotos(@PathVariable("cultivation-id") Long cultivationId,
                                                                @RequestHeader("X-User-Id") Long userId) {
-        List<PhotoUploadResponse> response = cultivationPhotoService.getPhotos(cultivationId, userId);
+        PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
