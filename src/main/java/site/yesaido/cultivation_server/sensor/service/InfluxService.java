@@ -1,7 +1,6 @@
 package site.yesaido.cultivation_server.sensor.service;
 
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 

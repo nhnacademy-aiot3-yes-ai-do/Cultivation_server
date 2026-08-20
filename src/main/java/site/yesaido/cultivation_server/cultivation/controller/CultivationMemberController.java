@@ -9,10 +9,7 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.OwnerTransferRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberListResponse;
-import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberResponse;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/cultivations/{cultivation-id}")
