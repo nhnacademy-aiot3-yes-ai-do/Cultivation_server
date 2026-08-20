@@ -12,8 +12,6 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.Culti
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 
-import java.util.List;
-
 @RequestMapping("/api/v1/cultivations")
 @RestController
 @RequiredArgsConstructor

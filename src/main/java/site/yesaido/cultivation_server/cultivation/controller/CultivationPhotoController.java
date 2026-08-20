@@ -9,8 +9,6 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUpl
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.service.CultivationPhotoService;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/v1/cultivations/{cultivation-id}/photos")
 @RequiredArgsConstructor

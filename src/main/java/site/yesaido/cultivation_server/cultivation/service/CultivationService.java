@@ -6,8 +6,6 @@ import org.springframework.data.domain.Pageable;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.CultivationCreateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 
-import java.util.List;
-
 public interface CultivationService {
     // 경작 생성
     CultivationCreateResponse create(CultivationCreateRequest request, Long userId);
