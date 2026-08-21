@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import site.yesaido.cultivation_server.cultivation.dto.ai.ApiResponse;
 import site.yesaido.cultivation_server.cultivation.dto.ai.MushGuideResponse;
 
-@FeignClient(name = "ai-server")
+@FeignClient(name = "ai-server", url = "${feign.client.ai-server.url}")
 public interface AiClient {
     @GetMapping("/api/mushrooms/{mushroom-id}/guide")
     ApiResponse<MushGuideResponse> getMushroomGuide(@PathVariable("mushroom-id") Long mushroomId);
