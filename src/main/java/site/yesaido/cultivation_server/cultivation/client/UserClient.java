@@ -7,7 +7,7 @@ import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 
 import java.util.List;
 
-@FeignClient(name = "user-server")
+@FeignClient(name = "user-server", url = "${feign.client.user-server.url}")
 public interface UserClient {
     @GetMapping("/api/users/batch")
     List<UserSummaryResponse> getUsers(@RequestParam("ids") List<Long> ids);
