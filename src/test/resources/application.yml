@@ -75,3 +75,10 @@ influx:
   cloudflare:
     access-client-id: ${CF_ACCESS_CLIENT_ID:}
     access-client-secret: ${CF_ACCESS_CLIENT_SECRET:}
+
+feign:
+  client:
+    user-server:
+      url: ${USER_SERVER_URL:http://localhost:9002}
+    ai-server:
+      url: ${AI_SERVER_URL:http://localhost:9003}
