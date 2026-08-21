@@ -17,10 +17,6 @@ spring:
       hibernate:
         default_schema: ${CULTIVATION_DB_SCHEMA}
 
-  cloud:
-    kubernetes:
-      discovery:
-        enabled: ${K8S_DISCOVERY_ENABLED:false}
   servlet:
     multipart:
       max-file-size: 8MB
@@ -44,18 +40,10 @@ spring:
         multiplier: 2.0
         max-interval: 10s
 
-
-eureka:
-  client:
-    enabled: ${EUREKA_ENABLED:false}
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
-
 logging:
   level:
     root: ${LOG_LEVEL:INFO}
+    site.yesaido.cultivation_server.logging.ControllerResponseLoggingAspect: INFO
 
 minio:
   url: ${MINIO_URL}
