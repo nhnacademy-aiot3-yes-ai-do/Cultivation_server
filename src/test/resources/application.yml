@@ -79,6 +79,6 @@ influx:
 feign:
   client:
     user-server:
-      url: ${USER_SERVER_URL}
+      url: ${USER_SERVER_URL:http://localhost:9002}
     ai-server:
-      url: ${AI_SERVER_URL}
+      url: ${AI_SERVER_URL:http://localhost:9003}
