@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.logging;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -29,6 +30,8 @@ class ControllerResponseLoggingAspectTest {
                 new SensorTypeInfoListResponse(List.of(new SensorTypeInfoResponse(1L, "TEMPERATURE", "C")))));
 
         Logger logger = (Logger) LoggerFactory.getLogger(ControllerResponseLoggingAspect.class);
+        Level originalLevel = logger.getLevel();
+        logger.setLevel(Level.INFO);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         logger.addAppender(appender);
@@ -45,6 +48,7 @@ class ControllerResponseLoggingAspectTest {
         } finally {
             logger.detachAppender(appender);
             appender.stop();
+            logger.setLevel(originalLevel);
         }
     }
 
@@ -57,6 +61,8 @@ class ControllerResponseLoggingAspectTest {
         when(joinPoint.proceed()).thenReturn(ResponseEntity.ok("must-not-be-logged"));
 
         Logger logger = (Logger) LoggerFactory.getLogger(ControllerResponseLoggingAspect.class);
+        Level originalLevel = logger.getLevel();
+        logger.setLevel(Level.INFO);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         logger.addAppender(appender);
@@ -71,6 +77,7 @@ class ControllerResponseLoggingAspectTest {
         } finally {
             logger.detachAppender(appender);
             appender.stop();
+            logger.setLevel(originalLevel);
         }
     }
 }
