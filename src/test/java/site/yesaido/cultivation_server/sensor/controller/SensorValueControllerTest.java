@@ -1,6 +1,5 @@
 package site.yesaido.cultivation_server.sensor.controller;
 
-import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +13,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorVa
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.Instant;

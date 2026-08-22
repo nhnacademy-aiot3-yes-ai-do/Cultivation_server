@@ -13,8 +13,8 @@ public record PhotoRawContent(
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof PhotoRawContent that)) return false;
-        return Arrays.equals(bytes, that.bytes) && Objects.equals(contentType, that.contentType);
+        if (!(o instanceof PhotoRawContent(byte[] thatBytes, String thatContentType))) return false;
+        return Arrays.equals(bytes, thatBytes) && Objects.equals(contentType, thatContentType);
     }
 
     @Override
