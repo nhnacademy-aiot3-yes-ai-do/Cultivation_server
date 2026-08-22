@@ -1,9 +1,8 @@
 package site.yesaido.cultivation_server.cultivation.service;
 
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
+import io.minio.*;
 import io.minio.errors.*;
+import okhttp3.Headers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +21,7 @@ import site.yesaido.common.exception.client.UnsupportedMediaTypeException;
 import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.storage.StorageType;
 import site.yesaido.common.storage.StorageUrlResolver;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
@@ -33,6 +33,7 @@ import site.yesaido.cultivation_server.cultivation.repository.cultivation.Cultiv
 import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoServiceImpl;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -318,5 +319,125 @@ class CultivationPhotoServiceTest {
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    @DisplayName("사진 원본 조회 성공")
+    void getPhotoRawSuccess() throws Exception {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Long photoId = 10L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/100/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+        byte[] content = "image-bytes".getBytes();
+        Headers headers = Headers.of("Content-Type", "image/jpeg");
+        GetObjectResponse getObjectResponse = new GetObjectResponse(
+                headers, BUCKET, "us-east-1", photo.getObjectKey(), new ByteArrayInputStream(content));
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationPhotoRepository.findById(photoId)).thenReturn(Optional.of(photo));
+        when(minioClient.getObject(any(GetObjectArgs.class))).thenReturn(getObjectResponse);
+
+        PhotoRawContent result = cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId);
+
+        assertThat(result.bytes()).isEqualTo(content);
+        assertThat(result.contentType()).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    @DisplayName("사진 원본 조회 실패 - 존재하지 않는 재배")
+    void getPhotoRawFailCultivationNotFound() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Long photoId = 10L;
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
+                .isInstanceOf(CultivationNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("사진 원본 조회 실패 - 재배 멤버가 아닌 경우")
+    void getPhotoRawFailAccessDenied() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Long photoId = 10L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(2L).name("버섯 농장").build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(false);
+
+        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("사진 원본 조회 실패 - 존재하지 않는 사진")
+    void getPhotoRawFailPhotoNotFound() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Long photoId = 10L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationPhotoRepository.findById(photoId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
+                .isInstanceOf(PhotoNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("사진 원본 조회 실패 - 다른 재배 소속 사진")
+    void getPhotoRawFailWrongCultivation() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Long otherCultivationId = 200L;
+        Long photoId = 10L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
+        Cultivation otherCultivation = Cultivation.builder().id(otherCultivationId).userId(userId).name("다른 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/200/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.now())
+                .cultivation(otherCultivation)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationPhotoRepository.findById(photoId)).thenReturn(Optional.of(photo));
+
+        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
+                .isInstanceOf(PhotoNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("사진 원본 조회 실패 - MinIO 다운로드 실패")
+    void getPhotoRawFailMinioDownload() throws Exception {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Long photoId = 10L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/100/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationPhotoRepository.findById(photoId)).thenReturn(Optional.of(photo));
+        when(minioClient.getObject(any(GetObjectArgs.class))).thenThrow(new RuntimeException("연결 실패"));
+
+        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
+                .isInstanceOf(CustomServerException.class);
     }
 }

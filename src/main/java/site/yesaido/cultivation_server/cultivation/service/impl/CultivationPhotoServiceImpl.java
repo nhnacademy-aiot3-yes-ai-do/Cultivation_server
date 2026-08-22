@@ -1,8 +1,6 @@
 package site.yesaido.cultivation_server.cultivation.service.impl;
 
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
+import io.minio.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +16,7 @@ import site.yesaido.common.exception.server.ServerErrorLevel;
 import site.yesaido.common.storage.ObjectKeyGenerator;
 import site.yesaido.common.storage.StorageType;
 import site.yesaido.common.storage.StorageUrlResolver;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
@@ -172,6 +171,36 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
                 }
             }
         });
+    }
+
+    @Override
+    public PhotoRawContent getPhotoRaw(Long cultivationId, Long userId, Long photoId) {
+        cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+        if (!cultivationRepository.isMember(cultivationId, userId)) {
+            throw new CultivationAccessDeniedException(cultivationId);
+        }
+
+        CultivationPhoto photo = cultivationPhotoRepository.findById(photoId)
+                .filter(p -> p.getCultivation().getId().equals(cultivationId))
+                .orElseThrow(() -> new PhotoNotFoundException(photoId));
+
+        try (GetObjectResponse response = minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(photo.getObjectKey())
+                        .build()
+        )){
+            byte[] bytes = response.readAllBytes();
+            String contentType = response.headers().get("Content-Type");
+            return new PhotoRawContent(bytes, contentType != null ? contentType : "application/octet-stream");
+        } catch (Exception e) {
+            throw new CustomServerException(
+                    "사진을 불러오는데 실패했습니다.",
+                    "MINIO 다운로드 실패: photoId: " + photoId + ", objectKey: " + photo.getObjectKey() + ", cause: " + e.getMessage(),
+                    ServerErrorLevel.WARN_LEVEL
+            );
+        }
     }
 
     // Helper Method
