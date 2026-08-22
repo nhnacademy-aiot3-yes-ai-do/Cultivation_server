@@ -5,6 +5,7 @@ import com.influxdb.exceptions.InfluxException;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.NumberUtils;
 import site.yesaido.cultivation_server.config.InfluxProperties;
@@ -18,8 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-@RequiredArgsConstructor
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class InfluxServiceImpl implements InfluxService {
 
     private final InfluxDBClient influxDBClient;
@@ -184,6 +186,7 @@ public class InfluxServiceImpl implements InfluxService {
         try {
             return influxDBClient.getQueryApi().query(query, properties.getOrg());
         } catch (InfluxException e) {
+            log.warn("[InfluxDB] 쿼리 실패, 빈 결과로 처리: message={}, query={}", e.getMessage(), query, e);
             if (e.getMessage() != null && e.getMessage().contains("FluxTable definition was not found")) {
                 return List.of();
             }
