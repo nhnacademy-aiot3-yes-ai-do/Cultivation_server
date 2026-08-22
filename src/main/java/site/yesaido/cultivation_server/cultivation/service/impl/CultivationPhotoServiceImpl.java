@@ -42,6 +42,8 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/jpg", "image/png", "image/webp");
     private static final long MAX_FILE_SIZE = 8L * 1024 * 1024;
     private static final String DOMAIN = "cultivation-photo";
+    private static final String OBJECT_KEY_LOG_SEGMENT = ", objectKey: ";
+    private static final String CAUSE_LOG_SEGMENT = ", cause: ";
 
     private final CultivationPhotoRepository cultivationPhotoRepository;
     private final CultivationRepository cultivationRepository;
@@ -89,7 +91,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         } catch (Exception e) {
             throw new CustomServerException(
                     "사전 업로드에 실패했습니다.",
-                    "MINIO 업로드 실패: cultivationId: " + cultivationId + ", objectKey: " + objectKey + ", cause: " + e.getMessage(),
+                    "MINIO 업로드 실패: cultivationId: " + cultivationId + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
                     ServerErrorLevel.ERROR_LEVEL
             );
         }
@@ -117,7 +119,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         } catch (Exception e) {
             throw new CustomServerException(
                     "사진 업로드에 실패했습니다.",
-                    "DB 저장 실패, MinIO 객체 보상 삭제 시도: cultivationId: " + cultivationId + ", objectKey: " + objectKey + ", cause: " + e.getMessage(),
+                    "DB 저장 실패, MinIO 객체 보상 삭제 시도: cultivationId: " + cultivationId + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
                     ServerErrorLevel.ERROR_LEVEL
             );
         }
@@ -194,7 +196,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         } catch (Exception e) {
             throw new CustomServerException(
                     "사진을 불러오는데 실패했습니다.",
-                    "MINIO 다운로드 실패: photoId: " + photoId + ", objectKey: " + objectKey + ", cause: " + e.getMessage(),
+                    "MINIO 다운로드 실패: photoId: " + photoId + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
                     ServerErrorLevel.WARN_LEVEL
             );
         }
