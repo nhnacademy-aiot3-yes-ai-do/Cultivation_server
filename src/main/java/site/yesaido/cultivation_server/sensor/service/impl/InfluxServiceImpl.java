@@ -186,7 +186,12 @@ public class InfluxServiceImpl implements InfluxService {
         try {
             return influxDBClient.getQueryApi().query(query, properties.getOrg());
         } catch (InfluxException e) {
-            log.warn("[InfluxDB] 쿼리 실패, 빈 결과로 처리: message={}, query={}", e.getMessage(), query, e);
+            try {
+                String raw = influxDBClient.getQueryApi().queryRaw(query, properties.getOrg());
+                log.warn("[InfluxDB] 쿼리 실패, raw 응답 확인: message={}, rawResponse={}", e.getMessage(), raw);
+            } catch (Exception rawEx) {
+                log.warn("[InfluxDB] raw 응답 조회도 실패: {}", rawEx.getMessage());
+            }
             if (e.getMessage() != null && e.getMessage().contains("FluxTable definition was not found")) {
                 return List.of();
             }
