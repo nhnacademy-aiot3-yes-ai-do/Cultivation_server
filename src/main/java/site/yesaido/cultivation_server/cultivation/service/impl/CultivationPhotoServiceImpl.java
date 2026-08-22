@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -46,6 +47,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private final CultivationRepository cultivationRepository;
     private final MinioClient minioClient;
     private final StorageUrlResolver storageUrlResolver;
+    private final CultivationPhotoAccessValidator cultivationPhotoAccessValidator;
 
     @Value("${minio.bucket}")
     private String bucket;
@@ -174,30 +176,25 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     }
 
     @Override
+    // getPhotoRaw 메서드가 실행되는 동안 진행 중이던 트랜잭션이 있어도 잠시 중단시켜서
+    // 클래스 레벨 기본값과 무관하게 이 메서드만은 절대 DB 커넥션을 쥔 채로 실행되지 않도록 강제함.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public PhotoRawContent getPhotoRaw(Long cultivationId, Long userId, Long photoId) {
-        cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-        if (!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
-
-        CultivationPhoto photo = cultivationPhotoRepository.findById(photoId)
-                .filter(p -> p.getCultivation().getId().equals(cultivationId))
-                .orElseThrow(() -> new PhotoNotFoundException(photoId));
+        String objectKey = cultivationPhotoAccessValidator.resolveObjectKey(cultivationId, userId, photoId);
 
         try (GetObjectResponse response = minioClient.getObject(
                 GetObjectArgs.builder()
                         .bucket(bucket)
-                        .object(photo.getObjectKey())
+                        .object(objectKey)
                         .build()
-        )){
+        )) {
             byte[] bytes = response.readAllBytes();
             String contentType = response.headers().get("Content-Type");
             return new PhotoRawContent(bytes, contentType != null ? contentType : "application/octet-stream");
         } catch (Exception e) {
             throw new CustomServerException(
                     "사진을 불러오는데 실패했습니다.",
-                    "MINIO 다운로드 실패: photoId: " + photoId + ", objectKey: " + photo.getObjectKey() + ", cause: " + e.getMessage(),
+                    "MINIO 다운로드 실패: photoId: " + photoId + ", objectKey: " + objectKey + ", cause: " + e.getMessage(),
                     ServerErrorLevel.WARN_LEVEL
             );
         }
