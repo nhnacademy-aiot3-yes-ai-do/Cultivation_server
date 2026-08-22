@@ -11,8 +11,7 @@ class PhotoRawContentTest {
         PhotoRawContent a = new PhotoRawContent("image-bytes".getBytes(), "image/jpeg");
         PhotoRawContent b = new PhotoRawContent("image-bytes".getBytes(), "image/jpeg");
 
-        assertThat(a).isEqualTo(b);
-        assertThat(a.hashCode()).isEqualTo(b.hashCode());
+        assertThat(a).isEqualTo(b).hasSameHashCodeAs(b);
     }
 
     @Test
