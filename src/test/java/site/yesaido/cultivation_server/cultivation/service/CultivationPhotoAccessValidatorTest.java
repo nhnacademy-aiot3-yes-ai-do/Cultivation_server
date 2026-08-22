@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import site.yesaido.common.storage.StorageType;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationphoto.CultivationPhoto;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
@@ -13,7 +14,6 @@ import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFound
 import site.yesaido.cultivation_server.cultivation.exception.PhotoNotFoundException;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
-import site.yesaido.common.storage.StorageType;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoAccessValidator;
 
 import java.time.LocalDateTime;
