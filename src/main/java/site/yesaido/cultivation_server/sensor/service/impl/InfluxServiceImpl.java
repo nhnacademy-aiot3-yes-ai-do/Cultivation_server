@@ -123,6 +123,22 @@ public class InfluxServiceImpl implements InfluxService {
         );
     }
 
+    @Override
+    public List<SensorTypeAverageResponse> findAverageByCultivationId(long cultivationId) {
+        String query = baseQuery(cultivationId, " |> range(start: 0)")
+                + " |> group(columns: [\"sensorType\", \"unit\"])"
+                + " |> mean(column: \"_value\")";
+
+        return queryTablesSafely(query).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .map(this::toSensorTypeAverage)
+                .sorted(Comparator.comparing(
+                        SensorTypeAverageResponse::sensorType,
+                        Comparator.nullsLast(String::compareTo)
+                ))
+                .toList();
+    }
+
     private long toCultivationId(List<FluxRecord> records) {
         String cultivationIdFromInfluxDB = records.stream()
                 .map(FluxRecord::getValues)

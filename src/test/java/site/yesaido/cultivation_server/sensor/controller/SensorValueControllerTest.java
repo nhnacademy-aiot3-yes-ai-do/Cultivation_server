@@ -8,10 +8,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 import tools.jackson.databind.ObjectMapper;
 
@@ -105,6 +102,33 @@ class SensorValueControllerTest {
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isBadRequest());
 
+        then(influxService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("전체 센서 평균값 조회 성공 시 200 OK와 결과를 반환한다")
+    void getAverageSuccess() throws Exception {
+        List<SensorTypeAverageResponse> response = List.of(
+                new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", 22.5),
+                new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", 80.0)
+        );
+        given(influxService.findAverageByCultivationId(CULTIVATION_ID)).willReturn(response);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
+                .header("X-User-Id", USER_ID)).andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(response)));
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
+        then(influxService).should().findAverageByCultivationId(CULTIVATION_ID);
+    }
+
+    @Test
+    @DisplayName("재배 멤버 아니면 센서 평균값 조회 없이 403 Forbidden 반환")
+    void getAverageFailsWhenNotMember() throws Exception {
+        willThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
+                .given(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
+                .header("X-User-Id", USER_ID)).andExpect(status().isForbidden());
         then(influxService).shouldHaveNoInteractions();
     }
 }
