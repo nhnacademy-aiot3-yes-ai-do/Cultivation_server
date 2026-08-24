@@ -1,4 +1,4 @@
-@cultivation = http://localhost:9001
+@cultivation = http://localhost:8084
 @auth = http://localhost:9002
 @rabbitSmoke = http://localhost:8080
 
@@ -252,4 +252,22 @@ Content-Type: application/json
   "deviceEui": "EUI-SMOKE-001",
   "sensorSettings": [
   ]
+}
+
+### 27. 전체 센서 평균값 조회 테스트
+GET {{cultivation}}/api/v1/cultivations/15/sensor-values/average
+X-User-Id: 100
+
+### 28. 누적 환경 유지율 조회 테스트
+GET {{cultivation}}/api/v1/cultivations/15/environment-compliance
+X-User-Id: 100
+
+### 29. 15번 재배기 수확 등록 (수확량 400g)
+POST http://localhost:8084/api/v1/cultivations/15/harvest
+X-User-Id: 100
+Content-Type: application/json
+
+{
+  "harvestWeight": 400.0,
+  "memo": "성공적인 수확!"
 }
