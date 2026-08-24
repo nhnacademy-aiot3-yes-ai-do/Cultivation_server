@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorTypeRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.SensorTypeInfoResponse;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeAlreadyExistException;
+import site.yesaido.cultivation_server.sensor.exception.SensorTypeInUseException;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeNotFoundException;
 import site.yesaido.cultivation_server.sensor.service.SensorTypeService;
 import tools.jackson.databind.ObjectMapper;
@@ -158,6 +159,18 @@ public class SensorTypeManagementControllerTest {
                     .andExpect(status().isNoContent());
 
             verify(sensorTypeService).deleteSensorType(sensorTypeId);
+        }
+
+        @Test
+        @DisplayName("재배지 센서가 사용하는 센서 타입 삭제시 409 충돌")
+        void deleteSensorTypeConflictWhenInUse() throws Exception {
+            long sensorTypeId = 1L;
+            doThrow(new SensorTypeInUseException(sensorTypeId))
+                    .when(sensorTypeService).deleteSensorType(sensorTypeId);
+
+            mockMvc.perform(delete("/api/v1/admin/sensor-types/{sensor-type-id}", sensorTypeId))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value("[sensor-type] 다른 데이터에서 참조 중인 센서 타입은 삭제할 수 없습니다"));
         }
 
         @Test
