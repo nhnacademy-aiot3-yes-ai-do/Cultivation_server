@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import site.yesaido.common.storage.DefaultStorageUrlResolver;
+import site.yesaido.common.storage.MinioObjectStorage;
 import site.yesaido.common.storage.StorageUrlResolver;
 
 @Configuration
@@ -27,6 +28,11 @@ public class MinioConfig {
                 .endpoint(minioUrl)
                 .credentials(accessKey, secretKey)
                 .build();
+    }
+
+    @Bean
+    public MinioObjectStorage minioObjectStorage(MinioClient minioClient) {
+        return new MinioObjectStorage(minioClient, bucket);
     }
 
     @Bean

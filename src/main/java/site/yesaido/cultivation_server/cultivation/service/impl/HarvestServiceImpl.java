@@ -24,7 +24,6 @@ import site.yesaido.cultivation_server.cultivation.service.HarvestService;
 import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedPayload;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -103,23 +102,9 @@ public class HarvestServiceImpl implements HarvestService {
         Harvest harvest = harvestRepository.findByCultivationId(cultivationId)
                 .orElseThrow(() -> new HarvestNotFoundException(cultivationId));
 
-        ProductGrade grade = toGrade(request.productScore());
+        ProductGrade grade = ProductGrade.fromScore(request.productScore());
         harvest.updateProductGrade(request.productScore(), grade);
 
         return new ProductScoreUpdateResponse(harvest.getId(), harvest.getProductScore(), harvest.getProductGrade());
-    }
-
-    // Helper Method
-    private ProductGrade toGrade(BigDecimal productScore) {
-        if (productScore.compareTo(BigDecimal.valueOf(90)) >= 0) {
-            return ProductGrade.TOP;
-        }
-        if (productScore.compareTo(BigDecimal.valueOf(75)) >= 0) {
-            return ProductGrade.HIGH;
-        }
-        if (productScore.compareTo(BigDecimal.valueOf(50)) >= 0) {
-            return ProductGrade.MID;
-        }
-        return ProductGrade.LOW;
     }
 }
