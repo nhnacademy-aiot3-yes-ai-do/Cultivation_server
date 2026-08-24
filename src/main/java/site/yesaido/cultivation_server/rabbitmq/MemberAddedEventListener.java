@@ -8,7 +8,7 @@ import site.yesaido.cultivation_server.rabbitmq.event.MemberAddedEvent;
 
 @Component
 @RequiredArgsConstructor
-public class MemberAddedEventListner {
+public class MemberAddedEventListener {
     private final MemberAddedNotificationProducer producer;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

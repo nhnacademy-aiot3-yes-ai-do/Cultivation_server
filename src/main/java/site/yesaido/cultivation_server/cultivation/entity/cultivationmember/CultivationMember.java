@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_cultivation_member_cultivation_user",
                 columnNames = {"cultivation_id", "user_id"}
-        )
+        ),
+        indexes = @Index(name = "idx_cultivation_member_user_id", columnList = "user_id")
 )
 @Getter
 @Builder
