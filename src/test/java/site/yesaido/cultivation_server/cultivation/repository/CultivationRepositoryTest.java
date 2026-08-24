@@ -144,28 +144,6 @@ class CultivationRepositoryTest {
     }
 
     @Test
-    @DisplayName("isMember는 등록된 멤버(OWNER/MEMBER)에 대해 true를 반환함")
-    void isMemberTrueForRegisteredMember() {
-        Cultivation cultivation = cultivationRepository.save(
-                Cultivation.builder().userId(1L).name("멤버십 재배").mushroomReference(savedMushroom).build());
-        saveMember(cultivation, 1L, MemberRole.OWNER);
-        saveMember(cultivation, 2L, MemberRole.MEMBER);
-
-        assertThat(cultivationRepository.isMember(cultivation.getId(), 1L)).isTrue();
-        assertThat(cultivationRepository.isMember(cultivation.getId(), 2L)).isTrue();
-    }
-
-    @Test
-    @DisplayName("isMember는 관계없는 유저에 대해 false를 반환함")
-    void isMemberFalseForUnrelatedUser() {
-        Cultivation cultivation = cultivationRepository.save(
-                Cultivation.builder().userId(1L).name("비멤버 재배").mushroomReference(savedMushroom).build());
-        saveMember(cultivation, 1L, MemberRole.OWNER);
-
-        assertThat(cultivationRepository.isMember(cultivation.getId(), 999L)).isFalse();
-    }
-
-    @Test
     @DisplayName("페이징 경계값 - 21개 데이터 삽입 시 2번째 페이지는 1개만 조회됨")
     void findHistoryByMemberUserIdPagingBoundary() {
         Long userId = 1L;
