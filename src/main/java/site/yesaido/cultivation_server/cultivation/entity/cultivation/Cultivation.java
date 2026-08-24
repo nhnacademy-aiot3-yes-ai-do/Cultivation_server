@@ -19,7 +19,8 @@ import java.time.ZoneId;
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_cultivation_user_name",
                 columnNames = {"user_id", "name"}
-        )
+        ),
+        indexes = @Index(name = "idx_cultivation_status", columnList = "cultivation_status")
 )
 public class Cultivation {
     @Id

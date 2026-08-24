@@ -13,7 +13,9 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "cultivation_photo")
+@Table(
+        name = "cultivation_photo",
+        indexes = @Index(name = "idx_cultivation_photo_cultivation_id", columnList = "cultivation_id"))
 public class CultivationPhoto {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

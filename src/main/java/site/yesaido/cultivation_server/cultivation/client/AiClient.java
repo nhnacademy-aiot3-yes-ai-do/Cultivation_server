@@ -9,6 +9,6 @@ import site.yesaido.cultivation_server.cultivation.dto.ai.MushGuideResponse;
 
 @FeignClient(name = "ai-server", url = "${feign.client.ai-server.url}")
 public interface AiClient {
-    @GetMapping("/api/mushrooms/{mushroom-id}/guide")
+    @GetMapping("/api/v1/mushrooms/{mushroom-id}/guide")
     ApiResponse<MushGuideResponse> getMushroomGuide(@PathVariable("mushroom-id") Long mushroomId);
 }

@@ -20,7 +20,7 @@ class MemberAddedEventListenerTest {
     private MemberAddedNotificationProducer producer;
 
     @InjectMocks
-    private MemberAddedEventListner listener;
+    private MemberAddedEventListener listener;
 
     @Test
     @DisplayName("이벤트 수신 시 producer.send를 정확한 인자로 위임함 - producer 내부 실패와 무관하게 리스너는 항상 정상 종료됨(best-effort)")
