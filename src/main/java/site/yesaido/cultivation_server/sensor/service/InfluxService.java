@@ -14,4 +14,6 @@ public interface InfluxService {
     List<SensorTypeAverageResponse> findAverageByCultivationIdForLast24Hours(long cultivationId);
 
     SensorTrendPointListResponse findTrend(long cultivationId, String deviceEui, String sensorType);
+
+    List<SensorTypeAverageResponse> findAverageByCultivationId(long cultivationId);
 }

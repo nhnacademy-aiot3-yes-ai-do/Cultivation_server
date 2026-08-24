@@ -6,7 +6,11 @@ import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -34,5 +38,15 @@ public class SensorValueController {
         cultivationMemberService.existCultivationMember(cultivationId, userId);
         LatestSensorValueListResponse response = influxService.findLatestByCultivationId(cultivationId);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/average")
+    public ResponseEntity<SensorTypeAverageListResponse> getAverage(
+            @PathVariable("cultivation-id") Long cultivationId,
+            @RequestHeader("X-User-Id") Long userId
+    ){
+        cultivationMemberService.existCultivationMember(cultivationId, userId);
+        List<SensorTypeAverageResponse> average = influxService.findAverageByCultivationId(cultivationId);
+        return ResponseEntity.ok(new SensorTypeAverageListResponse(average));
     }
 }
