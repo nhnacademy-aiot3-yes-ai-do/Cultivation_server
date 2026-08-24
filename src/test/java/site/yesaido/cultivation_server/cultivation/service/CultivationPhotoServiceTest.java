@@ -1,8 +1,5 @@
 package site.yesaido.cultivation_server.cultivation.service;
 
-import io.minio.*;
-import io.minio.errors.*;
-import okhttp3.Headers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -12,13 +9,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import site.yesaido.common.exception.client.BadRequestException;
 import site.yesaido.common.exception.client.UnsupportedMediaTypeException;
 import site.yesaido.common.exception.server.CustomServerException;
+import site.yesaido.common.storage.MinioObjectStorage;
+import site.yesaido.common.storage.MinioObjectStorageException;
 import site.yesaido.common.storage.StorageType;
 import site.yesaido.common.storage.StorageUrlResolver;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
@@ -33,26 +31,20 @@ import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.C
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationAccessGuard;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoServiceImpl;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CultivationPhotoServiceTest {
-    private static final String BUCKET = "test-bucket";
 
     @Mock private CultivationPhotoRepository cultivationPhotoRepository;
-    @Mock private MinioClient minioClient;
+    @Mock private MinioObjectStorage minioObjectStorage;
     @Mock private StorageUrlResolver storageUrlResolver;
     @Mock private CultivationAccessGuard cultivationAccessGuard;
 
@@ -61,7 +53,6 @@ class CultivationPhotoServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(cultivationPhotoService, "bucket", BUCKET);
         TransactionSynchronizationManager.initSynchronization();
     }
 
@@ -74,7 +65,7 @@ class CultivationPhotoServiceTest {
 
     @Test
     @DisplayName("사진 업로드 성공")
-    void uploadPhotoSuccess() throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+    void uploadPhotoSuccess() {
         Long userId = 1L;
         Long cultivationId = 100L;
         MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", "content".getBytes());
@@ -89,7 +80,7 @@ class CultivationPhotoServiceTest {
         assertThat(response.storageType()).isEqualTo(StorageType.MINIO);
         assertThat(response.uri()).isEqualTo("http://storage.example.com/test-bucket/objectKey");
 
-        verify(minioClient, times(1)).putObject(any(PutObjectArgs.class));
+        verify(minioObjectStorage, times(1)).put(anyString(), any(MultipartFile.class));
         verify(cultivationPhotoRepository, times(1)).save(any(CultivationPhoto.class));
     }
 
@@ -151,14 +142,15 @@ class CultivationPhotoServiceTest {
 
     @Test
     @DisplayName("사진 업로드 실패 - MinIO 업로드 실패")
-    void uploadPhotoFailMinioUpload() throws Exception {
+    void uploadPhotoFailMinioUpload() {
         Long userId = 1L;
         Long cultivationId = 100L;
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "content".getBytes());
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
-        doThrow(new RuntimeException("연결 실패")).when(minioClient).putObject(any(PutObjectArgs.class));
+        doThrow(new MinioObjectStorageException("MinIO 업로드 실패", new RuntimeException("연결 실패")))
+                .when(minioObjectStorage).put(anyString(), any(MultipartFile.class));
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(CustomServerException.class);
@@ -168,7 +160,7 @@ class CultivationPhotoServiceTest {
 
     @Test
     @DisplayName("사진 업로드 실패 - DB 저장 실패 시 MinIO 보상 삭제")
-    void uploadPhotoFailDbSaveCompensatesMinio() throws Exception {
+    void uploadPhotoFailDbSaveCompensatesMinio() {
         Long userId = 1L;
         Long cultivationId = 100L;
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "content".getBytes());
@@ -184,7 +176,7 @@ class CultivationPhotoServiceTest {
         TransactionSynchronizationManager.getSynchronizations()
                 .forEach(sync -> sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
 
-        verify(minioClient, times(1)).removeObject(any(RemoveObjectArgs.class));
+        verify(minioObjectStorage, times(1)).removeQuietly(anyString());
     }
 
     @Test
@@ -313,25 +305,22 @@ class CultivationPhotoServiceTest {
 
     @Test
     @DisplayName("사진 원본 조회 성공")
-    void getPhotoRawSuccess() throws Exception {
+    void getPhotoRawSuccess() {
         Long userId = 1L;
         Long cultivationId = 100L;
         Long photoId = 10L;
         String objectKey = "cultivation-photo/100/uuid.jpg";
         byte[] content = "image-bytes".getBytes();
-        Headers headers = Headers.of("Content-Type", "image/jpeg");
-        GetObjectResponse getObjectResponse = new GetObjectResponse(
-                headers, BUCKET, "us-east-1", objectKey, new ByteArrayInputStream(content));
 
         when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId)).thenReturn(objectKey);
-        when(minioClient.getObject(any(GetObjectArgs.class))).thenReturn(getObjectResponse);
+        when(minioObjectStorage.get(objectKey))
+                .thenReturn(new MinioObjectStorage.MinioObjectContent(content, "image/jpeg"));
 
         PhotoRawContent result = cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId);
 
         assertThat(result.bytes()).isEqualTo(content);
         assertThat(result.contentType()).isEqualTo("image/jpeg");
     }
-
 
     @Test
     @DisplayName("사진 원본 조회 실패 - 존재하지 않는 재배")
@@ -377,14 +366,15 @@ class CultivationPhotoServiceTest {
 
     @Test
     @DisplayName("사진 원본 조회 실패 - MinIO 다운로드 실패")
-    void getPhotoRawFailMinioDownload() throws Exception {
+    void getPhotoRawFailMinioDownload() {
         Long userId = 1L;
         Long cultivationId = 100L;
         Long photoId = 10L;
         String objectKey = "cultivation-photo/100/uuid.jpg";
 
         when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId)).thenReturn(objectKey);
-        when(minioClient.getObject(any(GetObjectArgs.class))).thenThrow(new RuntimeException("연결 실패"));
+        when(minioObjectStorage.get(objectKey))
+                .thenThrow(new MinioObjectStorageException("MinIO 다운로드 실패", new RuntimeException("연결 실패")));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
                 .isInstanceOf(CustomServerException.class);
