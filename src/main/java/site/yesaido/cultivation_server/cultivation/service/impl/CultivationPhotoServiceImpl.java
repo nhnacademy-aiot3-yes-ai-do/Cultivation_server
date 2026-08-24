@@ -46,10 +46,9 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private static final String CAUSE_LOG_SEGMENT = ", cause: ";
 
     private final CultivationPhotoRepository cultivationPhotoRepository;
-    private final CultivationRepository cultivationRepository;
     private final MinioClient minioClient;
     private final StorageUrlResolver storageUrlResolver;
-    private final CultivationPhotoAccessValidator cultivationPhotoAccessValidator;
+    private final CultivationAccessGuard cultivationAccessGuard;
 
     @Value("${minio.bucket}")
     private String bucket;
@@ -57,12 +56,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     @Override
     @Transactional
     public PhotoUploadResponse uploadPhoto(Long cultivationId, Long userId, MultipartFile file) {
-        Cultivation cultivation = cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-
-        if (!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        Cultivation cultivation = cultivationAccessGuard.requireMember(cultivationId, userId);
 
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("업로드할 사진 파일이 없습니다.");
@@ -129,12 +123,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
 
     @Override
     public PhotoUploadListResponse getPhotos(Long cultivationId, Long userId) {
-        cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-
-        if (!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        cultivationAccessGuard.requireMember(cultivationId, userId);
 
         List<PhotoUploadResponse> list = cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId).stream()
                 .map(this::toResponse)
@@ -146,11 +135,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     @Override
     @Transactional
     public void deletePhoto(Long cultivationId, Long userId, Long photoId) {
-        cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-        if (!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        cultivationAccessGuard.requireMember(cultivationId, userId);
 
         CultivationPhoto photo = cultivationPhotoRepository.findById(photoId)
                 .filter(p -> p.getCultivation().getId().equals(cultivationId))
@@ -182,7 +167,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     // 클래스 레벨 기본값과 무관하게 이 메서드만은 절대 DB 커넥션을 쥔 채로 실행되지 않도록 강제함.
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public PhotoRawContent getPhotoRaw(Long cultivationId, Long userId, Long photoId) {
-        String objectKey = cultivationPhotoAccessValidator.resolveObjectKey(cultivationId, userId, photoId);
+        String objectKey = cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId);
 
         try (GetObjectResponse response = minioClient.getObject(
                 GetObjectArgs.builder()

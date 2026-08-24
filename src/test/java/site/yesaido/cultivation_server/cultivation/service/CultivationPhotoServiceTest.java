@@ -29,9 +29,8 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivationphoto.Culti
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
 import site.yesaido.cultivation_server.cultivation.exception.PhotoNotFoundException;
-import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
-import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoAccessValidator;
+import site.yesaido.cultivation_server.cultivation.service.impl.CultivationAccessGuard;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoServiceImpl;
 
 import java.io.ByteArrayInputStream;
@@ -53,10 +52,9 @@ class CultivationPhotoServiceTest {
     private static final String BUCKET = "test-bucket";
 
     @Mock private CultivationPhotoRepository cultivationPhotoRepository;
-    @Mock private CultivationRepository cultivationRepository;
     @Mock private MinioClient minioClient;
     @Mock private StorageUrlResolver storageUrlResolver;
-    @Mock private CultivationPhotoAccessValidator cultivationPhotoAccessValidator;
+    @Mock private CultivationAccessGuard cultivationAccessGuard;
 
     @InjectMocks
     private CultivationPhotoServiceImpl cultivationPhotoService;
@@ -82,8 +80,7 @@ class CultivationPhotoServiceTest {
         MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", "content".getBytes());
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(storageUrlResolver.resolve(eq(StorageType.MINIO), any())).thenReturn("http://storage.example.com/test-bucket/objectKey");
 
         PhotoUploadResponse response = cultivationPhotoService.uploadPhoto(cultivationId, userId, file);
@@ -103,7 +100,8 @@ class CultivationPhotoServiceTest {
         Long cultivationId = 100L;
         MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", "content".getBytes());
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.empty());
+        when(cultivationAccessGuard.requireMember(cultivationId, userId))
+                .thenThrow(new CultivationNotFoundException(cultivationId));
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(CultivationNotFoundException.class);
@@ -115,10 +113,9 @@ class CultivationPhotoServiceTest {
         Long userId = 1L;
         Long cultivationId = 100L;
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "content".getBytes());
-        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(2L).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(false);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId))
+                .thenThrow(new CultivationAccessDeniedException(cultivationId));
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(CultivationAccessDeniedException.class);
@@ -132,8 +129,7 @@ class CultivationPhotoServiceTest {
         MultipartFile emptyFile = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[0]);
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, emptyFile))
                 .isInstanceOf(BadRequestException.class);
@@ -147,8 +143,7 @@ class CultivationPhotoServiceTest {
         MultipartFile file = new MockMultipartFile("file", "photo.txt", "text/plain", "content".getBytes());
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(UnsupportedMediaTypeException.class);
@@ -162,8 +157,7 @@ class CultivationPhotoServiceTest {
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "content".getBytes());
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         doThrow(new RuntimeException("연결 실패")).when(minioClient).putObject(any(PutObjectArgs.class));
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
@@ -180,8 +174,7 @@ class CultivationPhotoServiceTest {
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "content".getBytes());
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.save(any(CultivationPhoto.class))).thenThrow(new RuntimeException("DB 오류"));
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
@@ -207,8 +200,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
         when(storageUrlResolver.resolve(StorageType.MINIO, photo.getObjectKey())).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
@@ -224,7 +216,8 @@ class CultivationPhotoServiceTest {
         Long userId = 1L;
         Long cultivationId = 100L;
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.empty());
+        when(cultivationAccessGuard.requireMember(cultivationId, userId))
+                .thenThrow(new CultivationNotFoundException(cultivationId));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotos(cultivationId, userId))
                 .isInstanceOf(CultivationNotFoundException.class);
@@ -235,10 +228,9 @@ class CultivationPhotoServiceTest {
     void getPhotosFailAccessDenied() {
         Long userId = 1L;
         Long cultivationId = 100L;
-        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(2L).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(false);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId))
+                .thenThrow(new CultivationAccessDeniedException(cultivationId));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotos(cultivationId, userId))
                 .isInstanceOf(CultivationAccessDeniedException.class);
@@ -258,8 +250,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findById(photoId)).thenReturn(Optional.of(photo));
 
         cultivationPhotoService.deletePhoto(cultivationId, userId, photoId);
@@ -275,8 +266,7 @@ class CultivationPhotoServiceTest {
         Long photoId = 10L;
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findById(photoId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cultivationPhotoService.deletePhoto(cultivationId, userId, photoId))
@@ -299,8 +289,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(otherCultivation)
                 .build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findById(photoId)).thenReturn(Optional.of(photo));
 
         assertThatThrownBy(() -> cultivationPhotoService.deletePhoto(cultivationId, userId, photoId))
@@ -316,8 +305,7 @@ class CultivationPhotoServiceTest {
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", oversized);
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(BadRequestException.class);
@@ -335,7 +323,7 @@ class CultivationPhotoServiceTest {
         GetObjectResponse getObjectResponse = new GetObjectResponse(
                 headers, BUCKET, "us-east-1", objectKey, new ByteArrayInputStream(content));
 
-        when(cultivationPhotoAccessValidator.resolveObjectKey(cultivationId, userId, photoId)).thenReturn(objectKey);
+        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId)).thenReturn(objectKey);
         when(minioClient.getObject(any(GetObjectArgs.class))).thenReturn(getObjectResponse);
 
         PhotoRawContent result = cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId);
@@ -352,7 +340,7 @@ class CultivationPhotoServiceTest {
         Long cultivationId = 100L;
         Long photoId = 10L;
 
-        when(cultivationPhotoAccessValidator.resolveObjectKey(cultivationId, userId, photoId))
+        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId))
                 .thenThrow(new CultivationNotFoundException(cultivationId));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
@@ -366,7 +354,7 @@ class CultivationPhotoServiceTest {
         Long cultivationId = 100L;
         Long photoId = 10L;
 
-        when(cultivationPhotoAccessValidator.resolveObjectKey(cultivationId, userId, photoId))
+        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId))
                 .thenThrow(new CultivationAccessDeniedException(cultivationId));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
@@ -380,7 +368,7 @@ class CultivationPhotoServiceTest {
         Long cultivationId = 100L;
         Long photoId = 10L;
 
-        when(cultivationPhotoAccessValidator.resolveObjectKey(cultivationId, userId, photoId))
+        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId))
                 .thenThrow(new PhotoNotFoundException(photoId));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
@@ -395,7 +383,7 @@ class CultivationPhotoServiceTest {
         Long photoId = 10L;
         String objectKey = "cultivation-photo/100/uuid.jpg";
 
-        when(cultivationPhotoAccessValidator.resolveObjectKey(cultivationId, userId, photoId)).thenReturn(objectKey);
+        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId)).thenReturn(objectKey);
         when(minioClient.getObject(any(GetObjectArgs.class))).thenThrow(new RuntimeException("연결 실패"));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))

@@ -33,6 +33,7 @@ public class HarvestServiceImpl implements HarvestService {
     private final CultivationRepository cultivationRepository;
     private final CultivationMemberService cultivationMemberService;
     private final ApplicationEventPublisher eventPublisher;
+    private final CultivationAccessGuard cultivationAccessGuard;
 
     @Override
     @Transactional
@@ -70,12 +71,7 @@ public class HarvestServiceImpl implements HarvestService {
 
     @Override
     public HarvestDetailResponse getHarvest(Long cultivationId, Long userId) {
-        Cultivation cultivation = cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-
-        if (!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        Cultivation cultivation = cultivationAccessGuard.requireMember(cultivationId, userId);
 
         Harvest harvest = harvestRepository.findByCultivationId(cultivationId)
                 .orElseThrow(() -> new HarvestNotFoundException(cultivationId));
