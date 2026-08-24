@@ -1,6 +1,5 @@
 package site.yesaido.cultivation_server.cultivation.service.impl;
 
-import io.minio.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,9 +13,7 @@ import site.yesaido.common.exception.client.BadRequestException;
 import site.yesaido.common.exception.client.UnsupportedMediaTypeException;
 import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.exception.server.ServerErrorLevel;
-import site.yesaido.common.storage.ObjectKeyGenerator;
-import site.yesaido.common.storage.StorageType;
-import site.yesaido.common.storage.StorageUrlResolver;
+import site.yesaido.common.storage.*;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
@@ -43,7 +40,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private static final String CAUSE_LOG_SEGMENT = ", cause: ";
 
     private final CultivationPhotoRepository cultivationPhotoRepository;
-    private final MinioClient minioClient;
+    private final MinioObjectStorage minioObjectStorage;
     private final StorageUrlResolver storageUrlResolver;
     private final CultivationAccessGuard cultivationAccessGuard;
 
@@ -55,31 +52,23 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     public PhotoUploadResponse uploadPhoto(Long cultivationId, Long userId, MultipartFile file) {
         Cultivation cultivation = cultivationAccessGuard.requireMember(cultivationId, userId);
 
-        if (file == null || file.isEmpty()) {
+        if (ImageFileValidator.isEmpty(file)) {
             throw new BadRequestException("업로드할 사진 파일이 없습니다.");
         }
 
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-            throw new UnsupportedMediaTypeException("지원하지 않는 이미지 형식입니다: " + contentType);
+        if (!ImageFileValidator.isAllowedContentType(file, ALLOWED_CONTENT_TYPES)) {
+            throw new UnsupportedMediaTypeException("지원하지 않는 이미지 형식입니다: " + file.getContentType());
         }
 
-        if (file.getSize() > MAX_FILE_SIZE) {
+        if (ImageFileValidator.exceedsMaxSize(file, MAX_FILE_SIZE)) {
             throw new BadRequestException("사진 파일 크기는 8MB를 초과할 수 없습니다.");
         }
 
         String objectKey = ObjectKeyGenerator.generate(DOMAIN, cultivationId, file.getOriginalFilename());
 
         try {
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(objectKey)
-                            .stream(file.getInputStream(), file.getSize(), -1)
-                            .contentType(contentType)
-                            .build()
-            );
-        } catch (Exception e) {
+            minioObjectStorage.put(objectKey, file);
+        } catch (MinioObjectStorageException e) {
             throw new CustomServerException(
                     "사전 업로드에 실패했습니다.",
                     "MINIO 업로드 실패: cultivationId: " + cultivationId + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
@@ -94,7 +83,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
                 // 트랜잭션이 커밋 또는 롤백이 완전히 끝났을 떄 Spring 한 번 호출함.
                 if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
                     // 롤백이 된 경우 compensateMinioUpload를 실행시킴.
-                    compensateMinioUpload(objectKey);
+                    minioObjectStorage.removeQuietly(objectKey);
                 }
             }
         });
@@ -144,17 +133,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                try {
-                    minioClient.removeObject(
-                            RemoveObjectArgs.builder()
-                                    .bucket(bucket)
-                                    .object(photo.getObjectKey())
-                                    .build()
-                    );
-                } catch (Exception e) {
-                    log.error("MinIO 객체 삭제 실패(고아 객체로 남음): photoId={}, objectKey={}, cause={}",
-                            photoId, objectKey, e.getMessage());
-                }
+                minioObjectStorage.removeQuietly(objectKey);
             }
         });
     }
@@ -166,16 +145,10 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     public PhotoRawContent getPhotoRaw(Long cultivationId, Long userId, Long photoId) {
         String objectKey = cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId);
 
-        try (GetObjectResponse response = minioClient.getObject(
-                GetObjectArgs.builder()
-                        .bucket(bucket)
-                        .object(objectKey)
-                        .build()
-        )) {
-            byte[] bytes = response.readAllBytes();
-            String contentType = response.headers().get("Content-Type");
-            return new PhotoRawContent(bytes, contentType != null ? contentType : "application/octet-stream");
-        } catch (Exception e) {
+        try {
+            MinioObjectStorage.MinioObjectContent content = minioObjectStorage.get(objectKey);
+            return new PhotoRawContent(content.bytes(), content.contentType());
+        } catch (MinioObjectStorageException e) {
             throw new CustomServerException(
                     "사진을 불러오는데 실패했습니다.",
                     "MINIO 다운로드 실패: photoId: " + photoId + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
@@ -185,20 +158,6 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     }
 
     // Helper Method
-    private void compensateMinioUpload(String objectKey) {
-        // 방금 올린 Minio 파일을 지움. <- DB에 없는 파일이 스토리지에 남지 않게 정리함.
-        try {
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(objectKey)
-                            .build()
-            );
-        } catch (Exception cleanupException) {
-            log.error("MinIO 보상 삭제 실패(고아 객체로 남음): objectKey: {}, cause: {}", objectKey, cleanupException.getMessage());
-        }
-    }
-
     private PhotoUploadResponse toResponse(CultivationPhoto cultivationPhoto) {
         String url = storageUrlResolver.resolve(cultivationPhoto.getStorageType(), cultivationPhoto.getObjectKey());
 
