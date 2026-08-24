@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.sensor.repository;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -41,6 +42,7 @@ class SensorTypeRepositoryIntegrationTest {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
+    @Autowired private EntityManager entityManager;
     @Autowired private SensorTypeRepository sensorTypeRepository;
     @Autowired private CultivationSensorRepository cultivationSensorRepository;
     @Autowired private CultivationSensorTypeRepository cultivationSensorTypeRepository;
@@ -88,6 +90,7 @@ class SensorTypeRepositoryIntegrationTest {
     void deleteAndFlushFailsWhenSensorTypeIsReferenced() {
         SensorType sensorType = sensorTypeRepository.saveAndFlush(new SensorType("co2", "ppm"));
         environmentSettingRepository.saveAndFlush(new EnvironmentSetting(1L, sensorType, BigDecimal.ONE, BigDecimal.TEN));
+        entityManager.clear();
 
         sensorTypeRepository.deleteById(sensorType.getId());
 
