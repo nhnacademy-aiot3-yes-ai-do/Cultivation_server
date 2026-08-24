@@ -108,11 +108,12 @@ class SensorValueControllerTest {
     @Test
     @DisplayName("전체 센서 평균값 조회 성공 시 200 OK와 결과를 반환한다")
     void getAverageSuccess() throws Exception {
-        List<SensorTypeAverageResponse> response = List.of(
+        List<SensorTypeAverageResponse> averages = List.of(
                 new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", 22.5),
                 new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", 80.0)
         );
-        given(influxService.findAverageByCultivationId(CULTIVATION_ID)).willReturn(response);
+        SensorTypeAverageListResponse response = new SensorTypeAverageListResponse(averages);
+        given(influxService.findAverageByCultivationId(CULTIVATION_ID)).willReturn(averages);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
                 .header("X-User-Id", USER_ID)).andExpect(status().isOk())
