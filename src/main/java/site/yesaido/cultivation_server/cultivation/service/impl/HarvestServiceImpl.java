@@ -13,7 +13,10 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivatio
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.Harvest;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
-import site.yesaido.cultivation_server.cultivation.exception.*;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyFinishedException;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
+import site.yesaido.cultivation_server.cultivation.exception.HarvestAlreadyExistException;
+import site.yesaido.cultivation_server.cultivation.exception.HarvestNotFoundException;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
@@ -33,6 +36,7 @@ public class HarvestServiceImpl implements HarvestService {
     private final CultivationRepository cultivationRepository;
     private final CultivationMemberService cultivationMemberService;
     private final ApplicationEventPublisher eventPublisher;
+    private final CultivationAccessGuard cultivationAccessGuard;
 
     @Override
     @Transactional
@@ -70,12 +74,7 @@ public class HarvestServiceImpl implements HarvestService {
 
     @Override
     public HarvestDetailResponse getHarvest(Long cultivationId, Long userId) {
-        Cultivation cultivation = cultivationRepository.findById(cultivationId)
-                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-
-        if (!cultivationRepository.isMember(cultivationId, userId)) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        Cultivation cultivation = cultivationAccessGuard.requireMember(cultivationId, userId);
 
         Harvest harvest = harvestRepository.findByCultivationId(cultivationId)
                 .orElseThrow(() -> new HarvestNotFoundException(cultivationId));

@@ -19,6 +19,7 @@ import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRepository;
+import site.yesaido.cultivation_server.cultivation.service.impl.CultivationAccessGuard;
 import site.yesaido.cultivation_server.cultivation.service.impl.HarvestServiceImpl;
 import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
 
@@ -44,6 +45,9 @@ class HarvestServiceTest {
 
     @Mock
     private CultivationMemberService cultivationMemberService;
+
+    @Mock
+    private CultivationAccessGuard cultivationAccessGuard;
 
     @InjectMocks
     private HarvestServiceImpl harvestService;
@@ -167,8 +171,7 @@ class HarvestServiceTest {
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.of(harvest));
 
         HarvestDetailResponse response = harvestService.getHarvest(cultivationId, userId);
@@ -184,10 +187,8 @@ class HarvestServiceTest {
         Long userId = 1L;
         Long cultivationId = 100L;
 
-        Cultivation cultivation = Cultivation.builder().name("버섯 농장").build();
-
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(false);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId))
+                .thenThrow(new CultivationAccessDeniedException(cultivationId));
 
         assertThatThrownBy(() -> harvestService.getHarvest(cultivationId, userId))
                 .isInstanceOf(CultivationAccessDeniedException.class);
@@ -201,8 +202,7 @@ class HarvestServiceTest {
 
         Cultivation cultivation = Cultivation.builder().name("버섯 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationRepository.isMember(cultivationId, userId)).thenReturn(true);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> harvestService.getHarvest(cultivationId, userId))
