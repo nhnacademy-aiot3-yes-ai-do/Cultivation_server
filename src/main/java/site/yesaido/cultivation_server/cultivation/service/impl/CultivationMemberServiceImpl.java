@@ -49,7 +49,7 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         if (request.role() == MemberRole.OWNER) {
             throw new InvalidMemberRoleException();
         }
-        CultivationMember owner = verifyOwner(cultivationId, requesterId);
+        CultivationMember owner = requireOwner(cultivationId, requesterId);
 
         if (cultivationMemberRepository.existsByCultivationIdAndUserId(cultivationId, request.userId())) {
             throw new CultivationMemberAlreadyExistException(request.userId());
@@ -97,10 +97,9 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
         if (request.role() == MemberRole.OWNER) {
             throw new InvalidMemberRoleException();
         }
-        verifyOwner(cultivationId, requesterId);
+        requireOwner(cultivationId, requesterId);
 
-        CultivationMember target = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, targetUserId)
-                .orElseThrow(CultivationMemberNotFoundException::new);
+        CultivationMember target = requireMember(cultivationId, targetUserId);
 
         if (target.getRole() == MemberRole.OWNER) {
             throw new CultivationAccessDeniedException(cultivationId);
@@ -112,10 +111,9 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
     @Override
     @Transactional
     public void removeMember(Long cultivationId, Long requesterId, Long targetUserId) {
-        verifyOwner(cultivationId, requesterId);
+        requireOwner(cultivationId, requesterId);
 
-        CultivationMember target = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, targetUserId)
-                .orElseThrow(CultivationMemberNotFoundException::new);
+        CultivationMember target = requireMember(cultivationId, targetUserId);
 
         if (target.getRole() == MemberRole.OWNER) {
             throw new CultivationAccessDeniedException(cultivationId);
@@ -138,8 +136,7 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
             throw new CultivationAccessDeniedException(cultivationId);
         }
 
-        CultivationMember newOwner = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, newUserId)
-                .orElseThrow(CultivationMemberNotFoundException::new);
+        CultivationMember newOwner = requireMember(cultivationId, newUserId);
 
         currentOwner.updateRole(MemberRole.MANAGER);
         newOwner.updateRole(MemberRole.OWNER);
@@ -155,8 +152,7 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
 
     @Override
     public void verifyManagerAccess(Long cultivationId, Long userId) {
-        CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
-                .orElseThrow(CultivationMemberNotFoundException::new);
+        CultivationMember member = requireMember(cultivationId, userId);
         if (member.getRole() == MemberRole.MEMBER) {
             throw new CultivationAccessDeniedException(cultivationId);
         }
@@ -164,17 +160,17 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
 
     @Override
     public void verifyOwnerAccess(Long cultivationId, Long userId) {
-        CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
-                .orElseThrow(CultivationMemberNotFoundException::new);
-        if (member.getRole() != MemberRole.OWNER) {
-            throw new CultivationAccessDeniedException(cultivationId);
-        }
+        requireOwner(cultivationId, userId);
     }
 
     // Helper Method
-    private CultivationMember verifyOwner(Long cultivationId, Long userId) {
-        CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
+    private CultivationMember requireMember(Long cultivationId, Long userId) {
+        return cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
                 .orElseThrow(CultivationMemberNotFoundException::new);
+    }
+
+    private CultivationMember requireOwner(Long cultivationId, Long userId) {
+        CultivationMember member = requireMember(cultivationId, userId);
 
         if (member.getRole() != MemberRole.OWNER) {
             throw new CultivationAccessDeniedException(cultivationId);
