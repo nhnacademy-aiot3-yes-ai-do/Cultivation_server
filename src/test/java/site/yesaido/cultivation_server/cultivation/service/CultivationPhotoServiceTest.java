@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
@@ -55,6 +56,8 @@ class CultivationPhotoServiceTest {
     @BeforeEach
     void setUp() {
         TransactionSynchronizationManager.initSynchronization();
+        ReflectionTestUtils.setField(cultivationPhotoService, "minioInternalBaseUrl", "http://storage.java21.net:8000");
+        ReflectionTestUtils.setField(cultivationPhotoService, "minioPublicBaseUrl", "https://yes-nhn.site/storage-proxy");
     }
 
     @AfterEach
@@ -303,5 +306,29 @@ class CultivationPhotoServiceTest {
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    @DisplayName("사진 목록 조회 성공 - presigned URL이 공개 프록시 주소로 치환된다")
+    void getPhotosSuccessRewritesToPublicProxyUrl() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/100/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+
+        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
+        when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
+        when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
+                .thenReturn("http://storage.java21.net:8000/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");
+
+        PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
+
+        assertThat(response.photoUploadResponses().getFirst().uri())
+                .isEqualTo("https://yes-nhn.site/storage-proxy/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");
     }
 }
