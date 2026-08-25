@@ -4,9 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
-import site.yesaido.cultivation_server.cultivation.entity.cultivationphoto.CultivationPhoto;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
-import site.yesaido.cultivation_server.cultivation.exception.PhotoNotFoundException;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
@@ -32,15 +30,5 @@ public class CultivationAccessGuard {
         cultivationMemberService.existCultivationMember(cultivationId, userId);
 
         return cultivation;
-    }
-
-    public String resolveObjectKey(Long cultivationId, Long userId, Long photoId) {
-        requireMember(cultivationId, userId);
-
-        CultivationPhoto photo = cultivationPhotoRepository.findById(photoId)
-                .filter(p -> p.getCultivation().getId().equals(cultivationId))
-                .orElseThrow(() -> new PhotoNotFoundException(photoId));
-
-        return photo.getObjectKey();
     }
 }
