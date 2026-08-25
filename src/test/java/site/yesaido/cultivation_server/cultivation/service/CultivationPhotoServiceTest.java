@@ -193,7 +193,7 @@ class CultivationPhotoServiceTest {
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
-        when(minioObjectStorage.presignedGetUrl(eq(photo.getObjectKey()), eq(Duration.ofMinutes(30)))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
+        when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
         PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
 
