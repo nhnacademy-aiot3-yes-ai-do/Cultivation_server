@@ -16,11 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.exception.server.ServerErrorLevel;
 import site.yesaido.cultivation_server.config.InfluxProperties;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
 import java.math.BigDecimal;

@@ -18,7 +18,6 @@ import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.storage.MinioObjectStorage;
 import site.yesaido.common.storage.MinioObjectStorageException;
 import site.yesaido.common.storage.StorageType;
-import site.yesaido.common.storage.StorageUrlResolver;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
@@ -194,7 +193,7 @@ class CultivationPhotoServiceTest {
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
-        when(minioObjectStorage.presignedGetUrl(eq(photo.getObjectKey()), eq(Duration.ofMinutes(30)))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
+        when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
         PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
 
