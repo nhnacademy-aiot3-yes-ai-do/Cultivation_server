@@ -1,15 +1,21 @@
 package site.yesaido.cultivation_server.rabbitmq.event;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
 public record ThresholdInfoEvent(
+
+        @NotNull
+        @Positive
         Long cultivationId,
 
         //빈 List 전달시 (ruleEngine에서 전부 삭제처리)
-        List<SensorRange> sensorRangeList,
+        @NotNull
+        List<@Valid SensorRange> sensorRangeList,
 
         @NotNull
         OffsetDateTime occurredAt
