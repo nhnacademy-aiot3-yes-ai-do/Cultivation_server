@@ -16,7 +16,6 @@ import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorList
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
-import site.yesaido.cultivation_server.sensor.exception.CultivationSensorNotFoundException;
 import site.yesaido.cultivation_server.sensor.exception.DuplicateSensorTypeException;
 import site.yesaido.cultivation_server.sensor.service.*;
 
@@ -154,18 +153,7 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
                 OffsetDateTime.now(ZoneOffset.ofHours(9));
 
         // 사용자가 경작지에 cultivationSensor를 등록하지않고 경작 종료한 경우
-        if (sensorList.isEmpty()) {
-            log.info("경작지 %s에 존재하는 CultivationSensor 찾지 못해 삭제 명령 Skip".formatted(cultivationId));
-
-            eventPublisher.publishEvent(
-                    new ThresholdInfoEvent(
-                            cultivationId,
-                            List.of(),
-                            occurredAt
-                    )
-            );
-            return;
-        }
+        // 기존 Stream과 forEach()가 자연스럽게 아무 작업도 하지 않음
 
         // 사용자가 정상적으로 cultivationSensor를 1개이상 등록해둔 상태에서 경작 종료한 경우
         List<SensorInfoDeleteEvent> sensorDeleteEvents =

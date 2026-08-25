@@ -260,7 +260,7 @@ class CultivationSensorFacadeTest {
          * )).thenReturn(true);
          */
         @Test
-        @DisplayName("삭제 성공")
+        @DisplayName("개별 삭제 성공")
         // 접근 권한 확인 후 센서 삭제
         void delete_success() {
 
@@ -336,6 +336,147 @@ class CultivationSensorFacadeTest {
             );
             verifyNoMoreInteractions(cultivationMemberService, cultivationSensorService, eventPublisher);
             verifyNoInteractions(sensorTypeService, cultivationSensorTypeService, environmentSettingService);
+        }
+    }
+
+    @Nested
+    @DisplayName("경작 종료시 센서 전체 삭제")
+    class Facade_deleteAll {
+
+        @Test
+        @DisplayName("삭제되지 않은 모든 센서를 삭제하고 임계값 및 센서 삭제 이벤트를 발행한다")
+        void deleteAll_success() {
+            CultivationSensorResponse sensor1 = new CultivationSensorResponse(
+                    100L,
+                    "EUI-001",
+                    "MODEL-A",
+                    "1번 센서",
+                    "ROOM-1",
+                    "북쪽",
+                    SensorConnectStatus.ONLINE,
+                    List.of(
+                            new CultivationSensorTypeResponse(
+                                    10L, "TEMPERATURE", "C"
+                            ),
+                            new CultivationSensorTypeResponse(
+                                    20L, "HUMIDITY", "%"
+                            )
+                    )
+            );
+
+            CultivationSensorResponse sensor2 = new CultivationSensorResponse(
+                    200L,
+                    "EUI-002",
+                    "MODEL-B",
+                    "2번 센서",
+                    "ROOM-2",
+                    "남쪽",
+                    SensorConnectStatus.OFFLINE,
+                    List.of(
+                            new CultivationSensorTypeResponse(
+                                    30L, "CO2", "ppm"
+                            )
+                    )
+            );
+
+            when(cultivationSensorService.findAll(CULTIVATION_ID))
+                    .thenReturn(List.of(sensor1, sensor2));
+
+            // when
+            cultivationSensorFacade.deleteAll(USER_ID, CULTIVATION_ID);
+
+            // then: ONLINE/OFFLINE과 관계없이 삭제되지 않은 센서 모두 삭제
+            InOrder serviceOrder = inOrder(cultivationSensorService);
+
+            serviceOrder.verify(cultivationSensorService)
+                    .findAll(CULTIVATION_ID);
+            serviceOrder.verify(cultivationSensorService)
+                    .delete(CULTIVATION_ID, 100L);
+            serviceOrder.verify(cultivationSensorService)
+                    .delete(CULTIVATION_ID, 200L);
+
+            ArgumentCaptor<Object> eventCaptor =
+                    ArgumentCaptor.forClass(Object.class);
+
+            verify(eventPublisher, times(4))
+                    .publishEvent(eventCaptor.capture());
+
+            List<Object> events = eventCaptor.getAllValues();
+
+            // 구현상 임계값 전체 삭제 이벤트가 먼저 발행됨
+            assertThat(events.getFirst()).isInstanceOf(ThresholdInfoEvent.class);
+
+            ThresholdInfoEvent thresholdEvent =
+                    (ThresholdInfoEvent) events.getFirst();
+
+            assertThat(thresholdEvent.cultivationId())
+                    .isEqualTo(CULTIVATION_ID);
+            assertThat(thresholdEvent.sensorRangeList())
+                    .isEmpty();
+
+            List<SensorInfoDeleteEvent> deleteEvents = events.stream()
+                    .filter(SensorInfoDeleteEvent.class::isInstance)
+                    .map(SensorInfoDeleteEvent.class::cast)
+                    .toList();
+
+            assertThat(deleteEvents)
+                    .extracting(
+                            SensorInfoDeleteEvent::cultivationId,
+                            SensorInfoDeleteEvent::deviceEui,
+                            SensorInfoDeleteEvent::sensorType,
+                            SensorInfoDeleteEvent::unit
+                    )
+                    .containsExactly(
+                            tuple(CULTIVATION_ID, "EUI-001", "TEMPERATURE", "C"),
+                            tuple(CULTIVATION_ID, "EUI-001", "HUMIDITY", "%"),
+                            tuple(CULTIVATION_ID, "EUI-002", "CO2", "ppm")
+                    );
+
+            // 한 번의 종료 작업에서 생성된 이벤트는 같은 기준 시각 사용
+            assertThat(deleteEvents)
+                    .allSatisfy(event ->
+                            assertThat(event.occurredAt())
+                                    .isEqualTo(thresholdEvent.occurredAt())
+                    );
+        }
+
+        @Test
+        @DisplayName("등록된 센서가 없어도 임계값 삭제 이벤트를 발행하고 정상 처리한다")
+        void deleteAll_successWhenSensorNotFound() {
+            // given
+            when(cultivationSensorService.findAll(CULTIVATION_ID))
+                    .thenReturn(List.of());
+
+            // when & then
+            assertThatCode(() ->
+                    cultivationSensorFacade.deleteAll(USER_ID, CULTIVATION_ID)
+            ).doesNotThrowAnyException();
+
+            verify(cultivationSensorService)
+                    .findAll(CULTIVATION_ID);
+
+            verify(cultivationSensorService, never())
+                    .delete(anyLong(), anyLong());
+
+            ArgumentCaptor<ThresholdInfoEvent> eventCaptor =
+                    ArgumentCaptor.forClass(ThresholdInfoEvent.class);
+
+            verify(eventPublisher)
+                    .publishEvent(eventCaptor.capture());
+
+            ThresholdInfoEvent event = eventCaptor.getValue();
+
+            assertThat(event.cultivationId())
+                    .isEqualTo(CULTIVATION_ID);
+            assertThat(event.sensorRangeList())
+                    .isEmpty();
+            assertThat(event.occurredAt())
+                    .isNotNull();
+
+            verifyNoMoreInteractions(
+                    cultivationSensorService,
+                    eventPublisher
+            );
         }
     }
 
