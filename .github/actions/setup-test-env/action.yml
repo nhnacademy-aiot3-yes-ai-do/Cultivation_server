@@ -21,6 +21,7 @@ runs:
         echo "MINIO_ACCESS_KEY=minioadmin" >> "$GITHUB_ENV"
         echo "MINIO_SECRET_KEY=minioadmin123" >> "$GITHUB_ENV"
         echo "MINIO_BUCKET=testbucket" >> "$GITHUB_ENV"
+        echo "MINIO_PUBLIC_BASE_URL=https://test.site/storage-proxy" >> "$GITHUB_ENV"
 
         # RabbitMQ
         echo "RABBITMQ_HOST=localhost" >> "$GITHUB_ENV"

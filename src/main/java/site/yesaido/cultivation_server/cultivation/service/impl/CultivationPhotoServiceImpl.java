@@ -46,6 +46,12 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     @Value("${minio.bucket}")
     private String bucket;
 
+    @Value("${minio.url}")
+    private String minioInternalBaseUrl;
+
+    @Value("${minio.public-base-url}")
+    private String minioPublicBaseUrl;
+
     @Override
     @Transactional
     public PhotoUploadResponse uploadPhoto(Long cultivationId, Long userId, MultipartFile file) {
@@ -150,10 +156,15 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
                     ServerErrorLevel.WARN_LEVEL
             );
         }
+
+        String publicUrl = presignedUrl.startsWith(minioInternalBaseUrl)
+                ? minioPublicBaseUrl + presignedUrl.substring(minioInternalBaseUrl.length())
+                : presignedUrl;
+
         return new PhotoUploadResponse(
                 cultivationPhoto.getId(),
                 objectKey,
-                presignedUrl,
+                publicUrl,
                 cultivationPhoto.getStorageType(),
                 cultivationPhoto.getUploadedAt()
         );
