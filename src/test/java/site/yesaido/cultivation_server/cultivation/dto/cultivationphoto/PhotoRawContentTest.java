@@ -2,8 +2,6 @@ package site.yesaido.cultivation_server.cultivation.dto.cultivationphoto;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class PhotoRawContentTest {
 
     @Test
