@@ -18,7 +18,6 @@ import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.storage.MinioObjectStorage;
 import site.yesaido.common.storage.MinioObjectStorageException;
 import site.yesaido.common.storage.StorageType;
-import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
@@ -43,9 +42,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class CultivationPhotoServiceTest {
 
-    @Mock private CultivationPhotoRepository cultivationPhotoRepository;
-    @Mock private MinioObjectStorage minioObjectStorage;
-    @Mock private CultivationAccessGuard cultivationAccessGuard;
+    @Mock
+    private CultivationPhotoRepository cultivationPhotoRepository;
+    @Mock
+    private MinioObjectStorage minioObjectStorage;
+    @Mock
+    private CultivationAccessGuard cultivationAccessGuard;
 
     @InjectMocks
     private CultivationPhotoServiceImpl cultivationPhotoService;
@@ -301,82 +303,5 @@ class CultivationPhotoServiceTest {
 
         assertThatThrownBy(() -> cultivationPhotoService.uploadPhoto(cultivationId, userId, file))
                 .isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
-    @DisplayName("사진 원본 조회 성공")
-    void getPhotoRawSuccess() {
-        Long userId = 1L;
-        Long cultivationId = 100L;
-        Long photoId = 10L;
-        String objectKey = "cultivation-photo/100/uuid.jpg";
-        byte[] content = "image-bytes".getBytes();
-
-        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId)).thenReturn(objectKey);
-        when(minioObjectStorage.get(objectKey))
-                .thenReturn(new MinioObjectStorage.MinioObjectContent(content, "image/jpeg"));
-
-        PhotoRawContent result = cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId);
-
-        assertThat(result.bytes()).isEqualTo(content);
-        assertThat(result.contentType()).isEqualTo("image/jpeg");
-    }
-
-    @Test
-    @DisplayName("사진 원본 조회 실패 - 존재하지 않는 재배")
-    void getPhotoRawFailCultivationNotFound() {
-        Long userId = 1L;
-        Long cultivationId = 100L;
-        Long photoId = 10L;
-
-        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId))
-                .thenThrow(new CultivationNotFoundException(cultivationId));
-
-        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
-                .isInstanceOf(CultivationNotFoundException.class);
-    }
-
-    @Test
-    @DisplayName("사진 원본 조회 실패 - 재배 멤버가 아닌 경우")
-    void getPhotoRawFailAccessDenied() {
-        Long userId = 1L;
-        Long cultivationId = 100L;
-        Long photoId = 10L;
-
-        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId))
-                .thenThrow(new CultivationAccessDeniedException(cultivationId));
-
-        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
-                .isInstanceOf(CultivationAccessDeniedException.class);
-    }
-
-    @Test
-    @DisplayName("사진 원본 조회 실패 - 존재하지 않는 사진(다른 재배 소속 포함)")
-    void getPhotoRawFailPhotoNotFound() {
-        Long userId = 1L;
-        Long cultivationId = 100L;
-        Long photoId = 10L;
-
-        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId))
-                .thenThrow(new PhotoNotFoundException(photoId));
-
-        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
-                .isInstanceOf(PhotoNotFoundException.class);
-    }
-
-    @Test
-    @DisplayName("사진 원본 조회 실패 - MinIO 다운로드 실패")
-    void getPhotoRawFailMinioDownload() {
-        Long userId = 1L;
-        Long cultivationId = 100L;
-        Long photoId = 10L;
-        String objectKey = "cultivation-photo/100/uuid.jpg";
-
-        when(cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId)).thenReturn(objectKey);
-        when(minioObjectStorage.get(objectKey))
-                .thenThrow(new MinioObjectStorageException("MinIO 다운로드 실패", new RuntimeException("연결 실패")));
-
-        assertThatThrownBy(() -> cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId))
-                .isInstanceOf(CustomServerException.class);
     }
 }

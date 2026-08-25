@@ -33,14 +33,4 @@ public class CultivationAccessGuard {
 
         return cultivation;
     }
-
-    public String resolveObjectKey(Long cultivationId, Long userId, Long photoId) {
-        requireMember(cultivationId, userId);
-
-        CultivationPhoto photo = cultivationPhotoRepository.findById(photoId)
-                .filter(p -> p.getCultivation().getId().equals(cultivationId))
-                .orElseThrow(() -> new PhotoNotFoundException(photoId));
-
-        return photo.getObjectKey();
-    }
 }
