@@ -1,6 +1,9 @@
 package site.yesaido.cultivation_server.sensor.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.sensor.dto.request.SensorTypeRequest;
@@ -8,6 +11,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.SensorTypeInfoListRes
 import site.yesaido.cultivation_server.sensor.dto.response.SensorTypeInfoResponse;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeAlreadyExistException;
+import site.yesaido.cultivation_server.sensor.exception.SensorTypeInUseException;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeNotFoundException;
 import site.yesaido.cultivation_server.sensor.repository.SensorTypeRepository;
 import site.yesaido.cultivation_server.sensor.service.SensorTypeService;
@@ -15,6 +19,7 @@ import site.yesaido.cultivation_server.sensor.service.SensorTypeService;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class SensorTypeServiceImpl implements SensorTypeService {
@@ -60,8 +65,19 @@ public class SensorTypeServiceImpl implements SensorTypeService {
     @Transactional
     public void deleteSensorType(long sensorTypeId) {
         existSensorTypeById(sensorTypeId);
+        if (sensorTypeRepository.existsInUseById(sensorTypeId)) {
+            throw new SensorTypeInUseException(sensorTypeId);
+        }
 
-        sensorTypeRepository.deleteById(sensorTypeId);
+        try {
+            sensorTypeRepository.deleteById(sensorTypeId);
+            sensorTypeRepository.flush();
+        } catch (EmptyResultDataAccessException exception) {
+            throw new SensorTypeNotFoundException("sensorTypeId:%d".formatted(sensorTypeId));
+        } catch (DataIntegrityViolationException exception) {
+            log.warn("Sensor type deletion was blocked by a database constraint: sensorTypeId={}", sensorTypeId);
+            throw new SensorTypeInUseException(sensorTypeId);
+        }
     }
 
     @Override
