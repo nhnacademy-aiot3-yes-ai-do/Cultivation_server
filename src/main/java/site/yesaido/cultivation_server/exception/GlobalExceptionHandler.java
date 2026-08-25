@@ -70,9 +70,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({CustomServerException.class})
     public ErrorResponse handleServerException(CustomServerException e) {
         if(e.getErrorLevel().equals(ServerErrorLevel.WARN_LEVEL)) {
-            log.warn("{}", e.getLogContent());
+            log.warn("{}", e.getLogContent(), e);
         } else {
-            log.error("{}", e.getLogContent());
+            log.error("{}", e.getLogContent(), e);
         }
 
         return createResponseEntity(e, CustomServerException.getStatus(), e.getMessage());

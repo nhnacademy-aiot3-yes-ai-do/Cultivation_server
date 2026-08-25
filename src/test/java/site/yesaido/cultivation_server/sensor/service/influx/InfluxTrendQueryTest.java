@@ -10,6 +10,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPoi
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointResponse;
 import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,7 @@ class InfluxTrendQueryTest {
 
         assertThat(result.unit()).isEqualTo(".°C");
         assertThat(result.responses())
-                .containsExactly(new SensorTrendPointResponse(measuredAt, 24.25));
+                .containsExactly(new SensorTrendPointResponse(measuredAt, BigDecimal.valueOf(24.25)));
         verify(queryApi).query(argThat((String query) ->
                 query.contains("range(start: -24h)")
                         && query.contains("r.cultivationId == \"42\"")
