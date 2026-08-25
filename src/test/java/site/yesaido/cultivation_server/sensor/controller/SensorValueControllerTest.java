@@ -109,8 +109,8 @@ class SensorValueControllerTest {
     @DisplayName("전체 센서 평균값 조회 성공 시 200 OK와 결과를 반환한다")
     void getAverageSuccess() throws Exception {
         List<SensorTypeAverageResponse> averages = List.of(
-                new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", 22.5),
-                new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", 80.0)
+                new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", BigDecimal.valueOf(22.5)),
+                new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", BigDecimal.valueOf(80.0))
         );
         SensorTypeAverageListResponse response = new SensorTypeAverageListResponse(averages);
         given(influxService.findAverageByCultivationId(CULTIVATION_ID)).willReturn(averages);

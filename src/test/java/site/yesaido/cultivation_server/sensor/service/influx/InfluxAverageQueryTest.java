@@ -87,7 +87,7 @@ class InfluxAverageQueryTest {
         List<SensorTypeAverageResponse> result = service.findAverageByCultivationId(42L);
 
         assertThat(result).containsExactly(
-                new SensorTypeAverageResponse(42L, "TEMPERATURE", "°C", 21.50)
+                new SensorTypeAverageResponse(42L, "TEMPERATURE", "°C", BigDecimal.valueOf(21.50))
         );
 
         verify(queryApi).query(argThat((String query) ->
