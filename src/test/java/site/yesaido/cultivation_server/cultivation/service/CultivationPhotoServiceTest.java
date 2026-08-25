@@ -31,6 +31,7 @@ import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.C
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationAccessGuard;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoServiceImpl;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -45,7 +46,6 @@ class CultivationPhotoServiceTest {
 
     @Mock private CultivationPhotoRepository cultivationPhotoRepository;
     @Mock private MinioObjectStorage minioObjectStorage;
-    @Mock private StorageUrlResolver storageUrlResolver;
     @Mock private CultivationAccessGuard cultivationAccessGuard;
 
     @InjectMocks
@@ -72,7 +72,7 @@ class CultivationPhotoServiceTest {
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
-        when(storageUrlResolver.resolve(eq(StorageType.MINIO), any())).thenReturn("http://storage.example.com/test-bucket/objectKey");
+        when(minioObjectStorage.presignedGetUrl(anyString(), eq(Duration.ofMinutes(30)))).thenReturn("http://storage.example.com/test-bucket/objectKey");
 
         PhotoUploadResponse response = cultivationPhotoService.uploadPhoto(cultivationId, userId, file);
 
@@ -194,12 +194,13 @@ class CultivationPhotoServiceTest {
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
-        when(storageUrlResolver.resolve(StorageType.MINIO, photo.getObjectKey())).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
+        when(minioObjectStorage.presignedGetUrl(eq(photo.getObjectKey()), eq(Duration.ofMinutes(30)))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
         PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
 
         assertThat(response.photoUploadResponses()).hasSize(1);
         assertThat(response.photoUploadResponses().getFirst().objectKey()).isEqualTo(photo.getObjectKey());
+        assertThat(response.photoUploadResponses().getFirst().uri()).isEqualTo("http://storage.example.com/test-bucket/photo.jpg");
     }
 
     @Test

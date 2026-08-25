@@ -23,6 +23,7 @@ import site.yesaido.cultivation_server.cultivation.exception.PhotoNotFoundExcept
 import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationPhotoService;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -38,10 +39,10 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private static final String DOMAIN = "cultivation-photo";
     private static final String OBJECT_KEY_LOG_SEGMENT = ", objectKey: ";
     private static final String CAUSE_LOG_SEGMENT = ", cause: ";
+    private static final Duration PRESIGNED_URL_TTL = Duration.ofMinutes(30);
 
     private final CultivationPhotoRepository cultivationPhotoRepository;
     private final MinioObjectStorage minioObjectStorage;
-    private final StorageUrlResolver storageUrlResolver;
     private final CultivationAccessGuard cultivationAccessGuard;
 
     @Value("${minio.bucket}")
@@ -159,12 +160,21 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
 
     // Helper Method
     private PhotoUploadResponse toResponse(CultivationPhoto cultivationPhoto) {
-        String url = storageUrlResolver.resolve(cultivationPhoto.getStorageType(), cultivationPhoto.getObjectKey());
-
+        String objectKey = cultivationPhoto.getObjectKey();
+        String presignedUrl;
+        try {
+            presignedUrl = minioObjectStorage.presignedGetUrl(objectKey, PRESIGNED_URL_TTL);
+        } catch (MinioObjectStorageException e) {
+            throw new CustomServerException(
+                    "사진 URL 발급 실패했습니다.",
+                    "MINIO presigned URL 발급 실패" + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
+                    ServerErrorLevel.WARN_LEVEL
+            );
+        }
         return new PhotoUploadResponse(
                 cultivationPhoto.getId(),
-                cultivationPhoto.getObjectKey(),
-                url,
+                objectKey,
+                presignedUrl,
                 cultivationPhoto.getStorageType(),
                 cultivationPhoto.getUploadedAt()
         );
