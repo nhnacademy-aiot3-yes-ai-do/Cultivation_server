@@ -18,7 +18,6 @@ import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.storage.MinioObjectStorage;
 import site.yesaido.common.storage.MinioObjectStorageException;
 import site.yesaido.common.storage.StorageType;
-import site.yesaido.common.storage.StorageUrlResolver;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;

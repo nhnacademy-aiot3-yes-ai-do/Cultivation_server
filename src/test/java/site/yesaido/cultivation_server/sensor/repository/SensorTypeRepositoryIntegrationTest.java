@@ -13,18 +13,11 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import site.yesaido.cultivation_server.config.QuerydslConfig;
-import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
-import site.yesaido.cultivation_server.sensor.entity.CultivationSensorType;
-import site.yesaido.cultivation_server.sensor.entity.EnvironmentSetting;
-import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
-import site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThreshold;
-import site.yesaido.cultivation_server.sensor.entity.SensorType;
+import site.yesaido.cultivation_server.sensor.entity.*;
 
 import java.math.BigDecimal;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
 @Import(QuerydslConfig.class)
