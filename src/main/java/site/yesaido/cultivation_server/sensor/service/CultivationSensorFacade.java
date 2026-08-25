@@ -8,5 +8,8 @@ public interface CultivationSensorFacade {
 
     void delete(Long userId, long cultivationId, long sensorId);
 
+    // 경작 종료후 수확 호출시 경작 끝 처리한후 호출, harvest에서 owner 체크하므로 권한체크 불필요
+    void deleteAll(Long userId, long cultivationId);
+
     CultivationSensorListResponse findAll(Long userId, long cultivationId);
 }

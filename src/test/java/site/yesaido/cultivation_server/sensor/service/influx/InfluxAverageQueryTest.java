@@ -11,6 +11,7 @@ import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 import site.yesaido.cultivation_server.sensor.service.impl.InfluxServiceImpl;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -46,7 +47,7 @@ class InfluxAverageQueryTest {
                 service.findAverageByCultivationIdForLast24Hours(42L);
 
         assertThat(result).containsExactly(
-                new SensorTypeAverageResponse(42L, "TEMPERATURE", "C", 23.75)
+                new SensorTypeAverageResponse(42L, "TEMPERATURE", "C", BigDecimal.valueOf(23.75))
         );
 
         verify(queryApi).query(argThat((String query) ->
@@ -86,7 +87,7 @@ class InfluxAverageQueryTest {
         List<SensorTypeAverageResponse> result = service.findAverageByCultivationId(42L);
 
         assertThat(result).containsExactly(
-                new SensorTypeAverageResponse(42L, "TEMPERATURE", "°C", 21.50)
+                new SensorTypeAverageResponse(42L, "TEMPERATURE", "°C", BigDecimal.valueOf(21.50))
         );
 
         verify(queryApi).query(argThat((String query) ->

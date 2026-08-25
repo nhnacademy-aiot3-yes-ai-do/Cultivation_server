@@ -1,6 +1,7 @@
 package site.yesaido.cultivation_server.sensor.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
@@ -140,6 +142,50 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         cultivationSensorService.delete(cultivationId, sensorId);
 
         events.forEach(eventPublisher::publishEvent);
+    }
+
+    @Override
+    @Transactional
+    // 경작 종료시 룰엔진, 데이터소스에 임계값 빈리스트로 반환해서 임계값 전부 삭제처리
+    public void deleteAll(Long userId, long cultivationId) {
+        List<CultivationSensorResponse> sensorList = cultivationSensorService.findAll(cultivationId);
+        OffsetDateTime occurredAt =
+                OffsetDateTime.now(ZoneOffset.ofHours(9));
+
+        // 사용자가 경작지에 cultivationSensor를 등록하지않고 경작 종료한 경우
+        // 기존 Stream과 forEach()가 자연스럽게 아무 작업도 하지 않음
+
+        // 사용자가 정상적으로 cultivationSensor를 1개이상 등록해둔 상태에서 경작 종료한 경우
+        List<SensorInfoDeleteEvent> sensorDeleteEvents =
+                sensorList.stream()
+                        .flatMap(sensor ->
+                                sensor.sensorTypes().stream()
+                                        .map(type -> new SensorInfoDeleteEvent(
+                                                cultivationId,
+                                                sensor.deviceEui(),
+                                                type.type(),
+                                                type.valueUnit(),
+                                                occurredAt
+                                        ))
+                        )
+                        .toList();
+
+        // db에서 소프트delete 반영
+        sensorList.forEach(sensor ->
+                cultivationSensorService.delete(cultivationId, sensor.sensorId())
+        );
+
+        eventPublisher.publishEvent(
+                new ThresholdInfoEvent(
+                        cultivationId,
+                        List.of(),
+                        occurredAt
+                )
+        );
+
+        sensorDeleteEvents.forEach(
+                eventPublisher::publishEvent
+        );
     }
 
     @Override

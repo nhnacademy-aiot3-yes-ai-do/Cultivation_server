@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.NumberUtils;
+import site.yesaido.common.exception.server.CustomServerException;
+import site.yesaido.common.exception.server.ServerErrorLevel;
 import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
@@ -46,6 +48,13 @@ public class InfluxServiceImpl implements InfluxService {
                         Comparator.nullsLast(String::compareTo)
                 ))
                 .toList();
+
+        if (list.isEmpty()) {
+            log.debug(
+                    "[InfluxDB] 센서 데이터 없음: cultivationId={}",
+                    cultivationId
+            );
+        }
 
         return new LatestSensorValueListResponse(list);
     }
@@ -114,7 +123,7 @@ public class InfluxServiceImpl implements InfluxService {
                     if (!(rawValue instanceof Number number)) {
                         throw new IllegalStateException("Influx trend value is not numeric: " + rawValue);
                     }
-                    return new SensorTrendPointResponse(fluxRecord.getTime(), number.doubleValue());
+                    return new SensorTrendPointResponse(fluxRecord.getTime(), NumberUtils.convertNumberToTargetClass(number, BigDecimal.class));
                 })
                 .toList();
 
@@ -159,7 +168,7 @@ public class InfluxServiceImpl implements InfluxService {
                 longValue(values, FIELD_CULTIVATION_ID),
                 stringValue(values, FIELD_SENSOR_TYPE),
                 stringValue(values, FIELD_UNIT),
-                number.doubleValue()
+                NumberUtils.convertNumberToTargetClass(number, BigDecimal.class)
         );
     }
 
@@ -202,16 +211,25 @@ public class InfluxServiceImpl implements InfluxService {
         try {
             return influxDBClient.getQueryApi().query(query, properties.getOrg());
         } catch (InfluxException e) {
-            try {
-                String raw = influxDBClient.getQueryApi().queryRaw(query, properties.getOrg());
-                log.warn("[InfluxDB] 쿼리 실패, raw 응답 확인: message={}, rawResponse={}", e.getMessage(), raw);
-            } catch (Exception rawEx) {
-                log.warn("[InfluxDB] raw 응답 조회도 실패: {}", rawEx.getMessage());
-            }
-            if (e.getMessage() != null && e.getMessage().contains("FluxTable definition was not found")) {
-                return List.of();
-            }
-            throw e;
+            String logContent = """
+                InfluxDB 센서 데이터 조회 실패
+                url=%s
+                org=%s
+                bucket=%s
+                cause=%s
+                """.formatted(
+                    properties.getUrl(),
+                    properties.getOrg(),
+                    properties.getBucket(),
+                    e.getMessage()
+            );
+
+            throw new CustomServerException(
+                    "센서 데이터를 조회하는 중 오류가 발생했습니다.",
+                    logContent,
+                    e,
+                    ServerErrorLevel.ERROR_LEVEL
+            );
         }
     }
 

@@ -8,7 +8,7 @@ import java.util.List;
 public record ThresholdInfoEvent(
         Long cultivationId,
 
-        //빈 List도 전달할 수 있음 (ruleEngine에서 처리)
+        //빈 List 전달시 (ruleEngine에서 전부 삭제처리)
         List<SensorRange> sensorRangeList,
 
         @NotNull

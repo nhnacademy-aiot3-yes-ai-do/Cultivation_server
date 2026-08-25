@@ -22,6 +22,7 @@ import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRep
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationAccessGuard;
 import site.yesaido.cultivation_server.cultivation.service.impl.HarvestServiceImpl;
 import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
+import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -45,6 +46,9 @@ class HarvestServiceTest {
 
     @Mock
     private CultivationMemberService cultivationMemberService;
+
+    @Mock
+    private CultivationSensorFacade cultivationSensorFacade;
 
     @Mock
     private CultivationAccessGuard cultivationAccessGuard;
@@ -76,6 +80,7 @@ class HarvestServiceTest {
         assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.FINISHED);
         verify(harvestRepository, times(1)).save(any(Harvest.class));
         verify(eventPublisher).publishEvent(any(HarvestCompletedEvent.class));
+        verify(cultivationSensorFacade).deleteAll(userId, cultivationId);
     }
 
     @Test
