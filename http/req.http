@@ -188,12 +188,12 @@ POST {{rabbitSmoke}}/internal/test/rabbit/sensor-created
 Content-Type: application/json
 
 {
-  "cultivationId": 10,
+  "cultivationId": 25,
   "location": "실습실",
-  "locationDetail": "후방 오른쪽",
-  "deviceModel": "EM500-CO2",
-  "deviceName": "EM500-CO2-152862",
-  "deviceEui": "24e124126d152862",
+  "locationDetail": "후면 오른쪽",
+  "deviceModel": "AM107",
+  "deviceName": "AM107-067999",
+  "deviceEui": "24e124128c067999",
   "sensorSettings": [
     {
       "sensorType": "TEMPERATURE",
