@@ -23,7 +23,9 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationMemberServ
 import site.yesaido.cultivation_server.cultivation.service.HarvestService;
 import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedPayload;
+import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -35,6 +37,7 @@ public class HarvestServiceImpl implements HarvestService {
     private final CultivationRepository cultivationRepository;
     private final CultivationMemberService cultivationMemberService;
     private final ApplicationEventPublisher eventPublisher;
+    private final CultivationSensorFacade cultivationSensorFacade;
     private final CultivationAccessGuard cultivationAccessGuard;
 
     @Override
@@ -58,6 +61,7 @@ public class HarvestServiceImpl implements HarvestService {
                 .build();
         harvestRepository.save(harvest);
         cultivation.finish();
+        cultivationSensorFacade.deleteAll(userId, cultivationId);
 
         HarvestCompletedPayload payload = new HarvestCompletedPayload(cultivation.getName(), harvest.getHarvestWeight());
         eventPublisher.publishEvent(new HarvestCompletedEvent(cultivationId, payload));

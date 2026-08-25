@@ -79,7 +79,7 @@ class SensorValueControllerTest {
         String sensorType = "TEMPERATURE";
         SensorTrendPointListResponse response = new SensorTrendPointListResponse(
                 CULTIVATION_ID, deviceEui, sensorType, "C",
-                List.of(new SensorTrendPointResponse(Instant.now(), 22.5))
+                List.of(new SensorTrendPointResponse(Instant.now(), BigDecimal.valueOf(22.5)))
         );
         given(influxService.findTrend(CULTIVATION_ID, deviceEui, sensorType)).willReturn(response);
 
