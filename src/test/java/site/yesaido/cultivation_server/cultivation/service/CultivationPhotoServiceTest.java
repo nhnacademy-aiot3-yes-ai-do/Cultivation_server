@@ -72,7 +72,7 @@ class CultivationPhotoServiceTest {
         Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
-        when(minioObjectStorage.presignedGetUrl(anyString(), any(Duration.class))).thenReturn("http://storage.example.com/test-bucket/objectKey");
+        when(minioObjectStorage.presignedGetUrl(anyString(), eq(Duration.ofMinutes(30)))).thenReturn("http://storage.example.com/test-bucket/objectKey");
 
         PhotoUploadResponse response = cultivationPhotoService.uploadPhoto(cultivationId, userId, file);
 
@@ -194,12 +194,13 @@ class CultivationPhotoServiceTest {
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
-        when(minioObjectStorage.presignedGetUrl(eq(photo.getObjectKey()), any(Duration.class))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
+        when(minioObjectStorage.presignedGetUrl(eq(photo.getObjectKey()), eq(Duration.ofMinutes(30)))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
         PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
 
         assertThat(response.photoUploadResponses()).hasSize(1);
         assertThat(response.photoUploadResponses().getFirst().objectKey()).isEqualTo(photo.getObjectKey());
+        assertThat(response.photoUploadResponses().getFirst().uri()).isEqualTo("http://storage.example.com/test-bucket/photo.jpg");
     }
 
     @Test
