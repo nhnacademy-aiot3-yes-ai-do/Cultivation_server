@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -14,7 +13,6 @@ import site.yesaido.common.exception.client.UnsupportedMediaTypeException;
 import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.exception.server.ServerErrorLevel;
 import site.yesaido.common.storage.*;
-import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
@@ -23,6 +21,7 @@ import site.yesaido.cultivation_server.cultivation.exception.PhotoNotFoundExcept
 import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationPhotoService;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -38,10 +37,10 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private static final String DOMAIN = "cultivation-photo";
     private static final String OBJECT_KEY_LOG_SEGMENT = ", objectKey: ";
     private static final String CAUSE_LOG_SEGMENT = ", cause: ";
+    private static final Duration PRESIGNED_URL_TTL = Duration.ofMinutes(30);
 
     private final CultivationPhotoRepository cultivationPhotoRepository;
     private final MinioObjectStorage minioObjectStorage;
-    private final StorageUrlResolver storageUrlResolver;
     private final CultivationAccessGuard cultivationAccessGuard;
 
     @Value("${minio.bucket}")
@@ -138,33 +137,23 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         });
     }
 
-    @Override
-    // getPhotoRaw 메서드가 실행되는 동안 진행 중이던 트랜잭션이 있어도 잠시 중단시켜서
-    // 클래스 레벨 기본값과 무관하게 이 메서드만은 절대 DB 커넥션을 쥔 채로 실행되지 않도록 강제함.
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public PhotoRawContent getPhotoRaw(Long cultivationId, Long userId, Long photoId) {
-        String objectKey = cultivationAccessGuard.resolveObjectKey(cultivationId, userId, photoId);
-
+    // Helper Method
+    private PhotoUploadResponse toResponse(CultivationPhoto cultivationPhoto) {
+        String objectKey = cultivationPhoto.getObjectKey();
+        String presignedUrl;
         try {
-            MinioObjectStorage.MinioObjectContent content = minioObjectStorage.get(objectKey);
-            return new PhotoRawContent(content.bytes(), content.contentType());
+            presignedUrl = minioObjectStorage.presignedGetUrl(objectKey, PRESIGNED_URL_TTL);
         } catch (MinioObjectStorageException e) {
             throw new CustomServerException(
-                    "사진을 불러오는데 실패했습니다.",
-                    "MINIO 다운로드 실패: photoId: " + photoId + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
+                    "사진 URL 발급 실패했습니다.",
+                    "MINIO presigned URL 발급 실패" + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
                     ServerErrorLevel.WARN_LEVEL
             );
         }
-    }
-
-    // Helper Method
-    private PhotoUploadResponse toResponse(CultivationPhoto cultivationPhoto) {
-        String url = storageUrlResolver.resolve(cultivationPhoto.getStorageType(), cultivationPhoto.getObjectKey());
-
         return new PhotoUploadResponse(
                 cultivationPhoto.getId(),
-                cultivationPhoto.getObjectKey(),
-                url,
+                objectKey,
+                presignedUrl,
                 cultivationPhoto.getStorageType(),
                 cultivationPhoto.getUploadedAt()
         );

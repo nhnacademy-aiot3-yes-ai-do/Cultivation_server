@@ -2,11 +2,9 @@ package site.yesaido.cultivation_server.cultivation.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoRawContent;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.service.CultivationPhotoService;
@@ -38,15 +36,5 @@ public class CultivationPhotoController {
                                             @RequestHeader("X-User-Id") Long userId) {
         cultivationPhotoService.deletePhoto(cultivationId, userId, photoId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-    }
-
-    @GetMapping("/{photo-id}/raw")
-    public ResponseEntity<byte[]> getPhotoRaw(@PathVariable("cultivation-id") Long cultivationId,
-                                              @PathVariable("photo-id") Long photoId,
-                                              @RequestHeader("X-User-Id") Long userId) {
-        PhotoRawContent raw = cultivationPhotoService.getPhotoRaw(cultivationId, userId, photoId);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(raw.contentType()))
-                .body(raw.bytes());
     }
 }
