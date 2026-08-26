@@ -15,6 +15,6 @@ public class HarvestCompletedEventListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleHarvestCompletedEvent(HarvestCompletedEvent event) {
-        producer.send(event.cultivationId(), event.payload());
+        producer.send(event.cultivationId(), event.userId(), event.payload());
     }
 }

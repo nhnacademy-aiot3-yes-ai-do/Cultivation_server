@@ -32,7 +32,7 @@ class HarvestCompletedNotificationProducerTest {
     void sendPublishesOnFirstAttempt() {
         HarvestCompletedPayload payload = new HarvestCompletedPayload("테스트 경작", BigDecimal.valueOf(1200));
 
-        producer.send(200L, payload);
+        producer.send(200L, 1L, payload);
 
         verify(rabbitTemplate, times(1)).convertAndSend(anyString(), anyString(), any(NotificationEvent.class));
     }
@@ -46,7 +46,7 @@ class HarvestCompletedNotificationProducerTest {
                 .doNothing()
                 .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(NotificationEvent.class));
 
-        assertThatCode(() -> producer.send(200L, payload)).doesNotThrowAnyException();
+        assertThatCode(() -> producer.send(200L, 1L, payload)).doesNotThrowAnyException();
 
         verify(rabbitTemplate, times(2)).convertAndSend(anyString(), anyString(), any(NotificationEvent.class));
     }
@@ -59,7 +59,7 @@ class HarvestCompletedNotificationProducerTest {
         doThrow(new AmqpException("브로커 다운"))
                 .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(NotificationEvent.class));
 
-        assertThatCode(() -> producer.send(200L, payload)).doesNotThrowAnyException();
+        assertThatCode(() -> producer.send(200L, 1L, payload)).doesNotThrowAnyException();
 
         verify(rabbitTemplate, times(4)).convertAndSend(anyString(), anyString(), any(NotificationEvent.class));
     }

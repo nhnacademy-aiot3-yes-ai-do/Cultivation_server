@@ -63,7 +63,7 @@ public class HarvestServiceImpl implements HarvestService {
         cultivationSensorFacade.deleteAll(userId, cultivationId);
 
         HarvestCompletedPayload payload = new HarvestCompletedPayload(cultivation.getName(), harvest.getHarvestWeight());
-        eventPublisher.publishEvent(new HarvestCompletedEvent(cultivationId, payload));
+        eventPublisher.publishEvent(new HarvestCompletedEvent(cultivationId, userId, payload));
 
         return new HarvestCreateResponse(
                 harvest.getId(),
