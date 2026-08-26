@@ -76,7 +76,7 @@ class CultivationPhotoControllerTest {
         Long cultivationId = 100L;
         PhotoUploadListResponse responseList = new PhotoUploadListResponse(List.of());
 
-        when(cultivationPhotoService.getPhotos(eq(cultivationId), eq(adminId), eq("ADMIN"))).thenReturn(responseList);
+        when(cultivationPhotoService.getPhotos(cultivationId, adminId, "ADMIN")).thenReturn(responseList);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/photos", cultivationId)
                         .header("X-User-Id", adminId)

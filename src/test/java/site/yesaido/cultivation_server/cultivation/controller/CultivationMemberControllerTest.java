@@ -106,7 +106,7 @@ class CultivationMemberControllerTest {
                 new MemberResponse(1L, REQUESTER_ID, "owner", MemberRole.OWNER, LocalDateTime.now())
         ));
 
-        when(cultivationMemberService.getMembers(eq(CULTIVATION_ID), eq(adminId), eq("ADMIN"))).thenReturn(response);
+        when(cultivationMemberService.getMembers(CULTIVATION_ID, adminId, "ADMIN")).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
                         .header("X-User-Id", adminId)
