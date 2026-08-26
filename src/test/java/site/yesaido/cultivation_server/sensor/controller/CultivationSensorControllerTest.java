@@ -168,7 +168,7 @@ class CultivationSensorControllerTest {
 
         CultivationSensorListResponse response = new CultivationSensorListResponse(List.of(), List.of());
 
-        given(cultivationSensorFacade.findAll(eq(adminId), eq(cultivationId), eq("ADMIN"))).willReturn(response);
+        given(cultivationSensorFacade.findAll(adminId, cultivationId, "ADMIN")).willReturn(response);
 
         mockMvc.perform(get(
                         "/api/v1/cultivations/{cultivation-id}/sensors",
