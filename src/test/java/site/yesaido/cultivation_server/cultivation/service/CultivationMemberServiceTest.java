@@ -349,4 +349,42 @@ class CultivationMemberServiceTest {
         assertThatThrownBy(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, userId))
                 .isInstanceOf(CultivationMemberNotFoundException.class);
     }
+
+    @Test
+    @DisplayName("멤버 목록 조회 성공 - 관리자는 멤버가 아니어도 조회 가능")
+    void getMembersSuccessForAdmin() {
+        Long cultivationId = 1L;
+        Long adminId = 999L;
+
+        CultivationMember member1 = CultivationMember.builder().userId(100L).role(MemberRole.OWNER).build();
+        when(cultivationMemberRepository.findAllByCultivationId(cultivationId)).thenReturn(List.of(member1));
+        when(userClient.getUsers(anyList())).thenReturn(List.of(new UserSummaryResponse(100L, "owner-nick")));
+
+        MemberListResponse responses = cultivationMemberService.getMembers(cultivationId, adminId, "ADMIN");
+
+        assertThat(responses.memberResponses()).hasSize(1);
+        verify(cultivationMemberRepository, never()).existsByCultivationIdAndUserId(cultivationId, adminId);
+    }
+
+    @Test
+    @DisplayName("existCultivationMember - 관리자는 멤버가 아니어도 통과")
+    void existCultivationMemberSuccessForAdmin() {
+        Long cultivationId = 1L;
+        Long adminId = 999L;
+
+        assertThatCode(() -> cultivationMemberService.existCultivationMember(cultivationId, adminId, "ADMIN"))
+                .doesNotThrowAnyException();
+        verify(cultivationMemberRepository, never()).existsByCultivationIdAndUserId(any(), any());
+    }
+
+    @Test
+    @DisplayName("Owner 권한 검증 - 관리자는 소유자가 아니어도 통과")
+    void verifyOwnerAccessSuccessForAdmin() {
+        Long cultivationId = 1L;
+        Long adminId = 999L;
+
+        assertThatCode(() -> cultivationMemberService.verifyOwnerAccess(cultivationId, adminId, "ADMIN"))
+                .doesNotThrowAnyException();
+        verify(cultivationMemberRepository, never()).findByCultivationIdAndUserId(any(), any());
+    }
 }

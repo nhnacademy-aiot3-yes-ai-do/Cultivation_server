@@ -196,7 +196,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId, null)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
@@ -208,12 +208,35 @@ class CultivationPhotoServiceTest {
     }
 
     @Test
+    @DisplayName("사진 목록 조회 성공 - 관리자는 멤버가 아니어도 조회 가능")
+    void getPhotosSuccessForAdmin() {
+        Long adminId = 999L;
+        Long cultivationId = 100L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(1L).name("버섯 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/100/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+
+        when(cultivationAccessGuard.requireMember(cultivationId, adminId, "ADMIN")).thenReturn(cultivation);
+        when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
+        when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
+                .thenReturn("http://storage.example.com/test-bucket/photo.jpg");
+
+        PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, adminId, "ADMIN");
+
+        assertThat(response.photoUploadResponses()).hasSize(1);
+    }
+
+    @Test
     @DisplayName("사진 목록 조회 실패 - 존재하지 않는 재배")
     void getPhotosFailCultivationNotFound() {
         Long userId = 1L;
         Long cultivationId = 100L;
 
-        when(cultivationAccessGuard.requireMember(cultivationId, userId))
+        when(cultivationAccessGuard.requireMember(cultivationId, userId, null))
                 .thenThrow(new CultivationNotFoundException(cultivationId));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotos(cultivationId, userId))
@@ -226,7 +249,7 @@ class CultivationPhotoServiceTest {
         Long userId = 1L;
         Long cultivationId = 100L;
 
-        when(cultivationAccessGuard.requireMember(cultivationId, userId))
+        when(cultivationAccessGuard.requireMember(cultivationId, userId, null))
                 .thenThrow(new CultivationAccessDeniedException(cultivationId));
 
         assertThatThrownBy(() -> cultivationPhotoService.getPhotos(cultivationId, userId))
@@ -321,7 +344,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(cultivation)
                 .build();
 
-        when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
+        when(cultivationAccessGuard.requireMember(cultivationId, userId, null)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
                 .thenReturn("http://storage.java21.net:8000/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");

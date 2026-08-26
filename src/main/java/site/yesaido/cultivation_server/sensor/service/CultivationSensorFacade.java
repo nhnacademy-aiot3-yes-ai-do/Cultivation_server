@@ -12,4 +12,5 @@ public interface CultivationSensorFacade {
     void deleteAll(Long userId, long cultivationId);
 
     CultivationSensorListResponse findAll(Long userId, long cultivationId);
+    CultivationSensorListResponse findAll(Long userId, long cultivationId, String role);
 }

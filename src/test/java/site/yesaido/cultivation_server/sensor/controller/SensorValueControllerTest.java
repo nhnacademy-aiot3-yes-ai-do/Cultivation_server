@@ -55,7 +55,7 @@ class SensorValueControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
 
-        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
+        then(cultivationMemberService).should().existCultivationMember(eq(CULTIVATION_ID), eq(USER_ID), isNull());
         then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
     }
 
@@ -63,13 +63,29 @@ class SensorValueControllerTest {
     @DisplayName("재배 멤버가 아니면 최근 센서값 조회 없이 403을 반환한다")
     void getLatestFailsWhenNotMember() throws Exception {
         willThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
-                .given(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
+                .given(cultivationMemberService).existCultivationMember(eq(CULTIVATION_ID), eq(USER_ID), isNull());
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isForbidden());
 
         then(influxService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("최근 센서값 조회 - 관리자(X-User-Role=ADMIN)면 멤버가 아니어도 조회된다")
+    void getLatestSuccessAdminRole() throws Exception {
+        Long adminId = 999L;
+        LatestSensorValueListResponse response = new LatestSensorValueListResponse(List.of());
+
+        given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willReturn(response);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk());
+
+        then(cultivationMemberService).should().existCultivationMember(eq(CULTIVATION_ID), eq(adminId), eq("ADMIN"));
     }
 
     @Test

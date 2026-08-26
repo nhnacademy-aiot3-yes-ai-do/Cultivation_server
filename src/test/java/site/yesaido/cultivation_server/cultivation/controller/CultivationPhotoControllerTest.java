@@ -15,8 +15,7 @@ import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhoto
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -62,12 +61,27 @@ class CultivationPhotoControllerTest {
         );
         PhotoUploadListResponse responseList = new PhotoUploadListResponse(List.of(response));
 
-        when(cultivationPhotoService.getPhotos(cultivationId, userId)).thenReturn(responseList);
+        when(cultivationPhotoService.getPhotos(eq(cultivationId), eq(userId), isNull())).thenReturn(responseList);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/photos", cultivationId)
                         .header("X-User-Id", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.photoUploadResponses[0].photoId").value(200L));
+    }
+
+    @Test
+    @DisplayName("사진 목록 조회 API - 관리자(X-User-Role=ADMIN)면 멤버가 아니어도 조회된다")
+    void getPhotosSuccessAdminRole() throws Exception {
+        Long adminId = 999L;
+        Long cultivationId = 100L;
+        PhotoUploadListResponse responseList = new PhotoUploadListResponse(List.of());
+
+        when(cultivationPhotoService.getPhotos(eq(cultivationId), eq(adminId), eq("ADMIN"))).thenReturn(responseList);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/photos", cultivationId)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk());
     }
 
     @Test

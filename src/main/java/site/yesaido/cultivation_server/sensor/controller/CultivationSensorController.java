@@ -49,10 +49,11 @@ public class CultivationSensorController {
     @GetMapping
     public ResponseEntity<CultivationSensorListResponse> getAllCultivationSensor(
             @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role,
             @PathVariable("cultivation-id") long cultivationId
     ) {
         return ResponseEntity.ok(
-                cultivationSensorFacade.findAll(userId, cultivationId)
+                cultivationSensorFacade.findAll(userId, cultivationId, role)
         );
     }
 
