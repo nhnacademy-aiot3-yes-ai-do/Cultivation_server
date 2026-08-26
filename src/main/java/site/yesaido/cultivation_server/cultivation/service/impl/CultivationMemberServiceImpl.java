@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CultivationMemberServiceImpl implements CultivationMemberService {
-    private static final String ADMIN_ROLE = "admin";
+    private static final String ADMIN_ROLE = "ADMIN";
 
     private final CultivationMemberRepository cultivationMemberRepository;
     private final ApplicationEventPublisher eventPublisher;

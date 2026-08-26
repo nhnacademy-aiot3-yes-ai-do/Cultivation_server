@@ -24,8 +24,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -83,25 +82,36 @@ class CultivationControllerTest {
         Long userId = 1L;
         Long cultivationId = 100L;
         CultivationDetailResponse detail = new CultivationDetailResponse(
-                cultivationId,
-                "테스트 버섯",
-                1L,
-                CultivationStatus.CREATED,
-                CultivationMode.GROWTH,
-                MemberRole.MEMBER,
-                LocalDateTime.now(),
-                null,
-                LocalDateTime.now(),
-                LocalDateTime.now()
+                cultivationId, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH,
+                MemberRole.MEMBER, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(cultivationService.getCultivation(userId, cultivationId)).thenReturn(detail);
+        when(cultivationService.getCultivation(eq(userId), eq(cultivationId), isNull())).thenReturn(detail);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
-                .header("X-User-Id", userId))
+                        .header("X-User-Id", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cultivationId").value(cultivationId))
                 .andExpect(jsonPath("$.name").value("테스트 버섯"));
+    }
+
+    @Test
+    @DisplayName("단일 경작 상세 조회 API - 관리자(X-User-Role=ADMIN)면 role이 그대로 서비스에 전달된다")
+    void getCultivationDetailSuccessAdminRole() throws Exception {
+        Long adminId = 999L;
+        Long cultivationId = 100L;
+        CultivationDetailResponse detail = new CultivationDetailResponse(
+                cultivationId, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH,
+                null, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
+        );
+
+        when(cultivationService.getCultivation(eq(adminId), eq(cultivationId), eq("ADMIN"))).thenReturn(detail);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.myRole").doesNotExist());
     }
 
     @Test
@@ -180,12 +190,26 @@ class CultivationControllerTest {
     @DisplayName("재배 삭제 API - 정상 요청 시 204 No Content 반환 (cultivationId/userId 인자 순서 검증)")
     void deleteCultivationSuccess() throws Exception {
         Long userId = 1L;
-        Long cultivationId = 100L; // userId와 다른 값으로 둬서 인자 순서가 바뀌면 검증에서 걸리게 함
+        Long cultivationId = 100L;
 
         mockMvc.perform(delete("/api/v1/cultivations/{cultivation-id}", cultivationId)
                         .header("X-User-Id", userId))
                 .andExpect(status().isNoContent());
 
-        verify(cultivationService).delete(cultivationId, userId);
+        verify(cultivationService).delete(eq(cultivationId), eq(userId), isNull());
+    }
+
+    @Test
+    @DisplayName("재배 삭제 API - 관리자(X-User-Role=ADMIN) 요청도 role과 함께 전달된다")
+    void deleteCultivationSuccessAdminRole() throws Exception {
+        Long adminId = 999L;
+        Long cultivationId = 100L;
+
+        mockMvc.perform(delete("/api/v1/cultivations/{cultivation-id}", cultivationId)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isNoContent());
+
+        verify(cultivationService).delete(eq(cultivationId), eq(adminId), eq("ADMIN"));
     }
 }

@@ -35,7 +35,7 @@ public class SensorValueController {
     @GetMapping
     public ResponseEntity<LatestSensorValueListResponse> getLatest(@PathVariable("cultivation-id") Long cultivationId,
                                                                    @RequestHeader("X-User-Id") Long userId,
-                                                                   @RequestHeader("X-User-Role") String role) {
+                                                                   @RequestHeader(value = "X-User-Role", required = false) String role) {
         cultivationMemberService.existCultivationMember(cultivationId, userId, role);
         LatestSensorValueListResponse response = influxService.findLatestByCultivationId(cultivationId);
         return ResponseEntity.ok(response);

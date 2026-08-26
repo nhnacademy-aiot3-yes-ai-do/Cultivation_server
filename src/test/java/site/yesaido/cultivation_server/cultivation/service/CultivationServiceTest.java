@@ -135,6 +135,26 @@ class CultivationServiceTest {
     }
 
     @Test
+    @DisplayName("단일 경작 상세 조회 성공 - 관리자는 멤버가 아니어도 조회 가능하고 myRole은 null")
+    void getCultivationDetailSuccessForAdmin() {
+        Long adminId = 999L;
+        Long cultivationId = 100L;
+        MushroomReference mushroom = new MushroomReference();
+        Cultivation cultivation = Cultivation.builder()
+                .name("경작 상세")
+                .mushroomReference(mushroom)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        CultivationDetailResponse response = service.getCultivation(adminId, cultivationId, "ADMIN");
+
+        assertThat(response).isNotNull();
+        assertThat(response.myRole()).isNull();
+        verify(cultivationMemberRepository, never()).findByCultivationIdAndUserId(any(), any());
+    }
+
+    @Test
     @DisplayName("단일 경작 조회 실패 - 권한이 없는 유저의 접근")
     void getCultivationDetailFailAccessDenied() {
         Long cultivationId = 1L;
@@ -228,7 +248,26 @@ class CultivationServiceTest {
         service.delete(cultivationId, userId);
 
         assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.DELETED);
-        verify(cultivationMemberService).verifyOwnerAccess(cultivationId, userId);
+        verify(cultivationMemberService).verifyOwnerAccess(cultivationId, userId, null);
+    }
+
+    @Test
+    @DisplayName("경작 삭제 성공 - 관리자는 소유자가 아니어도 삭제 가능")
+    void deleteSuccessForAdmin() {
+        Long adminId = 999L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.RUNNING)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        service.delete(cultivationId, adminId, "ADMIN");
+
+        assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.DELETED);
+        verify(cultivationMemberService).verifyOwnerAccess(cultivationId, adminId, "ADMIN");
     }
 
     @Test
@@ -244,9 +283,9 @@ class CultivationServiceTest {
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
         doThrow(new CultivationAccessDeniedException(cultivationId))
-                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, userId);
+                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, userId, null);
 
-        assertThatThrownBy(() -> service.delete(cultivationId, userId))
+        assertThatThrownBy(() -> service.delete(cultivationId, userId, null))
                 .isInstanceOf(CultivationAccessDeniedException.class);
     }
 

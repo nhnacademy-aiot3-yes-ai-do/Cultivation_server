@@ -16,8 +16,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CultivationAccessGuardTest {
@@ -63,9 +62,24 @@ class CultivationAccessGuardTest {
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
         doThrow(new CultivationAccessDeniedException(cultivationId))
-                .when(cultivationMemberService).existCultivationMember(cultivationId, userId);
+                .when(cultivationMemberService).existCultivationMember(cultivationId, userId, null);
 
         assertThatThrownBy(() -> cultivationAccessGuard.requireMember(cultivationId, userId))
                 .isInstanceOf(CultivationAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("requireMember 성공 - 관리자는 멤버가 아니어도 통과")
+    void requireMemberSuccessForAdmin() {
+        Long userId = 999L;
+        Long cultivationId = 100L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(1L).name("버섯 농장").build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        Cultivation result = cultivationAccessGuard.requireMember(cultivationId, userId, "ADMIN");
+
+        assertThat(result).isEqualTo(cultivation);
+        verify(cultivationMemberService).existCultivationMember(cultivationId, userId, "ADMIN");
     }
 }

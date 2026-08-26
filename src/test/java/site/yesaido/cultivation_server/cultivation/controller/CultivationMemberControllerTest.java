@@ -89,7 +89,7 @@ class CultivationMemberControllerTest {
         );
         MemberListResponse response = new MemberListResponse(responseList);
 
-        when(cultivationMemberService.getMembers(CULTIVATION_ID, REQUESTER_ID)).thenReturn(response);
+        when(cultivationMemberService.getMembers(eq(CULTIVATION_ID), eq(REQUESTER_ID), isNull())).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
                         .header("X-User-Id", REQUESTER_ID))
@@ -99,9 +99,26 @@ class CultivationMemberControllerTest {
     }
 
     @Test
+    @DisplayName("멤버 목록 조회 성공 - 관리자(X-User-Role=ADMIN)면 멤버가 아니어도 조회된다")
+    void getMembersSuccessAdminRole() throws Exception {
+        Long adminId = 999L;
+        MemberListResponse response = new MemberListResponse(List.of(
+                new MemberResponse(1L, REQUESTER_ID, "owner", MemberRole.OWNER, LocalDateTime.now())
+        ));
+
+        when(cultivationMemberService.getMembers(eq(CULTIVATION_ID), eq(adminId), eq("ADMIN"))).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberResponses.size()").value(1));
+    }
+
+    @Test
     @DisplayName("멤버 목록 조회 실패 - 멤버가 아니면 403")
     void getMembersFailAccessDenied() throws Exception {
-        when(cultivationMemberService.getMembers(CULTIVATION_ID, REQUESTER_ID))
+        when(cultivationMemberService.getMembers(eq(CULTIVATION_ID), eq(REQUESTER_ID), isNull()))
                 .thenThrow(new CultivationAccessDeniedException(CULTIVATION_ID));
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/members", CULTIVATION_ID)
