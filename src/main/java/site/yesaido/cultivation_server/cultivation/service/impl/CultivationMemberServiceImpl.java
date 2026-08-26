@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CultivationMemberServiceImpl implements CultivationMemberService {
+    private static final String ADMIN_ROLE = "admin";
+
     private final CultivationMemberRepository cultivationMemberRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserClient userClient;
@@ -73,7 +75,12 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
 
     @Override
     public MemberListResponse getMembers(Long cultivationId, Long requesterId) {
-        existCultivationMember(cultivationId, requesterId);
+        return getMembers(cultivationId, requesterId, null);
+    }
+
+    @Override
+    public MemberListResponse getMembers(Long cultivationId, Long requesterId, String role) {
+        existCultivationMember(cultivationId, requesterId, role);
 
         List<CultivationMember> members = cultivationMemberRepository.findAllByCultivationId(cultivationId);
         if (members.isEmpty()) {
@@ -145,6 +152,14 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
 
     @Override
     public void existCultivationMember(Long cultivationId, Long userId) {
+        existCultivationMember(cultivationId, userId, null);
+    }
+
+    @Override
+    public void existCultivationMember(Long cultivationId, Long userId, String role) {
+        if (ADMIN_ROLE.equals(role)) {
+            return;
+        }
         if (!cultivationMemberRepository.existsByCultivationIdAndUserId(cultivationId, userId)) {
             throw new CultivationAccessDeniedException(cultivationId);
         }

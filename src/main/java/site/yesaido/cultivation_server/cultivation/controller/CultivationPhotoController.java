@@ -25,8 +25,9 @@ public class CultivationPhotoController {
 
     @GetMapping
     public ResponseEntity<PhotoUploadListResponse> getPhotos(@PathVariable("cultivation-id") Long cultivationId,
-                                                               @RequestHeader("X-User-Id") Long userId) {
-        PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
+                                                             @RequestHeader("X-User-Id") Long userId,
+                                                             @RequestHeader(value = "X-User-Role", required = false) String role) {
+        PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId, role);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

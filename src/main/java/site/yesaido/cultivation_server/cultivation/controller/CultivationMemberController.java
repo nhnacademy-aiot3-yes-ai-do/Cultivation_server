@@ -27,8 +27,9 @@ public class CultivationMemberController {
 
     @GetMapping("/members")
     public ResponseEntity<MemberListResponse> getMembers(@PathVariable("cultivation-id") Long cultivationId,
-                                                         @RequestHeader("X-User-Id") Long userId) {
-        MemberListResponse response = cultivationMemberService.getMembers(cultivationId, userId);
+                                                         @RequestHeader("X-User-Id") Long userId,
+                                                         @RequestHeader(value = "X-User-Role", required = false) String role) {
+        MemberListResponse response = cultivationMemberService.getMembers(cultivationId, userId, role);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

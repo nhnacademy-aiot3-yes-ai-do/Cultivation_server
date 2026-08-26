@@ -34,12 +34,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CultivationServiceImpl implements CultivationService {
+    private static final String ADMIN_ROLE = "admin";
+
     private final CultivationRepository cultivationRepository;
     private final CultivationMemberRepository cultivationMemberRepository;
-
     private final MushroomReferenceRepository mushroomReferenceRepository;
     private final CultivationMemberService cultivationMemberService;
-
     private final UserClient userClient;
 
     @Override
@@ -101,8 +101,17 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Override
     public CultivationDetailResponse getCultivation(Long userId, Long cultivationId) {
+        return getCultivation(userId, cultivationId, null);
+    }
+
+    @Override
+    public CultivationDetailResponse getCultivation(Long userId, Long cultivationId, String role) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
+        if (ADMIN_ROLE.equals(role)) {
+            return toDetail(cultivation, null);
+        }
 
         CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
                 .orElseThrow(() -> new CultivationAccessDeniedException(cultivationId));

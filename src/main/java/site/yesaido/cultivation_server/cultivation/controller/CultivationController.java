@@ -34,8 +34,11 @@ public class CultivationController {
     }
 
     @GetMapping("/{cultivation-id}")
-    public ResponseEntity<CultivationDetailResponse> getCultivation(@RequestHeader("X-User-Id") Long userId, @PathVariable("cultivation-id") Long cultivationId) {
-        CultivationDetailResponse response = cultivationService.getCultivation(userId, cultivationId);
+    public ResponseEntity<CultivationDetailResponse> getCultivation(@RequestHeader("X-User-Id") Long userId,
+                                                                    @RequestHeader(value = "X-User-Role", required = false) String role,
+                                                                    @PathVariable("cultivation-id") Long cultivationId
+                                                                    ) {
+        CultivationDetailResponse response = cultivationService.getCultivation(userId, cultivationId, role);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
