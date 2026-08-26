@@ -43,7 +43,6 @@ spring:
 logging:
   level:
     root: ${LOG_LEVEL:INFO}
-    site.yesaido.cultivation_server.logging.ControllerResponseLoggingAspect: INFO
 
 minio:
   url: ${MINIO_URL}
