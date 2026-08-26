@@ -18,7 +18,7 @@ import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorRange;
 import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
-import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorTypeResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
@@ -84,21 +84,21 @@ class CultivationSensorFacadeTest {
             // 센서 타입 조회부터 환경설정 적용까지 순서대로 처리
         void register_success() {
             // given
-            SensorSettingRequest temperatureSetting =
-                    new SensorSettingRequest(
+            EnvironmentSettingRequest temperatureSetting =
+                    new EnvironmentSettingRequest(
                             10L,
                             BigDecimal.valueOf(20),
                             BigDecimal.valueOf(30)
                     );
 
-            SensorSettingRequest humiditySetting =
-                    new SensorSettingRequest(
+            EnvironmentSettingRequest humiditySetting =
+                    new EnvironmentSettingRequest(
                             20L,
                             BigDecimal.valueOf(40),
                             BigDecimal.valueOf(70)
                     );
 
-            List<SensorSettingRequest> settings =
+            List<EnvironmentSettingRequest> settings =
                     List.of(temperatureSetting, humiditySetting);
 
             CreateCultivationSensorRequest request =
@@ -533,7 +533,7 @@ class CultivationSensorFacadeTest {
 
             CreateCultivationSensorRequest request = new CreateCultivationSensorRequest(
                     "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반",
-                    List.of(new SensorSettingRequest(10L, BigDecimal.valueOf(20), BigDecimal.valueOf(30)))
+                    List.of(new EnvironmentSettingRequest(10L, BigDecimal.valueOf(20), BigDecimal.valueOf(30)))
             );
 
             assertThatThrownBy(() -> cultivationSensorFacade.register(USER_ID, CULTIVATION_ID, request))

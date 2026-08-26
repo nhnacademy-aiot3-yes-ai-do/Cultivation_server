@@ -8,7 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
-import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 import tools.jackson.databind.ObjectMapper;
@@ -43,7 +43,7 @@ class CultivationSensorControllerTest {
         long cultivationId = 10L;
         long sensorId = 100L;
 
-        SensorSettingRequest setting = new SensorSettingRequest(
+        EnvironmentSettingRequest setting = new EnvironmentSettingRequest(
                 1L,
                 new BigDecimal("18.0"),
                 new BigDecimal("24.0")
@@ -119,7 +119,7 @@ class CultivationSensorControllerTest {
                         "배양실 센서",
                         "ROOM-1",
                         "북쪽 선반",
-                        List.of(new SensorSettingRequest(
+                        List.of(new EnvironmentSettingRequest(
                                 1L,
                                 new BigDecimal("18.0"),
                                 new BigDecimal("24.0")

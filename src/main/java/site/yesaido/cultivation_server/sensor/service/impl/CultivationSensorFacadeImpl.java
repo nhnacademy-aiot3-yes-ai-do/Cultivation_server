@@ -8,10 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoDeleteEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.SensorInfoUpsertEvent;
-import site.yesaido.cultivation_server.rabbitmq.event.SensorRange;
 import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
-import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
@@ -86,7 +85,7 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
 
         // 1. 임계값 발행
         eventPublisher.publishEvent(
-                toThresholdInfoEvent(cultivationId, request.sensorSettings(), sensorTypeMap, occurredAt)
+                ThresholdInfoEvent.from(cultivationId, request.sensorSettings(), sensorTypeMap, occurredAt)
         );
 
         // 2. 센서 정보 발행(1,2 둘다 순서보장은 X)
@@ -105,19 +104,6 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
                 sensor.getLocation(), sensor.getLocationDetail(), sensor.getDeviceModel(), sensor.getDeviceName(), sensor.getDeviceEui(),
                 sensorType.getType(), sensorType.getValueUnit(), occurredAt
         );
-    }
-
-    private ThresholdInfoEvent toThresholdInfoEvent(long cultivationId, List<SensorSettingRequest> settingRequests, Map<Long, SensorType> sensorTypeMap, OffsetDateTime occurredAt) {
-
-        List<SensorRange> sensorRangeList = settingRequests.stream()
-                .map(settingRequest -> {
-                    SensorType sensorType = sensorTypeMap.get(settingRequest.sensorTypeId());
-
-                    return new SensorRange(sensorType.getType(), sensorType.getValueUnit(),
-                            settingRequest.thresholdMin(), settingRequest.thresholdMax());
-                }).toList();
-
-        return new ThresholdInfoEvent(cultivationId, sensorRangeList, occurredAt);
     }
 
     @Override
@@ -201,10 +187,10 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     }
 
     // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성
-    private List<Long> extractAndValidateSensorTypeIds(List<SensorSettingRequest> settings) {
+    private List<Long> extractAndValidateSensorTypeIds(List<EnvironmentSettingRequest> settings) {
 
         List<Long> sensorTypeIds = settings.stream()
-                .map(SensorSettingRequest::sensorTypeId)
+                .map(EnvironmentSettingRequest::sensorTypeId)
                 .toList();
 
         Set<Long> seen = new HashSet<>();

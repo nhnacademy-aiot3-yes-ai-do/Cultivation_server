@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.CultivationCreateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
+import site.yesaido.cultivation_server.cultivation.service.CultivationCreationFacade;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 
 @RequestMapping("/api/v1/cultivations")
@@ -17,13 +18,14 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 @RequiredArgsConstructor
 public class CultivationController {
     private final CultivationService cultivationService;
+    private final CultivationCreationFacade cultivationCreationFacade;
 
     @PostMapping
     public ResponseEntity<CultivationCreateResponse> create(
             @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody CultivationCreateRequest request
     ) {
-        CultivationCreateResponse response = cultivationService.create(request, userId);
+        CultivationCreateResponse response = cultivationCreationFacade.create(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

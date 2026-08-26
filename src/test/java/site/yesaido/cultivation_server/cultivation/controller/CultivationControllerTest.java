@@ -16,7 +16,9 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivatio
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
+import site.yesaido.cultivation_server.cultivation.service.CultivationCreationFacade;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
+import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -25,8 +27,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,15 +43,35 @@ class CultivationControllerTest {
     @MockitoBean
     private CultivationService cultivationService;
 
+    @MockitoBean
+    CultivationCreationFacade cultivationCreationFacade;
+
     @Test
     @DisplayName("경작 생성 API - 정상 요청시 201 Created 반환")
     void createCultivationSuccess() throws Exception {
         Long userId = 1L;
-        CultivationCreateRequest request = new CultivationCreateRequest("테스트 버섯", 1L, Collections.emptyList());
+
+        List<EnvironmentSettingRequest> settings = List.of(
+                new EnvironmentSettingRequest(
+                        10L,
+                        BigDecimal.valueOf(18),
+                        BigDecimal.valueOf(24)
+                ),
+                new EnvironmentSettingRequest(
+                        20L,
+                        BigDecimal.valueOf(60),
+                        BigDecimal.valueOf(80)
+                )
+        );
+
+
+
+        CultivationCreateRequest request = new CultivationCreateRequest("테스트 버섯", 1L, settings);
 
         CultivationCreateResponse response = new CultivationCreateResponse(100L, null, Collections.emptyList());
 
-        when(cultivationService.create(any(CultivationCreateRequest.class), eq(userId))).thenReturn(response);
+        when(cultivationCreationFacade.create(userId, request))
+                .thenReturn(response);
 
         mockMvc.perform(post("/api/v1/cultivations")
                 .header("X-User-Id", userId)
@@ -58,6 +79,11 @@ class CultivationControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.cultivationId").value(100L));
+
+        verify(cultivationCreationFacade)
+                .create(userId, request);
+
+        verifyNoInteractions(cultivationService);
     }
 
     @Test
