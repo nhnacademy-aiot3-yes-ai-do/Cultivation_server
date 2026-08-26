@@ -25,4 +25,6 @@ public interface CultivationService {
 
     // 경작 삭제 (OWNER만 가능)
     void delete(Long cultivationId, Long userId);
+    // 경작 삭제 (시스템 관리자)
+    void delete(Long cultivationId, Long userId, String role);
 }

@@ -151,10 +151,15 @@ public class CultivationServiceImpl implements CultivationService {
     @Override
     @Transactional
     public void delete(Long cultivationId, Long userId) {
+        delete(cultivationId, userId, null);
+    }
+
+    @Override
+    public void delete(Long cultivationId, Long userId, String role) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId, role);
 
         if (cultivation.getCultivationStatus() == CultivationStatus.DELETED) {
             throw new CultivationAlreadyDeletedException(cultivationId);

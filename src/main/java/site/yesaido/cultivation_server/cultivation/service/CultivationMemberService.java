@@ -27,4 +27,6 @@ public interface CultivationMemberService {
 
     // Owner 권한 검증 (OWNER만 허용)
     void verifyOwnerAccess(Long cultivationId, Long userId);
+    // 시스템 관리자는 소유자가 아니여도 통과시키기 위한 메서드
+    void verifyOwnerAccess(Long cultivationId, Long userId, String role);
 }

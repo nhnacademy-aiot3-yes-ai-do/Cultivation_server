@@ -175,6 +175,14 @@ public class CultivationMemberServiceImpl implements CultivationMemberService {
 
     @Override
     public void verifyOwnerAccess(Long cultivationId, Long userId) {
+        verifyOwnerAccess(cultivationId, userId, null);
+    }
+
+    @Override
+    public void verifyOwnerAccess(Long cultivationId, Long userId, String role) {
+        if (ADMIN_ROLE.equals(role)) {
+            return;
+        }
         requireOwner(cultivationId, userId);
     }
 
