@@ -27,10 +27,10 @@ class HarvestCompletedEventListenerTest {
     @DisplayName("이벤트 수신 시 producer.send를 정확한 인자로 위임함")
     void handleHarvestCompletedEventDelegatesToProducer() {
         HarvestCompletedPayload payload = new HarvestCompletedPayload("테스트 경작", BigDecimal.valueOf(1200));
-        HarvestCompletedEvent event = new HarvestCompletedEvent(200L, payload);
+        HarvestCompletedEvent event = new HarvestCompletedEvent(200L, 1L, payload);
 
         listener.handleHarvestCompletedEvent(event);
 
-        verify(producer, times(1)).send(200L, payload);
+        verify(producer, times(1)).send(200L, 1L, payload);
     }
 }
