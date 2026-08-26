@@ -492,7 +492,7 @@ class CultivationSensorFacadeTest {
 
             cultivationSensorFacade.findAll(USER_ID, CULTIVATION_ID);
 
-            verify(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
+            verify(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID, null);
             verifyNoMoreInteractions(cultivationMemberService);
         }
 
@@ -500,12 +500,24 @@ class CultivationSensorFacadeTest {
         @DisplayName("조회 실패 - 멤버가 아니면 차단됨")
         void findAll_failNotMember() {
             doThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
-                    .when(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
+                    .when(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID, null);
 
             assertThatThrownBy(() -> cultivationSensorFacade.findAll(USER_ID, CULTIVATION_ID))
                     .isInstanceOf(CultivationAccessDeniedException.class);
 
             verifyNoInteractions(cultivationSensorService, environmentSettingService);
+        }
+
+        @Test
+        @DisplayName("조회 성공 - 관리자는 멤버가 아니어도 가능")
+        void findAll_successForAdmin() {
+            when(cultivationSensorService.findAll(CULTIVATION_ID)).thenReturn(List.of());
+            when(environmentSettingService.findAll(CULTIVATION_ID)).thenReturn(List.of());
+
+            cultivationSensorFacade.findAll(USER_ID, CULTIVATION_ID, "ADMIN");
+
+            verify(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID, "ADMIN");
+            verifyNoMoreInteractions(cultivationMemberService);
         }
     }
 

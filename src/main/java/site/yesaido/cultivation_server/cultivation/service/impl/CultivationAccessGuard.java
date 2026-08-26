@@ -6,7 +6,6 @@ import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
-import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 
 
@@ -20,14 +19,17 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationMemberServ
 @Transactional(readOnly = true)
 public class CultivationAccessGuard {
     private final CultivationRepository cultivationRepository;
-    private final CultivationPhotoRepository cultivationPhotoRepository;
     private final CultivationMemberService cultivationMemberService;
 
     public Cultivation requireMember(Long cultivationId, Long userId) {
+        return requireMember(cultivationId, userId, null);
+    }
+
+    public Cultivation requireMember(Long cultivationId, Long userId, String role) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        cultivationMemberService.existCultivationMember(cultivationId, userId);
+        cultivationMemberService.existCultivationMember(cultivationId, userId, role);
 
         return cultivation;
     }

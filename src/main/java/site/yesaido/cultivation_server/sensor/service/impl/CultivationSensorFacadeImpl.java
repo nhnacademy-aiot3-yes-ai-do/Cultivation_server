@@ -191,7 +191,13 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     @Override
     @Transactional(readOnly = true)
     public CultivationSensorListResponse findAll(Long userId, long cultivationId) {
-        cultivationMemberService.existCultivationMember(cultivationId, userId);
+        return findAll(userId, cultivationId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CultivationSensorListResponse findAll(Long userId, long cultivationId, String role) {
+        cultivationMemberService.existCultivationMember(cultivationId, userId, role);
 
         return new CultivationSensorListResponse(
                 cultivationSensorService.findAll(cultivationId), environmentSettingService.findAll(cultivationId)

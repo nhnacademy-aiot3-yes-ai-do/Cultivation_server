@@ -16,8 +16,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -148,7 +147,7 @@ class CultivationSensorControllerTest {
 
         CultivationSensorListResponse response = new CultivationSensorListResponse(List.of(), List.of());
 
-        given(cultivationSensorFacade.findAll(userId, cultivationId)).willReturn(response);
+        given(cultivationSensorFacade.findAll(eq(userId), eq(cultivationId), isNull())).willReturn(response);
 
         mockMvc.perform(get(
                         "/api/v1/cultivations/{cultivation-id}/sensors",
@@ -158,7 +157,28 @@ class CultivationSensorControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
 
-        then(cultivationSensorFacade).should().findAll(userId, cultivationId);
+        then(cultivationSensorFacade).should().findAll(eq(userId), eq(cultivationId), isNull());
+    }
+
+    @Test
+    @DisplayName("재배지 센서 목록 조회 - 관리자(X-User-Role=ADMIN)면 멤버가 아니어도 조회된다")
+    void getAllCultivationSensorSuccessAdminRole() throws Exception {
+        long adminId = 999L;
+        long cultivationId = 10L;
+
+        CultivationSensorListResponse response = new CultivationSensorListResponse(List.of(), List.of());
+
+        given(cultivationSensorFacade.findAll(eq(adminId), eq(cultivationId), eq("ADMIN"))).willReturn(response);
+
+        mockMvc.perform(get(
+                        "/api/v1/cultivations/{cultivation-id}/sensors",
+                        cultivationId
+                )
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk());
+
+        then(cultivationSensorFacade).should().findAll(eq(adminId), eq(cultivationId), eq("ADMIN"));
     }
 
 }

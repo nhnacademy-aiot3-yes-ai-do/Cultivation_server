@@ -114,7 +114,12 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
 
     @Override
     public PhotoUploadListResponse getPhotos(Long cultivationId, Long userId) {
-        cultivationAccessGuard.requireMember(cultivationId, userId);
+        return getPhotos(cultivationId, userId, null);
+    }
+
+    @Override
+    public PhotoUploadListResponse getPhotos(Long cultivationId, Long userId, String role) {
+        cultivationAccessGuard.requireMember(cultivationId, userId, role);
 
         List<PhotoUploadResponse> list = cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId).stream()
                 .map(this::toResponse)

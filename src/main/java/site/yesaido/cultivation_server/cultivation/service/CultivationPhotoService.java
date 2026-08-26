@@ -7,5 +7,6 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUpl
 public interface CultivationPhotoService {
     PhotoUploadResponse uploadPhoto(Long cultivationId, Long userId, MultipartFile file);
     PhotoUploadListResponse getPhotos(Long cultivationId, Long userId);
+    PhotoUploadListResponse getPhotos(Long cultivationId, Long userId, String role);
     void deletePhoto(Long cultivationId, Long userId, Long photoId);
 }
