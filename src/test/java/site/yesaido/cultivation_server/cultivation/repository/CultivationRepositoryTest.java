@@ -98,10 +98,8 @@ class CultivationRepositoryTest {
                 .name("중복 버섯")
                 .mushroomReference(savedMushroom)
                 .build();
-        assertThatThrownBy(() -> {
-            cultivationRepository.save(cultivation2);
-            cultivationRepository.flush();
-        }).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> cultivationRepository.saveAndFlush(cultivation2))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
