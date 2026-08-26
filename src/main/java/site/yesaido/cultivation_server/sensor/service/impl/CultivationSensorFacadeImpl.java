@@ -191,17 +191,13 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     @Override
     @Transactional(readOnly = true)
     public CultivationSensorListResponse findAll(Long userId, long cultivationId) {
-        return findAll(userId, cultivationId, null);
+        return doFindAll(userId, cultivationId, null);
     }
 
     @Override
     @Transactional(readOnly = true)
     public CultivationSensorListResponse findAll(Long userId, long cultivationId, String role) {
-        cultivationMemberService.existCultivationMember(cultivationId, userId, role);
-
-        return new CultivationSensorListResponse(
-                cultivationSensorService.findAll(cultivationId), environmentSettingService.findAll(cultivationId)
-        );
+        return doFindAll(userId, cultivationId, role);
     }
 
     // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성
@@ -223,5 +219,10 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
         }
 
         return sensorTypeIds;
+    }
+
+    private CultivationSensorListResponse doFindAll(Long userId, long cultivationId, String role) {
+        cultivationMemberService.existCultivationMember(cultivationId, userId, role);
+        return new CultivationSensorListResponse(cultivationSensorService.findAll(cultivationId), environmentSettingService.findAll(cultivationId));
     }
 }

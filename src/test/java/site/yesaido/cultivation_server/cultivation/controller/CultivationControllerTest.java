@@ -105,7 +105,7 @@ class CultivationControllerTest {
                 null, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(cultivationService.getCultivation(eq(adminId), eq(cultivationId), eq("ADMIN"))).thenReturn(detail);
+        when(cultivationService.getCultivation(adminId, cultivationId, "ADMIN")).thenReturn(detail);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
                         .header("X-User-Id", adminId)
@@ -210,6 +210,6 @@ class CultivationControllerTest {
                         .header("X-User-Role", "ADMIN"))
                 .andExpect(status().isNoContent());
 
-        verify(cultivationService).delete(eq(cultivationId), eq(adminId), eq("ADMIN"));
+        verify(cultivationService).delete(cultivationId, adminId, "ADMIN");
     }
 }
