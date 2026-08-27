@@ -46,7 +46,7 @@ public class HarvestCompletedNotificationProducer {
 
         for (int attempt = 0; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                rabbitTemplate.convertAndSend(NOTIFICATION_EXCHANGE, NOTIFICATION_MEMBER_ROUTING_KEY, event);
+                rabbitTemplate.convertAndSend(NOTIFICATION_EXCHANGE, NOTIFICATION_HARVEST_ROUTING_KEY, event);
                 rabbitTemplate.convertAndSend(HARVEST_EXCHANGE, AI_HARVEST_QUEUE, aiEvent);
                 return;
             } catch (Exception e) {
