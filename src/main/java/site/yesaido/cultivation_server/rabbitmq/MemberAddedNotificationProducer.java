@@ -11,8 +11,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
-import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.NOTIFICATION_DONE_QUEUE;
-import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.NOTIFICATION_EXCHANGE;
+import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
 
 @Slf4j
 @Component
@@ -37,7 +36,7 @@ public class MemberAddedNotificationProducer {
         );
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                rabbitTemplate.convertAndSend(NOTIFICATION_EXCHANGE, NOTIFICATION_DONE_QUEUE, event);
+                rabbitTemplate.convertAndSend(NOTIFICATION_EXCHANGE, NOTIFICATION_MEMBER_ROUTING_KEY, event);
                 return;
             } catch (Exception e) {
                 if (attempt == MAX_ATTEMPTS) {
