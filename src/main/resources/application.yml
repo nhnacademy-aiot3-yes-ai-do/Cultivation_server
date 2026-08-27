@@ -19,6 +19,8 @@ spring:
   flyway:
     baseline-on-migrate: true
     baseline-version: 0
+    # Enable only while upgrading databases that already recorded V1 before V0.1 was introduced.
+    out-of-order: ${FLYWAY_OUT_OF_ORDER:false}
     schemas: ${CULTIVATION_DB_SCHEMA}
     default-schema: ${CULTIVATION_DB_SCHEMA}
 
