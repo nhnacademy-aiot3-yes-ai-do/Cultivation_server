@@ -22,7 +22,7 @@ BEGIN
               SELECT array_agg(a.attname ORDER BY a.attname)
               FROM unnest(c.conkey) AS key(attnum)
               JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = key.attnum
-          ) = ARRAY['mushroom_reference_id', 'sensor_type_id']
+          ) = ARRAY['mushroom_reference_id', 'sensor_type_id']::name[]
     LOOP
         EXECUTE format('ALTER TABLE mushroom_reference_threshold DROP CONSTRAINT %I', constraint_name);
     END LOOP;
@@ -36,7 +36,7 @@ BEGIN
               SELECT array_agg(a.attname ORDER BY a.attname)
               FROM unnest(c.conkey) AS key(attnum)
               JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = key.attnum
-          ) = ARRAY['mushroom_reference_id', 'sensor_type_id', 'threshold_type']
+          ) = ARRAY['mushroom_reference_id', 'sensor_type_id', 'threshold_type']::name[]
     ) THEN
         ALTER TABLE mushroom_reference_threshold
             ADD CONSTRAINT uk_mushroom_reference_threshold_sensor_reference_phase
