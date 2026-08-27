@@ -138,20 +138,4 @@ public class RabbitMQConfig {
     public DirectExchange notificationExchange() {
         return new DirectExchange(NOTIFICATION_EXCHANGE);
     }
-
-    @Bean
-    public Queue notificationDoneQueue() {
-        return QueueBuilder
-                .durable(NOTIFICATION_DONE_QUEUE)
-                .withArgument(DLX_KEY, DLX_NAME)
-                .build();
-    }
-
-    @Bean
-    public Binding notificationDoneBinding() {
-        return BindingBuilder
-                .bind(notificationDoneQueue())
-                .to(notificationExchange())
-                .with(NOTIFICATION_DONE_QUEUE);
-    }
 }
