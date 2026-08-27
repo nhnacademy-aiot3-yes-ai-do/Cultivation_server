@@ -50,7 +50,7 @@ public record CreateCultivationSensorRequest(
 
         @UniqueSensorTypeIds // 커스텀 어노테이션 (센서 세팅 요청의 중복 센서 id 존재여부 검사)
         @NotEmpty(message = "센서 설정은 하나 이상 필요합니다.")
-        List<@NotNull @Valid SensorSettingRequest> sensorSettings
+        List<@NotNull @Valid EnvironmentSettingRequest> sensorSettings
 ) {
     public CultivationSensor toEntity (long cultivationId) {
         return new CultivationSensor(cultivationId, deviceEui, deviceModel, deviceName, location, locationDetail);

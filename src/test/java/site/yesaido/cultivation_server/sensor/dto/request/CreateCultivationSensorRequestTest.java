@@ -20,7 +20,7 @@ class CreateCultivationSensorRequestTest {
                 "배양실 센서",
                 "ROOM-1",
                 "북쪽 선반",
-                List.of(new SensorSettingRequest(1L, new BigDecimal("18.0"), new BigDecimal("24.0")))
+                List.of(new EnvironmentSettingRequest(1L, new BigDecimal("18.0"), new BigDecimal("24.0")))
         );
 
         CultivationSensor sensor = request.toEntity(10L);

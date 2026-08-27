@@ -3,7 +3,7 @@ package site.yesaido.cultivation_server.sensor.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.EnvironmentSettingResponse;
 import site.yesaido.cultivation_server.sensor.entity.EnvironmentSetting;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
@@ -26,10 +26,10 @@ public class EnvironmentSettingServiceImpl implements EnvironmentSettingService 
     // 환경설정 존재시 요청한 임계값 조정, 없으면 요청한 값으로 새로운 환경설정 만들고 저장
     @Override
     @Transactional
-    public void apply(long cultivationId, List<SensorSettingRequest> requests, Map<Long, SensorType> sensorTypes) {
+    public void apply(long cultivationId, List<EnvironmentSettingRequest> requests, Map<Long, SensorType> sensorTypes) {
         // 센서 세팅 요청에서 id값들 저장
         Set<Long> sensorTypeIds = requests.stream()
-                .map(SensorSettingRequest::sensorTypeId)
+                .map(EnvironmentSettingRequest::sensorTypeId)
                 .collect(Collectors.toSet());
 
 
@@ -46,7 +46,7 @@ public class EnvironmentSettingServiceImpl implements EnvironmentSettingService 
         // 요청에서 미리 만들어지지않은 것들 새로 저장, 기존것은 updateThreshold 변경감지로 처리
         List<EnvironmentSetting> newSettings = new ArrayList<>();
 
-        for (SensorSettingRequest request : requests) {
+        for (EnvironmentSettingRequest request : requests) {
             validateThresholdRange(request);
 
             Long sensorTypeId = request.sensorTypeId();
@@ -89,7 +89,7 @@ public class EnvironmentSettingServiceImpl implements EnvironmentSettingService 
 
 
     // Threshold가 min이 max보다 클때 예외 검사
-    private void validateThresholdRange(SensorSettingRequest request) {
+    private void validateThresholdRange(EnvironmentSettingRequest request) {
 
         BigDecimal thresholdMin = request.thresholdMin();
         BigDecimal thresholdMax = request.thresholdMax();

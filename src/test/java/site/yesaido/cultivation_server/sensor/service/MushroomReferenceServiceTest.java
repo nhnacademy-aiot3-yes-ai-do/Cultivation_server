@@ -17,6 +17,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.MushroomReferenceInfo
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThreshold;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
+import site.yesaido.cultivation_server.sensor.exception.DuplicateMushroomReferenceThresholdException;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceThresholdRepository;
 import site.yesaido.cultivation_server.sensor.service.impl.MushroomReferenceServiceImpl;
@@ -48,7 +49,7 @@ class MushroomReferenceServiceTest {
     @DisplayName("버섯 참조 등록")
     void registerMushroomReference() {
         MushroomReferenceThresholdRequest thresholdRequest =
-                new MushroomReferenceThresholdRequest(null, 1L, BigDecimal.valueOf(10.0), BigDecimal.valueOf(30.0));
+                new MushroomReferenceThresholdRequest(null, 1L, site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThresholdType.GROWTH, BigDecimal.valueOf(10.0), BigDecimal.valueOf(30.0));
 
         MushroomReferenceRequest request = new MushroomReferenceRequest("test-ko-name", "test-en-name", "test-scientific-name", List.of(thresholdRequest));
 
@@ -78,12 +79,32 @@ class MushroomReferenceServiceTest {
     }
 
     @Test
+    @DisplayName("같은 센서와 단계를 중복한 버섯 참조 등록은 거부한다")
+    void registerMushroomReferenceRejectsDuplicateSensorTypeAndThresholdType() {
+        MushroomReferenceThresholdRequest growth = new MushroomReferenceThresholdRequest(
+                null, 1L, site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThresholdType.GROWTH,
+                BigDecimal.valueOf(10.0), BigDecimal.valueOf(30.0));
+        MushroomReferenceThresholdRequest duplicateGrowth = new MushroomReferenceThresholdRequest(
+                null, 1L, site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThresholdType.GROWTH,
+                BigDecimal.valueOf(11.0), BigDecimal.valueOf(31.0));
+        MushroomReferenceRequest request = new MushroomReferenceRequest(
+                "test-ko-name", "test-en-name", "test-scientific-name", List.of(growth, duplicateGrowth));
+
+        when(mushroomReferenceRepository.existsMushroomReferenceByMushroomScientificName(request.mushroomScientificName()))
+                .thenReturn(false);
+
+        Assertions.assertThrows(DuplicateMushroomReferenceThresholdException.class,
+                () -> mushroomReferenceService.registerMushroomReference(request));
+        verifyNoInteractions(sensorTypeService, mushroomReferenceThresholdRepository);
+    }
+
+    @Test
     @DisplayName("버섯 참조 수정")
     void updateMushroomReference() {
         long mushroomReferenceId = 1L;
 
         // 기존 상태
-        MushroomReferenceThresholdRequest oldThresholdRequest = new MushroomReferenceThresholdRequest(null, 1L, BigDecimal.valueOf(10.0), BigDecimal.valueOf(30.0));
+        MushroomReferenceThresholdRequest oldThresholdRequest = new MushroomReferenceThresholdRequest(null, 1L, site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThresholdType.GROWTH, BigDecimal.valueOf(10.0), BigDecimal.valueOf(30.0));
         MushroomReferenceRequest oldRequest = new MushroomReferenceRequest("old-name-ko", "old-name-en", "old-scientific-name", List.of(oldThresholdRequest));
         MushroomReference mushroomReference = MushroomReference.create(oldRequest);
         ReflectionTestUtils.setField(mushroomReference, "id", mushroomReferenceId);
@@ -100,7 +121,7 @@ class MushroomReferenceServiceTest {
         ReflectionTestUtils.setField(mushroomReference, "mushroomReferenceThresholds", thresholds);
 
         // 수정 요청 (기존 threshold id 포함, 값만 변경)
-        MushroomReferenceThresholdRequest updateThresholdRequest = new MushroomReferenceThresholdRequest(thresholdId, 1L, BigDecimal.valueOf(15.0), BigDecimal.valueOf(35.0));
+        MushroomReferenceThresholdRequest updateThresholdRequest = new MushroomReferenceThresholdRequest(thresholdId, 1L, site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThresholdType.GROWTH, BigDecimal.valueOf(15.0), BigDecimal.valueOf(35.0));
         MushroomReferenceRequest newRequest = new MushroomReferenceRequest("new-name-ko", "new-name-en", "new-scientific-name", List.of(updateThresholdRequest));
 
         when(mushroomReferenceRepository.existsMushroomReferenceById(mushroomReferenceId)).thenReturn(true);
