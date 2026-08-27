@@ -10,6 +10,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.MushroomReferenceInfo
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThreshold;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
+import site.yesaido.cultivation_server.sensor.exception.DuplicateMushroomReferenceThresholdException;
 import site.yesaido.cultivation_server.sensor.exception.MushroomReferenceAlreadyExistException;
 import site.yesaido.cultivation_server.sensor.exception.MushroomReferenceNotFoundException;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
@@ -37,10 +38,11 @@ public class MushroomReferenceServiceImpl implements MushroomReferenceService {
             throw new MushroomReferenceAlreadyExistException("mushroom-scientific-name:%s".formatted(dto.mushroomScientificName()));
         }
 
+        List<MushroomReferenceThresholdRequest> thresholds = dto.thresholds();
+        validateDistinctThresholds(thresholds);
+
         MushroomReference registerMushroomReference = MushroomReference.create(dto);
         MushroomReference saveMushroomReference = mushroomReferenceRepository.saveAndFlush(registerMushroomReference);
-
-        List<MushroomReferenceThresholdRequest> thresholds = dto.thresholds();
 
         List<Long> sensorTypeIds = thresholds.stream().map(MushroomReferenceThresholdRequest::sensorTypeId).toList();
 
@@ -76,6 +78,7 @@ public class MushroomReferenceServiceImpl implements MushroomReferenceService {
 
         // threshold 업데이트 필요 준비
         List<MushroomReferenceThresholdRequest> thresholdRequests = dto.thresholds();
+        validateDistinctThresholds(thresholdRequests);
 
         Map<Long, MushroomReferenceThresholdRequest> thresholdUpdateRequests = thresholdRequests.stream()
                 .filter(t -> Objects.nonNull(t.id()))
@@ -125,12 +128,29 @@ public class MushroomReferenceServiceImpl implements MushroomReferenceService {
             if(!request.sensorTypeId().equals(threshold.getSensorType().getId())) {
                 threshold.setSensorType(sensorTypeMap.get(request.sensorTypeId()));
             }
+            if(!request.thresholdType().equals(threshold.getThresholdType())) {
+                threshold.setThresholdType(request.thresholdType());
+            }
         }
 
         // threshold 생성
         List<MushroomReferenceThreshold> saveThresholds = createMushroomReferenceThreshold(mushroomReference, thresholdRegisterRequests, sensorTypeMap);
 
         mushroomReferenceThresholdRepository.saveAll(saveThresholds);
+    }
+
+    private void validateDistinctThresholds(List<MushroomReferenceThresholdRequest> thresholds) {
+        Set<ThresholdKey> thresholdKeys = new HashSet<>();
+        for (MushroomReferenceThresholdRequest threshold : thresholds) {
+            ThresholdKey thresholdKey = new ThresholdKey(threshold.sensorTypeId(), threshold.thresholdType().name());
+            if (!thresholdKeys.add(thresholdKey)) {
+                throw new DuplicateMushroomReferenceThresholdException(
+                        threshold.sensorTypeId(), threshold.thresholdType().name());
+            }
+        }
+    }
+
+    private record ThresholdKey(Long sensorTypeId, String thresholdType) {
     }
 
     public List<MushroomReferenceThreshold> createMushroomReferenceThreshold(MushroomReference mushroomReference, List<MushroomReferenceThresholdRequest> thresholdRequests, Map<Long, SensorType> sensorTypeMap) {

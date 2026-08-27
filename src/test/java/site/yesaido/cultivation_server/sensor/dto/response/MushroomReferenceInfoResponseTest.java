@@ -6,6 +6,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import site.yesaido.cultivation_server.sensor.dto.request.MushroomReferenceThresholdRequest;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThreshold;
+import site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThresholdType;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 
 import java.math.BigDecimal;
@@ -22,7 +23,7 @@ class MushroomReferenceInfoResponseTest {
         MushroomReference mushroomReference = new MushroomReference("표고", "Shiitake", "Lentinula edodes");
         ReflectionTestUtils.setField(mushroomReference, "id", 5L);
         MushroomReferenceThresholdRequest dto = new MushroomReferenceThresholdRequest(
-                null, null, new BigDecimal("18.0"), new BigDecimal("24.0"));
+                null, null, MushroomReferenceThresholdType.GROWTH, new BigDecimal("18.0"), new BigDecimal("24.0"));
         MushroomReferenceThreshold.create(sensorType, mushroomReference, dto);
 
         MushroomReferenceInfoResponse response = MushroomReferenceInfoResponse.from(mushroomReference);

@@ -66,7 +66,7 @@ class SensorTypeRepositoryIntegrationTest {
         MushroomReference mushroom = mushroomReferenceRepository.saveAndFlush(
                 new MushroomReference("표고", "shiitake", "Lentinula edodes"));
         mushroomReferenceThresholdRepository.saveAndFlush(
-                new MushroomReferenceThreshold(sensorType, mushroom, BigDecimal.ONE, BigDecimal.TEN));
+                new MushroomReferenceThreshold(sensorType, mushroom, MushroomReferenceThresholdType.GROWTH, BigDecimal.ONE, BigDecimal.TEN));
 
         assertTrue(sensorTypeRepository.existsInUseById(sensorType.getId()));
     }

@@ -12,7 +12,7 @@ import java.time.ZoneId;
 @Getter
 @NoArgsConstructor
 @Entity
-@Table(name = "mushroom_reference_threshold", uniqueConstraints = {@UniqueConstraint(columnNames = {"sensor_type_id", "mushroom_reference_id"})})
+@Table(name = "mushroom_reference_threshold", uniqueConstraints = {@UniqueConstraint(columnNames = {"sensor_type_id", "mushroom_reference_id", "threshold_type"})})
 public class MushroomReferenceThreshold {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,6 +26,10 @@ public class MushroomReferenceThreshold {
     @JoinColumn(name = "mushroom_reference_id")
     private MushroomReference mushroomReference;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "threshold_type")
+    private MushroomReferenceThresholdType thresholdType;
+
     @Column(name = "threshold_min", precision = 10, scale = 4)
     private BigDecimal thresholdMin;
 
@@ -38,9 +42,11 @@ public class MushroomReferenceThreshold {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public MushroomReferenceThreshold(SensorType sensorType, MushroomReference mushroomReference, BigDecimal thresholdMin, BigDecimal thresholdMax) {
+    public MushroomReferenceThreshold(SensorType sensorType, MushroomReference mushroomReference,
+                                     MushroomReferenceThresholdType thresholdType, BigDecimal thresholdMin, BigDecimal thresholdMax) {
         this.sensorType = sensorType;
         this.mushroomReference = mushroomReference;
+        this.thresholdType = thresholdType;
         this.thresholdMin = thresholdMin;
         this.thresholdMax = thresholdMax;
 
@@ -57,7 +63,8 @@ public class MushroomReferenceThreshold {
     }
 
     public static MushroomReferenceThreshold create(SensorType sensorType, MushroomReference mushroomReference, MushroomReferenceThresholdRequest dto) {
-        MushroomReferenceThreshold threshold = new MushroomReferenceThreshold(sensorType, mushroomReference, dto.thresholdMin(), dto.thresholdMax());
+        MushroomReferenceThreshold threshold = new MushroomReferenceThreshold(
+                sensorType, mushroomReference, dto.thresholdType(), dto.thresholdMin(), dto.thresholdMax());
 
         sensorType.getMushroomReferenceThresholds().add(threshold);
         mushroomReference.getMushroomReferenceThresholds().add(threshold);
@@ -68,6 +75,11 @@ public class MushroomReferenceThreshold {
     public void setSensorType(SensorType sensorType) {
         this.sensorType.getMushroomReferenceThresholds().remove(this);
         this.sensorType = sensorType;
+        isUpdate();
+    }
+
+    public void setThresholdType(MushroomReferenceThresholdType thresholdType) {
+        this.thresholdType = thresholdType;
         isUpdate();
     }
 
