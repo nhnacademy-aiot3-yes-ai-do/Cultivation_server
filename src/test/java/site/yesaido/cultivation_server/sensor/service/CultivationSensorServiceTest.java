@@ -9,7 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
-import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorConnectStatus;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorAlreadyExistException;
@@ -52,7 +52,7 @@ class CultivationSensorServiceTest {
                     "ROOM-1",
                     "북쪽 선반",
                     List.of(
-                            new SensorSettingRequest(
+                            new EnvironmentSettingRequest(
                                     1L,
                                     BigDecimal.valueOf(20),
                                     BigDecimal.valueOf(30)
@@ -89,7 +89,7 @@ class CultivationSensorServiceTest {
                     "ROOM-1",
                     "북쪽 선반",
                     List.of(
-                            new SensorSettingRequest(
+                            new EnvironmentSettingRequest(
                                     1L,
                                     BigDecimal.valueOf(20),
                                     BigDecimal.valueOf(30)
@@ -126,7 +126,7 @@ class CultivationSensorServiceTest {
                     "ROOM-1",
                     "북쪽 선반",
                     List.of(
-                            new SensorSettingRequest(
+                            new EnvironmentSettingRequest(
                                     1L,
                                     BigDecimal.valueOf(20),
                                     BigDecimal.valueOf(30)

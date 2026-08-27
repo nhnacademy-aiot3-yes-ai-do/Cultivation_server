@@ -56,7 +56,7 @@ public class RabbitMessageConverterConfig {
         rabbitTemplate.setMessageConverter(jsonMessageConverter);     // JSON 컨버터 등록
 
         // 필요 시 추가 설정
-        // ...l
+        // ...
 
         return rabbitTemplate;
     }

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 // environment_setting 테이블
-public record SensorSettingRequest(
+public record EnvironmentSettingRequest(
         @NotNull
         @Positive
         Long sensorTypeId,

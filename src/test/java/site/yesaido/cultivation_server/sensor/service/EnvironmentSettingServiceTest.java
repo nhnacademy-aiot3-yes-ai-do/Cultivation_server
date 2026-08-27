@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import site.yesaido.cultivation_server.sensor.dto.request.SensorSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.entity.EnvironmentSetting;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.InvalidThresholdRangeException;
@@ -43,8 +43,8 @@ class EnvironmentSettingServiceTest {
         BigDecimal thresholdMin = new BigDecimal("10.0");
         BigDecimal thresholdMax = new BigDecimal("30.0");
 
-        SensorSettingRequest request = new SensorSettingRequest(sensorTypeId, thresholdMin, thresholdMax);
-        List<SensorSettingRequest> requests = List.of(request);
+        EnvironmentSettingRequest request = new EnvironmentSettingRequest(sensorTypeId, thresholdMin, thresholdMax);
+        List<EnvironmentSettingRequest> requests = List.of(request);
 
         SensorType mockSensorType = mock(SensorType.class);
         Map<Long, SensorType> sensorTypes = Map.of(sensorTypeId, mockSensorType);
@@ -82,7 +82,7 @@ class EnvironmentSettingServiceTest {
                 oldMax
         );
 
-        SensorSettingRequest request = new SensorSettingRequest(
+        EnvironmentSettingRequest request = new EnvironmentSettingRequest(
                 sensorTypeId,
                 newMin,
                 newMax
@@ -124,8 +124,8 @@ class EnvironmentSettingServiceTest {
         BigDecimal thresholdMin = new BigDecimal("30.0");
         BigDecimal thresholdMax = new BigDecimal("10.0");
 
-        SensorSettingRequest request = new SensorSettingRequest(sensorTypeId, thresholdMin, thresholdMax);
-        List<SensorSettingRequest> requests = List.of(request);
+        EnvironmentSettingRequest request = new EnvironmentSettingRequest(sensorTypeId, thresholdMin, thresholdMax);
+        List<EnvironmentSettingRequest> requests = List.of(request);
 
         SensorType mockSensorType = mock(SensorType.class);
         Map<Long, SensorType> sensorTypes = Map.of(sensorTypeId, mockSensorType);
