@@ -26,4 +26,5 @@ public final class RabbitMQConstants {
     // 알림 관련
     public static final String NOTIFICATION_EXCHANGE = "yes-nhn.notification.exchange";
     public static final String NOTIFICATION_HARVEST_ROUTING_KEY = "yes-nhn.notification.harvest.queue";
+    public static final String NOTIFICATION_MEMBER_ROUTING_KEY = "yes-nhn.notification.member.queue";
 }
