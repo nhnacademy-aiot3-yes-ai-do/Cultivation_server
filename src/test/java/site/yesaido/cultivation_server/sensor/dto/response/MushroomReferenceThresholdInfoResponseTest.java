@@ -6,6 +6,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import site.yesaido.cultivation_server.sensor.dto.request.MushroomReferenceThresholdRequest;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThreshold;
+import site.yesaido.cultivation_server.sensor.entity.MushroomReferenceThresholdType;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 
 import java.math.BigDecimal;
@@ -23,7 +24,7 @@ class MushroomReferenceThresholdInfoResponseTest {
         ReflectionTestUtils.setField(sensorType, "id", 1L);
         MushroomReference mushroomReference = new MushroomReference("표고", "Shiitake", "Lentinula edodes");
         MushroomReferenceThresholdRequest dto = new MushroomReferenceThresholdRequest(
-                null, null, new BigDecimal("18.0"), new BigDecimal("24.0"));
+                null, null, MushroomReferenceThresholdType.GROWTH, new BigDecimal("18.0"), new BigDecimal("24.0"));
         MushroomReferenceThreshold threshold = MushroomReferenceThreshold.create(sensorType, mushroomReference, dto);
 
         List<MushroomReferenceThresholdInfoResponse> responses =
@@ -33,6 +34,7 @@ class MushroomReferenceThresholdInfoResponseTest {
         MushroomReferenceThresholdInfoResponse response = responses.get(0);
         assertThat(response.sensorType().id()).isEqualTo(1L);
         assertThat(response.sensorType().type()).isEqualTo("TEMPERATURE");
+        assertThat(response.thresholdType()).isEqualTo(MushroomReferenceThresholdType.GROWTH);
         assertThat(response.thresholdMin()).isEqualByComparingTo("18.0");
         assertThat(response.thresholdMax()).isEqualByComparingTo("24.0");
     }
