@@ -16,9 +16,11 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivatio
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyInHarvestModeException;
 import site.yesaido.cultivation_server.cultivation.service.CultivationCreationFacade;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
+import site.yesaido.cultivation_server.sensor.service.CultivationModeFacade;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -45,6 +47,9 @@ class CultivationControllerTest {
 
     @MockitoBean
     CultivationCreationFacade cultivationCreationFacade;
+
+    @MockitoBean
+    CultivationModeFacade cultivationModeFacade;
 
     @Test
     @DisplayName("경작 생성 API - 정상 요청시 201 Created 반환")
@@ -237,5 +242,37 @@ class CultivationControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(cultivationService).delete(cultivationId, adminId, "ADMIN");
+    }
+    @Test
+    @DisplayName("수확 모드 전환 API - 정상 요청 시 200 OK 반환 (cultivationId/userId 인자 순서 검증)")
+    void switchToHarvestModeSuccess() throws Exception {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        CultivationModeChangeResponse response =
+                new CultivationModeChangeResponse(cultivationId, CultivationMode.HARVEST);
+
+        when(cultivationModeFacade.switchToHarvestMode(cultivationId, userId)).thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/harvest-mode", cultivationId)
+                        .header("X-User-Id", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cultivationId").value(cultivationId))
+                .andExpect(jsonPath("$.mode").value(CultivationMode.HARVEST.name()));
+
+        verify(cultivationModeFacade).switchToHarvestMode(cultivationId, userId);
+    }
+
+    @Test
+    @DisplayName("수확 모드 전환 API - 이미 수확 모드면 409 Conflict 반환")
+    void switchToHarvestModeFailAlreadyInHarvestMode() throws Exception {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        when(cultivationModeFacade.switchToHarvestMode(cultivationId, userId))
+                .thenThrow(new CultivationAlreadyInHarvestModeException(cultivationId));
+
+        mockMvc.perform(put("/api/v1/cultivations/{cultivation-id}/harvest-mode", cultivationId)
+                        .header("X-User-Id", userId))
+                .andExpect(status().isConflict());
     }
 }

@@ -8,6 +8,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.CultivationModeChangeResponse;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyFinishedException;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyInHarvestModeException;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
+import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
+import site.yesaido.cultivation_server.cultivation.service.impl.CultivationMemberServiceImpl;
+import site.yesaido.cultivation_server.cultivation.service.impl.CultivationServiceImpl;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
@@ -36,7 +47,6 @@ class CultivationSensorServiceTest {
 
     @InjectMocks
     CultivationSensorServiceImpl cultivationSensorService;
-
 
     @Nested
     @DisplayName("센서 등록")
@@ -231,12 +241,5 @@ class CultivationSensorServiceTest {
             verifyNoMoreInteractions(cultivationSensorRepository);
         }
     }
-
-
-
-
-
-
-
 
 }

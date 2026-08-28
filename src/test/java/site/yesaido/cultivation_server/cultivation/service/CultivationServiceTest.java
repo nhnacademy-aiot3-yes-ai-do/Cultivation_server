@@ -13,6 +13,7 @@ import site.yesaido.cultivation_server.cultivation.client.UserClient;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.CultivationCreateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
@@ -316,5 +317,95 @@ class CultivationServiceTest {
 
         assertThatThrownBy(() -> service.delete(cultivationId, userId))
                 .isInstanceOf(CultivationNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("수확 모드 전환 성공 - GROWTH에서 HARVEST로 변경됨")
+    void switchToHarvestModeSuccess() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.RUNNING)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        CultivationModeChangeResponse response = service.switchToHarvestMode(cultivationId, userId);
+
+        assertThat(response).isNotNull();
+        assertThat(response.mode()).isEqualTo(CultivationMode.HARVEST);
+        assertThat(cultivation.getMode()).isEqualTo(CultivationMode.HARVEST);
+        verify(cultivationMemberService).verifyManagerAccess(cultivationId, userId);
+    }
+
+    @Test
+    @DisplayName("수확 모드 전환 실패 - 없는 경작 ID")
+    void switchToHarvestModeFailNotFound() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.switchToHarvestMode(cultivationId, userId))
+                .isInstanceOf(CultivationNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("수확 모드 전환 실패 - 이미 종료된 재배")
+    void switchToHarvestModeFailAlreadyFinished() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.FINISHED)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        assertThatThrownBy(() -> service.switchToHarvestMode(cultivationId, userId))
+                .isInstanceOf(CultivationAlreadyFinishedException.class);
+    }
+
+    @Test
+    @DisplayName("수확 모드 전환 실패 - 이미 수확 모드인 경우")
+    void switchToHarvestModeFailAlreadyInHarvestMode() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.RUNNING)
+                .mode(CultivationMode.HARVEST)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        assertThatThrownBy(() -> service.switchToHarvestMode(cultivationId, userId))
+                .isInstanceOf(CultivationAlreadyInHarvestModeException.class);
+    }
+
+    @Test
+    @DisplayName("수확 모드 전환 실패 - MANAGER 이상 권한이 없는 경우")
+    void switchToHarvestModeFailAccessDenied() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.RUNNING)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        doThrow(new CultivationAccessDeniedException(cultivationId))
+                .when(cultivationMemberService).verifyManagerAccess(cultivationId, userId);
+
+        assertThatThrownBy(() -> service.switchToHarvestMode(cultivationId, userId))
+                .isInstanceOf(CultivationAccessDeniedException.class);
     }
 }
