@@ -13,6 +13,7 @@ import site.yesaido.cultivation_server.cultivation.dto.harvest.response.HarvestC
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.HarvestDetailResponse;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.ProductScoreUpdateResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.Harvest;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
@@ -67,6 +68,7 @@ class HarvestServiceTest {
                 .userId(userId)
                 .name("버섯 농장")
                 .cultivationStatus(CultivationStatus.RUNNING)
+                .mode(CultivationMode.HARVEST)
                 .build();
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
@@ -108,11 +110,12 @@ class HarvestServiceTest {
                 .userId(ownerId)
                 .name("버섯 농장")
                 .cultivationStatus(CultivationStatus.RUNNING)
+                .mode(CultivationMode.HARVEST)
                 .build();
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
         doThrow(new CultivationAccessDeniedException(cultivationId))
-                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, otherUserId);
+                .when(cultivationMemberService).verifyManagerAccess(cultivationId, otherUserId);
 
         assertThatThrownBy(() -> harvestService.createHarvest(cultivationId, otherUserId, request))
                 .isInstanceOf(CultivationAccessDeniedException.class);
@@ -148,6 +151,7 @@ class HarvestServiceTest {
                 .userId(userId)
                 .name("버섯 농장")
                 .cultivationStatus(CultivationStatus.RUNNING)
+                .mode(CultivationMode.HARVEST)
                 .build();
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
@@ -246,7 +250,7 @@ class HarvestServiceTest {
 
         when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
         doThrow(new CultivationAccessDeniedException(cultivationId))
-                .when(cultivationMemberService).verifyOwnerAccess(cultivationId, otherUserId);
+                .when(cultivationMemberService).verifyManagerAccess(cultivationId, otherUserId);
 
         assertThatThrownBy(() -> harvestService.updateProductScore(cultivationId, otherUserId, request))
                 .isInstanceOf(CultivationAccessDeniedException.class);
@@ -264,5 +268,47 @@ class HarvestServiceTest {
 
         assertThatThrownBy(() -> harvestService.updateProductScore(cultivationId, userId, request))
                 .isInstanceOf(HarvestNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("수확 기록 실패 - 아직 수확 모드로 전환되지 않은 경우")
+    void createHarvestFailNotInHarvestMode() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        HarvestCreateRequest request = new HarvestCreateRequest(new BigDecimal("3.5"), null);
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.RUNNING)
+                .build(); // mode 기본값 GROWTH
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        assertThatThrownBy(() -> harvestService.createHarvest(cultivationId, userId, request))
+                .isInstanceOf(CultivationNotInHarvestModeException.class);
+
+        verify(harvestRepository, never()).existsByCultivationId(cultivationId);
+    }
+
+    @Test
+    @DisplayName("수확 기록 실패 - 삭제된 재배")
+    void createHarvestFailDeleted() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        HarvestCreateRequest request = new HarvestCreateRequest(new BigDecimal("3.5"), null);
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.DELETED)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        assertThatThrownBy(() -> harvestService.createHarvest(cultivationId, userId, request))
+                .isInstanceOf(CultivationAlreadyDeletedException.class);
+
+        verify(harvestRepository, never()).existsByCultivationId(cultivationId);
     }
 }

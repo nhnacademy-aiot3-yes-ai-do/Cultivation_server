@@ -37,7 +37,6 @@ class CultivationSensorServiceTest {
     @InjectMocks
     CultivationSensorServiceImpl cultivationSensorService;
 
-
     @Nested
     @DisplayName("센서 등록")
     class CultivationSensor_add {
@@ -231,12 +230,5 @@ class CultivationSensorServiceTest {
             verifyNoMoreInteractions(cultivationSensorRepository);
         }
     }
-
-
-
-
-
-
-
 
 }
