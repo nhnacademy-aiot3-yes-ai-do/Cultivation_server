@@ -290,4 +290,25 @@ class HarvestServiceTest {
 
         verify(harvestRepository, never()).existsByCultivationId(cultivationId);
     }
+
+    @Test
+    @DisplayName("수확 기록 실패 - 삭제된 재배")
+    void createHarvestFailDeleted() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        HarvestCreateRequest request = new HarvestCreateRequest(new BigDecimal("3.5"), null);
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.DELETED)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        assertThatThrownBy(() -> harvestService.createHarvest(cultivationId, userId, request))
+                .isInstanceOf(CultivationAlreadyDeletedException.class);
+
+        verify(harvestRepository, never()).existsByCultivationId(cultivationId);
+    }
 }

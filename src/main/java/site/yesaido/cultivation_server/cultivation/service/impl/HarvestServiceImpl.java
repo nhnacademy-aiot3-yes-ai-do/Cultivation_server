@@ -47,6 +47,9 @@ public class HarvestServiceImpl implements HarvestService {
         if (cultivation.getCultivationStatus() == CultivationStatus.FINISHED) {
             throw new CultivationAlreadyFinishedException(cultivationId);
         }
+        if (cultivation.getCultivationStatus() == CultivationStatus.DELETED) {
+            throw new CultivationAlreadyDeletedException(cultivationId);
+        }
         if (cultivation.getMode() != CultivationMode.HARVEST) {
             throw new CultivationNotInHarvestModeException(cultivationId);
         }

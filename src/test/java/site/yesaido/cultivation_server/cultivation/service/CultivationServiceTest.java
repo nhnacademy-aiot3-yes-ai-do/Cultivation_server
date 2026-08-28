@@ -408,4 +408,22 @@ class CultivationServiceTest {
         assertThatThrownBy(() -> service.switchToHarvestMode(cultivationId, userId))
                 .isInstanceOf(CultivationAccessDeniedException.class);
     }
+
+    @Test
+    @DisplayName("수확 모드 전환 실패 - 삭제된 재배")
+    void switchToHarvestModeFailDeleted() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .cultivationStatus(CultivationStatus.DELETED)
+                .build();
+
+        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+
+        assertThatThrownBy(() -> service.switchToHarvestMode(cultivationId, userId))
+                .isInstanceOf(CultivationAlreadyDeletedException.class);
+    }
 }

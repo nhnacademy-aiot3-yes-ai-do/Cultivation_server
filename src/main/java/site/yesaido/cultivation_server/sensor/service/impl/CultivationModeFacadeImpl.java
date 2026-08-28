@@ -54,20 +54,21 @@ public class CultivationModeFacadeImpl implements CultivationModeFacade {
 
         // cultivation에서 사용하고 있는 센서 타입들을 불러오고
         List<SensorType> registeredSensorTypes = cultivationSensorTypeRepository.findDistinctSensorTypesByCultivationId(cultivationId);
+        List<MushroomReferenceThreshold> harvestThresholds;
         if (registeredSensorTypes.isEmpty()) {
-            return;
-        }
-        // 불러온 리스트들을 쪼개서 Set으로 아이디를 저장
-        Set<Long> registeredSensorTypeIds = registeredSensorTypes.stream()
-                .map(SensorType::getId)
-                .collect(Collectors.toSet());
+            harvestThresholds = List.of();
+        } else {
+            // 불러온 리스트들을 쪼개서 Set으로 아이디를 저장
+            Set<Long> registeredSensorTypeIds = registeredSensorTypes.stream()
+                    .map(SensorType::getId)
+                    .collect(Collectors.toSet());
 
-        // 현재 키우고 있는 버섯의 수확 환경을 불러오는데, 현재 cultivation에서 사용하고 있는 센서들에 대해서만 가져옴
-        List<MushroomReferenceThreshold> harvestThresholds = mushroomReferenceThresholdRepository.findAllByMushroomReference_idAndThresholdType(mushroomReferenceId, MushroomReferenceThresholdType.HARVEST)
-                .stream().filter(threshold -> registeredSensorTypeIds.contains(threshold.getSensorType().getId()))
-                .toList();
-        if (harvestThresholds.isEmpty()) {
-            return;
+            // 현재 키우고 있는 버섯의 수확 환경을 불러오는데, 현재 cultivation에서 사용하고 있는 센서들에 대해서만 가져옴
+            harvestThresholds = mushroomReferenceThresholdRepository
+                    .findAllByMushroomReference_idAndThresholdType(mushroomReferenceId, MushroomReferenceThresholdType.HARVEST)
+                    .stream()
+                    .filter(threshold -> registeredSensorTypeIds.contains(threshold.getSensorType().getId()))
+                    .toList();
         }
 
         // 수확 환경으로 변경하라는 요청을 조립
@@ -84,8 +85,12 @@ public class CultivationModeFacadeImpl implements CultivationModeFacade {
                         MushroomReferenceThreshold::getSensorType,
                         (a,b) -> a
                 ));
-        environmentSettingService.apply(cultivationId, requests, sensorTypeMap);
+        // 적용할 임계값이 있을 때만 환경설정에 반영
+        if (!requests.isEmpty()) {
+            environmentSettingService.apply(cultivationId, requests, sensorTypeMap);
+        }
 
+        // 임계값이 비어있어도 룰 엔진에는 모드 전환 사실을 항상 알림
         OffsetDateTime occurredAt = OffsetDateTime.now(ZoneOffset.UTC).withOffsetSameInstant(ZoneOffset.ofHours(9));
         eventPublisher.publishEvent(ThresholdInfoEvent.from(cultivationId, requests, sensorTypeMap, occurredAt));
     }
