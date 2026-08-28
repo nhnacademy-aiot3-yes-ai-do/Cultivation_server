@@ -68,10 +68,10 @@ class CultivationPhotoInternalControllerTest {
     }
 
     @Test
-    @DisplayName("일별 사진 조회 API 실패 - date 형식이 잘못되면 500 Internal Server Error (타입 변환 실패는 GlobalExceptionHandler의 catch-all에서 처리됨)")
+    @DisplayName("일별 사진 조회 API 실패 - date 형식이 잘못되면 400 Bad Request")
     void getDailyPhotosFailInvalidDateFormat() throws Exception {
         mockMvc.perform(get("/api/v1/internal/cultivations/photos/daily")
                         .param("date", "2026/08/28"))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 }
