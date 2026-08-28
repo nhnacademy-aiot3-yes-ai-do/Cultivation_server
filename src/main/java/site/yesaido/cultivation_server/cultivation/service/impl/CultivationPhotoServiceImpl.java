@@ -13,17 +13,18 @@ import site.yesaido.common.exception.client.UnsupportedMediaTypeException;
 import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.exception.server.ServerErrorLevel;
 import site.yesaido.common.storage.*;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.DailyCultivationPhotoListResponse;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.DailyCultivationPhotoResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationphoto.CultivationPhoto;
 import site.yesaido.cultivation_server.cultivation.exception.PhotoNotFoundException;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationphoto.CultivationPhotoRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationPhotoService;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.List;
 import java.util.Set;
 
@@ -38,6 +39,8 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private static final String OBJECT_KEY_LOG_SEGMENT = ", objectKey: ";
     private static final String CAUSE_LOG_SEGMENT = ", cause: ";
     private static final Duration PRESIGNED_URL_TTL = Duration.ofMinutes(30);
+    private static final Set<CultivationStatus> ACTIVE_CULTIVATION_STATUSES = Set.of(CultivationStatus.CREATED, CultivationStatus.RUNNING);
+    private static final ZoneOffset SEOUL_OFFSET = ZoneOffset.ofHours(9);
 
     private final CultivationPhotoRepository cultivationPhotoRepository;
     private final MinioObjectStorage minioObjectStorage;
@@ -148,6 +151,17 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         });
     }
 
+    @Override
+    public DailyCultivationPhotoListResponse getDailyPhotos(LocalDate targetDate) {
+        LocalDateTime startOfDay = targetDate.atStartOfDay();
+        LocalDateTime endOfDay = targetDate.plusDays(1).atStartOfDay();
+        List<DailyCultivationPhotoResponse> photos = cultivationPhotoRepository.findAllForDailyVisionAnalysis(ACTIVE_CULTIVATION_STATUSES, startOfDay, endOfDay)
+                .stream()
+                .map(this::toDailyResponse)
+                .toList();
+        return new DailyCultivationPhotoListResponse(targetDate, photos);
+    }
+
     // Helper Method
     private PhotoUploadResponse toResponse(CultivationPhoto cultivationPhoto) {
         String objectKey = cultivationPhoto.getObjectKey();
@@ -172,6 +186,30 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
                 publicUrl,
                 cultivationPhoto.getStorageType(),
                 cultivationPhoto.getUploadedAt()
+        );
+    }
+
+    private DailyCultivationPhotoResponse toDailyResponse(CultivationPhoto photo) {
+        String objectKey = photo.getObjectKey();
+        String presignedUrl;
+        try {
+            presignedUrl = minioObjectStorage.presignedGetUrl(objectKey, PRESIGNED_URL_TTL);
+        } catch (MinioObjectStorageException e) {
+            throw new CustomServerException(
+                    "사진 URL 발급 실패했습니다.",
+                    "MINIO presigned URL 발급 실패" + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
+                    ServerErrorLevel.WARN_LEVEL
+            );
+        }
+        OffsetDateTime expiresAt = OffsetDateTime.now(ZoneOffset.UTC)
+                .withOffsetSameInstant(SEOUL_OFFSET)
+                .plus(PRESIGNED_URL_TTL);
+
+        return new DailyCultivationPhotoResponse(
+                photo.getCultivation().getId(),
+                photo.getId(),
+                presignedUrl,
+                expiresAt
         );
     }
 }
