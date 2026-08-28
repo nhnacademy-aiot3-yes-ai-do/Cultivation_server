@@ -11,7 +11,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
-import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
+import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.NOTIFICATION_EXCHANGE;
+import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.NOTIFICATION_MEMBER_ROUTING_KEY;
 
 @Slf4j
 @Component
