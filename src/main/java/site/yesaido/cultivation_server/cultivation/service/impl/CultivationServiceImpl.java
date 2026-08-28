@@ -11,6 +11,7 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.Culti
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
@@ -117,6 +118,22 @@ public class CultivationServiceImpl implements CultivationService {
                 .orElseThrow(() -> new CultivationAccessDeniedException(cultivationId));
 
         return toDetail(cultivation, member.getRole());
+    }
+
+    @Override
+    public CultivationModeChangeResponse switchToHarvestMode(Long cultivationId, Long userId) {
+        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
+        if (cultivation.getCultivationStatus() == CultivationStatus.FINISHED) {
+            throw new CultivationAlreadyFinishedException(cultivationId);
+        }
+        if (cultivation.getMode() == CultivationMode.HARVEST) {
+            throw new CultivationAlreadyInHarvestModeException(cultivationId);
+        }
+
+        cultivation.switchToHarvestMode();
+        return new CultivationModeChangeResponse(cultivation.getId(), cultivation.getMode());
     }
 
     @Override

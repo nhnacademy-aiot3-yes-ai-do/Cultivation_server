@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.CultivationCreateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 
 public interface CultivationService {
     // 경작 생성
@@ -16,6 +17,9 @@ public interface CultivationService {
     // 경작 상세 조회
     CultivationDetailResponse getCultivation(Long userId, Long cultivationId);
     CultivationDetailResponse getCultivation(Long userId, Long cultivationId, String role);
+
+    // 경작 모드 변경
+    CultivationModeChangeResponse switchToHarvestMode(Long cultivationId, Long userId);
 
     // 경작 종료
     CultivationFinishResponse finish(Long cultivationId, Long userId);

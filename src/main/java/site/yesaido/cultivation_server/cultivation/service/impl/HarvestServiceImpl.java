@@ -10,13 +10,11 @@ import site.yesaido.cultivation_server.cultivation.dto.harvest.response.HarvestC
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.HarvestDetailResponse;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.ProductScoreUpdateResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.Harvest;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
-import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyFinishedException;
-import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
-import site.yesaido.cultivation_server.cultivation.exception.HarvestAlreadyExistException;
-import site.yesaido.cultivation_server.cultivation.exception.HarvestNotFoundException;
+import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.harvest.HarvestRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
@@ -45,9 +43,12 @@ public class HarvestServiceImpl implements HarvestService {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 
-        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
         if (cultivation.getCultivationStatus() == CultivationStatus.FINISHED) {
             throw new CultivationAlreadyFinishedException(cultivationId);
+        }
+        if (cultivation.getMode() != CultivationMode.HARVEST) {
+            throw new CultivationNotInHarvestModeException(cultivationId);
         }
         if (harvestRepository.existsByCultivationId(cultivationId)) {
             throw new HarvestAlreadyExistException(cultivationId);
@@ -100,7 +101,7 @@ public class HarvestServiceImpl implements HarvestService {
             throw new CultivationNotFoundException(cultivationId);
         }
 
-        cultivationMemberService.verifyOwnerAccess(cultivationId, userId);
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
         Harvest harvest = harvestRepository.findByCultivationId(cultivationId)
                 .orElseThrow(() -> new HarvestNotFoundException(cultivationId));
