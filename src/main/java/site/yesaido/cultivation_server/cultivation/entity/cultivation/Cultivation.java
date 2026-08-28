@@ -75,4 +75,9 @@ public class Cultivation {
     public void changeOwner(Long newUserId) {
         this.userId = newUserId;
     }
+
+    // 모드 변경
+    public void switchToHarvestMode() {
+        this.mode = CultivationMode.HARVEST;
+    }
 }

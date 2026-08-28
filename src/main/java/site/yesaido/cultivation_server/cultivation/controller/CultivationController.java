@@ -12,6 +12,7 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.request.Culti
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationCreationFacade;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
+import site.yesaido.cultivation_server.sensor.service.CultivationModeFacade;
 
 @RequestMapping("/api/v1/cultivations")
 @RestController
@@ -19,6 +20,7 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 public class CultivationController {
     private final CultivationService cultivationService;
     private final CultivationCreationFacade cultivationCreationFacade;
+    private final CultivationModeFacade cultivationModeFacade;
 
     @PostMapping
     public ResponseEntity<CultivationCreateResponse> create(
@@ -67,5 +69,13 @@ public class CultivationController {
                                                   @PathVariable("cultivation-id") Long cultivationId) {
         cultivationService.delete(cultivationId, userId, role);
         return ResponseEntity.noContent().build();
+    }
+
+    // 수확 모드로 전환
+    @PutMapping("/{cultivation-id}/harvest-mode")
+    public ResponseEntity<CultivationModeChangeResponse> switchToHarvestMode(@RequestHeader("X-User-Id") Long userId,
+                                                                             @PathVariable("cultivation-id") Long cultivationId) {
+        CultivationModeChangeResponse response = cultivationModeFacade.switchToHarvestMode(cultivationId, userId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

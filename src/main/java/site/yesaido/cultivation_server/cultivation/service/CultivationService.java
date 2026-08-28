@@ -17,6 +17,9 @@ public interface CultivationService {
     CultivationDetailResponse getCultivation(Long userId, Long cultivationId);
     CultivationDetailResponse getCultivation(Long userId, Long cultivationId, String role);
 
+    // 경작 모드 변경
+    CultivationModeChangeResponse switchToHarvestMode(Long cultivationId, Long userId);
+
     // 경작 종료
     CultivationFinishResponse finish(Long cultivationId, Long userId);
 
