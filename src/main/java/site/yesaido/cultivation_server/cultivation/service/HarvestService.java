@@ -14,5 +14,6 @@ public interface HarvestService {
     // 상품 점수 / 등급 업데이트
     ProductScoreUpdateResponse updateProductScore(Long cultivationId, Long userId, ProductScoreUpdateRequest request);
 
-
+    // ai-service 등 내부 서비스가 X-User-Id 없이 호출하는 메서드 (매니저 권한 검증 생략)
+    ProductScoreUpdateResponse updateProductScoreInternal(Long cultivationId, ProductScoreUpdateRequest request);
 }
