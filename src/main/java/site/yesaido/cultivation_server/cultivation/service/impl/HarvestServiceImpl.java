@@ -106,12 +106,23 @@ public class HarvestServiceImpl implements HarvestService {
 
         cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
+        return applyProductScore(cultivationId, request);
+    }
+
+    @Override
+    @Transactional
+    public ProductScoreUpdateResponse updateProductScoreInternal(Long cultivationId, ProductScoreUpdateRequest request) {
+        if (!cultivationRepository.existsById(cultivationId)) {
+            throw new CultivationNotFoundException(cultivationId);
+        }
+        return applyProductScore(cultivationId, request);
+    }
+
+    private ProductScoreUpdateResponse applyProductScore(Long cultivationId, ProductScoreUpdateRequest request) {
         Harvest harvest = harvestRepository.findByCultivationId(cultivationId)
                 .orElseThrow(() -> new HarvestNotFoundException(cultivationId));
-
         ProductGrade grade = ProductGrade.fromScore(request.productScore());
         harvest.updateProductGrade(request.productScore(), grade);
-
         return new ProductScoreUpdateResponse(harvest.getId(), harvest.getProductScore(), harvest.getProductGrade());
     }
 }
