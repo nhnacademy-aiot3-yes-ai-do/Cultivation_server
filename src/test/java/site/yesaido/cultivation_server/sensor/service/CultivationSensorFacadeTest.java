@@ -250,6 +250,64 @@ class CultivationSensorFacadeTest {
     }
 
     @Nested
+    @DisplayName("환경설정 수정")
+    class Facade_updateEnvironmentSetting {
+
+        @Test
+        @DisplayName("관리자 권한을 확인하고 단일 임계값 수정 이벤트를 발행")
+        void updateEnvironmentSettingSuccess() {
+            long sensorTypeId = 10L;
+            EnvironmentSettingRequest request = new EnvironmentSettingRequest(
+                    sensorTypeId,
+                    new BigDecimal("19.0"),
+                    new BigDecimal("25.0")
+            );
+            SensorType temperature = new SensorType("TEMPERATURE", "°C");
+            ReflectionTestUtils.setField(temperature, "id", sensorTypeId);
+            when(sensorTypeService.getSensorTypeList(List.of(sensorTypeId)))
+                    .thenReturn(List.of(temperature));
+
+            cultivationSensorFacade.updateEnvironmentSetting(USER_ID, CULTIVATION_ID, request);
+
+            InOrder inOrder = inOrder(
+                    cultivationMemberService,
+                    sensorTypeService,
+                    environmentSettingService,
+                    eventPublisher
+            );
+            inOrder.verify(cultivationMemberService).verifyManagerAccess(CULTIVATION_ID, USER_ID);
+            inOrder.verify(sensorTypeService).getSensorTypeList(List.of(sensorTypeId));
+            inOrder.verify(environmentSettingService).updateExisting(CULTIVATION_ID, request);
+
+            ArgumentCaptor<ThresholdInfoEvent> eventCaptor = ArgumentCaptor.forClass(ThresholdInfoEvent.class);
+            inOrder.verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+            ThresholdInfoEvent event = eventCaptor.getValue();
+            assertThat(event.cultivationId()).isEqualTo(CULTIVATION_ID);
+            assertThat(event.sensorRangeList())
+                    .extracting(
+                            SensorRange::sensorType,
+                            SensorRange::unit,
+                            SensorRange::minValue,
+                            SensorRange::maxValue
+                    )
+                    .containsExactly(tuple(
+                            "TEMPERATURE",
+                            "°C",
+                            new BigDecimal("19.0"),
+                            new BigDecimal("25.0")
+                    ));
+            verifyNoMoreInteractions(
+                    cultivationMemberService,
+                    sensorTypeService,
+                    environmentSettingService,
+                    eventPublisher
+            );
+            verifyNoInteractions(cultivationSensorService, cultivationSensorTypeService);
+        }
+    }
+
+    @Nested
     @DisplayName("삭제")
     class Facade_delete {
 

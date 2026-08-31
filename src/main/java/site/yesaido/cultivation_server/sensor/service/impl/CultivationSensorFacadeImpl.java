@@ -108,6 +108,30 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
 
     @Override
     @Transactional
+    public void updateEnvironmentSetting(Long userId, long cultivationId, EnvironmentSettingRequest request) {
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
+
+        SensorType sensorType = sensorTypeService
+                .getSensorTypeList(List.of(request.sensorTypeId()))
+                .getFirst();
+
+        environmentSettingService.updateExisting(cultivationId, request);
+
+        OffsetDateTime occurredAt = OffsetDateTime.now(ZoneOffset.UTC)
+                .withOffsetSameInstant(ZoneOffset.ofHours(9));
+
+        eventPublisher.publishEvent(
+                ThresholdInfoEvent.from(
+                        cultivationId,
+                        List.of(request),
+                        Map.of(sensorType.getId(), sensorType),
+                        occurredAt
+                )
+        );
+    }
+
+    @Override
+    @Transactional
     public void delete(Long userId, long cultivationId, long sensorId) {
         cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
