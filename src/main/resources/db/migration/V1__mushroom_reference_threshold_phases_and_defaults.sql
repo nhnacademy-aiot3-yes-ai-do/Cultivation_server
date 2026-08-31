@@ -49,7 +49,7 @@ VALUES
     ('TEMPERATURE', '℃'),
     ('HUMIDITY', '%'),
     ('CO2', 'ppm'),
-    ('LIGHT', 'lx')
+    ('LIGHT', 'lux')
 ON CONFLICT (type, value_unit) DO NOTHING;
 
 WITH default_mushrooms(name_ko, name_en, scientific_name, temp_growth_min, temp_growth_max, temp_harvest_min, temp_harvest_max, humidity_growth_min, humidity_growth_max, humidity_harvest_min, humidity_harvest_max, co2_growth_min, co2_growth_max, co2_harvest_min, co2_harvest_max, light_growth_min, light_growth_max, light_harvest_min, light_harvest_max) AS (
