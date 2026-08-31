@@ -82,8 +82,8 @@ CROSS JOIN LATERAL (VALUES
     ('HUMIDITY', '%', 'HARVEST', dm.humidity_harvest_min, dm.humidity_harvest_max),
     ('CO2', 'ppm', 'GROWTH', dm.co2_growth_min, dm.co2_growth_max),
     ('CO2', 'ppm', 'HARVEST', dm.co2_harvest_min, dm.co2_harvest_max),
-    ('LIGHT', 'lx', 'GROWTH', dm.light_growth_min, dm.light_growth_max),
-    ('LIGHT', 'lx', 'HARVEST', dm.light_harvest_min, dm.light_harvest_max)
+    ('LIGHT', 'lux', 'GROWTH', dm.light_growth_min, dm.light_growth_max),
+    ('LIGHT', 'lux', 'HARVEST', dm.light_harvest_min, dm.light_harvest_max)
 ) AS phase(sensor_type, value_unit, threshold_type, threshold_min, threshold_max)
 JOIN sensor_type st ON st.type = phase.sensor_type AND st.value_unit = phase.value_unit
 ON CONFLICT (sensor_type_id, mushroom_reference_id, threshold_type) DO NOTHING;
