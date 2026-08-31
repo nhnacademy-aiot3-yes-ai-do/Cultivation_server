@@ -2,6 +2,7 @@ package site.yesaido.cultivation_server.sensor.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import site.yesaido.cultivation_server.sensor.support.SensorUnits;
 
 public record SensorTypeRequest(
         @NotBlank
@@ -30,4 +31,7 @@ public record SensorTypeRequest(
                 °F
          */
 ) {
+        public SensorTypeRequest {
+                valueUnit = SensorUnits.normalize(valueUnit);
+        }
 }
