@@ -25,6 +25,7 @@ import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorConnectStatus;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.service.impl.CultivationSensorFacadeImpl;
+import site.yesaido.cultivation_server.sensor.service.model.PreparedEnvironmentSettings;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -55,6 +56,9 @@ class CultivationSensorFacadeTest {
 
     @Mock
     EnvironmentSettingService environmentSettingService;
+
+    @Mock
+    EnvironmentSettingPreparationService environmentSettingPreparationService;
 
     @Mock
     ApplicationEventPublisher eventPublisher;
@@ -98,8 +102,22 @@ class CultivationSensorFacadeTest {
                             BigDecimal.valueOf(70)
                     );
 
+            EnvironmentSettingRequest fahrenheitSetting =
+                    new EnvironmentSettingRequest(
+                            11L,
+                            new BigDecimal("68.0000"),
+                            new BigDecimal("86.0000")
+                    );
+
             List<EnvironmentSettingRequest> settings =
                     List.of(temperatureSetting, humiditySetting);
+
+            List<EnvironmentSettingRequest> preparedSettings =
+                    List.of(
+                            temperatureSetting,
+                            fahrenheitSetting,
+                            humiditySetting
+                    );
 
             CreateCultivationSensorRequest request =
                     new CreateCultivationSensorRequest(
@@ -112,7 +130,9 @@ class CultivationSensorFacadeTest {
                     );
 
             SensorType temperature =
-                    new SensorType("TEMPERATURE", "C");
+                    new SensorType("TEMPERATURE", "°C");
+            SensorType fahrenheit =
+                    new SensorType("TEMPERATURE", "°F");
             SensorType humidity =
                     new SensorType("HUMIDITY", "%");
 
@@ -122,17 +142,22 @@ class CultivationSensorFacadeTest {
                     temperatureSetting.sensorTypeId()
             );
             ReflectionTestUtils.setField(
+                    fahrenheit,
+                    "id",
+                    fahrenheitSetting.sensorTypeId()
+            );
+            ReflectionTestUtils.setField(
                     humidity,
                     "id",
                     humiditySetting.sensorTypeId()
             );
 
-            List<Long> sensorTypeIds = List.of(10L, 20L);
             List<SensorType> sensorTypes =
-                    List.of(temperature, humidity);
+                    List.of(temperature, fahrenheit, humidity);
 
             Map<Long, SensorType> sensorTypeMap = Map.of(
                     10L, temperature,
+                    11L, fahrenheit,
                     20L, humidity
             );
 
@@ -151,8 +176,11 @@ class CultivationSensorFacadeTest {
                     SENSOR_ID
             );
 
-            when(sensorTypeService.getSensorTypeList(sensorTypeIds))
-                    .thenReturn(sensorTypes);
+            when(environmentSettingPreparationService.prepare(settings))
+                    .thenReturn(new PreparedEnvironmentSettings(
+                            preparedSettings,
+                            sensorTypeMap
+                    ));
 
             when(cultivationSensorService.register(CULTIVATION_ID, request))
                     .thenReturn(sensor);
@@ -167,7 +195,7 @@ class CultivationSensorFacadeTest {
             ArgumentCaptor<Object> eventCaptor =
                     ArgumentCaptor.forClass(Object.class);
 
-            verify(eventPublisher, times(3))
+            verify(eventPublisher, times(4))
                     .publishEvent(eventCaptor.capture());
 
             List<Object> events = eventCaptor.getAllValues();
@@ -183,7 +211,7 @@ class CultivationSensorFacadeTest {
                     .findFirst()
                     .orElseThrow();
 
-            assertThat(upserts).hasSize(2);
+            assertThat(upserts).hasSize(3);
             assertThat(threshold.cultivationId()).isEqualTo(CULTIVATION_ID);
 
             assertThat(threshold.sensorRangeList())
@@ -196,8 +224,14 @@ class CultivationSensorFacadeTest {
                             .containsExactly(
                                     tuple(
                                             "TEMPERATURE",
-                                            "C",
+                                            "°C",
                                             BigDecimal.valueOf(20), BigDecimal.valueOf(30)
+                                    ),
+                                    tuple(
+                                            "TEMPERATURE",
+                                            "°F",
+                                            new BigDecimal("68.0000"),
+                                            new BigDecimal("86.0000")
                                     ),
                                     tuple(
                                             "HUMIDITY",
@@ -214,8 +248,8 @@ class CultivationSensorFacadeTest {
 
             InOrder inOrder = inOrder(
                     cultivationMemberService,
+                    environmentSettingPreparationService,
                     cultivationSensorService,
-                    sensorTypeService,
                     cultivationSensorTypeService,
                     environmentSettingService
             );
@@ -223,8 +257,8 @@ class CultivationSensorFacadeTest {
             inOrder.verify(cultivationMemberService)
                     .verifyManagerAccess(CULTIVATION_ID, USER_ID);
 
-            inOrder.verify(sensorTypeService)
-                    .getSensorTypeList(sensorTypeIds);
+            inOrder.verify(environmentSettingPreparationService)
+                    .prepare(settings);
 
             inOrder.verify(cultivationSensorService)
                     .register(CULTIVATION_ID, request);
@@ -235,12 +269,13 @@ class CultivationSensorFacadeTest {
             inOrder.verify(environmentSettingService)
                     .apply(
                             CULTIVATION_ID,
-                            settings,
+                            preparedSettings,
                             sensorTypeMap
                     );
 
             verifyNoMoreInteractions(
                     cultivationMemberService,
+                    environmentSettingPreparationService,
                     sensorTypeService,
                     cultivationSensorService,
                     cultivationSensorTypeService,

@@ -22,6 +22,7 @@ import site.yesaido.cultivation_server.sensor.repository.SensorTypeRepository;
 import site.yesaido.cultivation_server.sensor.service.impl.SensorTypeServiceImpl;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.Mockito.*;
 
@@ -253,5 +254,42 @@ class SensorTypeServiceTest {
     void getSensorTypeListWhenIdsAreEmpty() {
         Assertions.assertEquals(List.of(), sensorTypeService.getSensorTypeList(List.of()));
         verifyNoInteractions(sensorTypeRepository);
+    }
+
+    @Test
+    @DisplayName("타입과 단위가 일치하는 센서 타입을 조회한다")
+    void getByTypeAndValueUnit() {
+        SensorType sensorType = new SensorType("TEMPERATURE", "°C");
+        ReflectionTestUtils.setField(sensorType, "id", 10L);
+
+        when(sensorTypeRepository.findByTypeAndValueUnit("TEMPERATURE", "°C"))
+                .thenReturn(Optional.of(sensorType));
+
+        SensorType result = sensorTypeService.getByTypeAndValueUnit(
+                "TEMPERATURE",
+                "°C"
+        );
+
+        Assertions.assertSame(sensorType, result);
+        verify(sensorTypeRepository)
+                .findByTypeAndValueUnit("TEMPERATURE", "°C");
+    }
+
+    @Test
+    @DisplayName("타입과 단위가 일치하는 센서 타입이 없으면 not found다")
+    void getByTypeAndValueUnitWhenNotFound() {
+        when(sensorTypeRepository.findByTypeAndValueUnit("TEMPERATURE", "°F"))
+                .thenReturn(Optional.empty());
+
+        Assertions.assertThrows(
+                SensorTypeNotFoundException.class,
+                () -> sensorTypeService.getByTypeAndValueUnit(
+                        "TEMPERATURE",
+                        "°F"
+                )
+        );
+
+        verify(sensorTypeRepository)
+                .findByTypeAndValueUnit("TEMPERATURE", "°F");
     }
 }
