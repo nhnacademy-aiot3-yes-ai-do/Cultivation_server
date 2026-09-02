@@ -120,20 +120,22 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     public void updateEnvironmentSetting(Long userId, long cultivationId, EnvironmentSettingRequest request) {
         cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
-        SensorType sensorType = sensorTypeService
-                .getSensorTypeList(List.of(request.sensorTypeId()))
-                .getFirst();
+        PreparedEnvironmentSettings preparedEnvironmentSettings =
+                environmentSettingPreparationService.prepare(List.of(request));
 
-        environmentSettingService.updateExisting(cultivationId, request);
+        for (EnvironmentSettingRequest req : preparedEnvironmentSettings.requests()) {
+            environmentSettingService.updateExisting(cultivationId, req);
+        }
 
         OffsetDateTime occurredAt = OffsetDateTime.now(ZoneOffset.UTC)
                 .withOffsetSameInstant(ZoneOffset.ofHours(9));
 
+        // 섭씨와 화씨가 모두 담긴 이벤트 발행
         eventPublisher.publishEvent(
                 ThresholdInfoEvent.from(
                         cultivationId,
-                        List.of(request),
-                        Map.of(sensorType.getId(), sensorType),
+                        preparedEnvironmentSettings.requests(),
+                        preparedEnvironmentSettings.sensorTypeMap(),
                         occurredAt
                 )
         );
