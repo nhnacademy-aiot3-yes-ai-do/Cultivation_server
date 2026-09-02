@@ -10,6 +10,8 @@ import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDe
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
+import site.yesaido.cultivation_server.sensor.service.SensorRedisCacheService;
+
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -37,7 +39,11 @@ class SensorValueControllerTest {
     InfluxService influxService;
 
     @MockitoBean
+    SensorRedisCacheService sensorRedisCacheService;
+
+    @MockitoBean
     CultivationMemberService cultivationMemberService;
+
 
     @Test
     @DisplayName("최근 센서값 조회 성공 시 200 OK와 결과를 반환한다")
@@ -58,6 +64,62 @@ class SensorValueControllerTest {
         then(cultivationMemberService).should().existCultivationMember(eq(CULTIVATION_ID), eq(USER_ID), isNull());
         then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
     }
+
+    @Test
+    @DisplayName("최신값 Redis cache hit이면 InfluxDB를 호출하지 않는다")
+    void getLatestUsesFreshRedisCache() throws Exception {
+        LatestSensorValueResponse point = new LatestSensorValueResponse(
+                CULTIVATION_ID, "TEMPERATURE", "C", new BigDecimal("22.5"), Instant.now(),
+                "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반");
+        given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(List.of(point));
+
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk());
+
+        then(influxService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("동일 센서의 여러 unit 값을 모두 Redis cache에서 반환한다")
+    void getLatestReturnsAllUnitsFromRedisCache() throws Exception {
+        Instant measuredAt = Instant.now();
+        LatestSensorValueResponse celsius = new LatestSensorValueResponse(
+                CULTIVATION_ID, "TEMPERATURE", "°C", new BigDecimal("22.5"), measuredAt,
+                "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반");
+        LatestSensorValueResponse fahrenheit = new LatestSensorValueResponse(
+                CULTIVATION_ID, "TEMPERATURE", "°F", new BigDecimal("72.5"), measuredAt,
+                "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반");
+        LatestSensorValueListResponse response =
+                new LatestSensorValueListResponse(List.of(celsius, fahrenheit));
+        given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(List.of(celsius, fahrenheit));
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(response)));
+
+        then(influxService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("Redis 최신값 조회 예외 시 InfluxDB로 fallback한다")
+    void getLatestFallsBackWhenRedisFails() throws Exception {
+        LatestSensorValueListResponse response = new LatestSensorValueListResponse(List.of());
+        given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willThrow(new RuntimeException("redis unavailable"));
+        given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willReturn(response);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk());
+
+        then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
+    }
+
 
     @Test
     @DisplayName("재배 멤버가 아니면 최근 센서값 조회 없이 403을 반환한다")
@@ -93,21 +155,45 @@ class SensorValueControllerTest {
     void getTrendSuccess() throws Exception {
         String deviceEui = "EUI-001";
         String sensorType = "TEMPERATURE";
+        String unit = "C";
         SensorTrendPointListResponse response = new SensorTrendPointListResponse(
                 CULTIVATION_ID, deviceEui, sensorType, "C",
                 List.of(new SensorTrendPointResponse(Instant.now(), BigDecimal.valueOf(22.5)))
         );
-        given(influxService.findTrend(CULTIVATION_ID, deviceEui, sensorType)).willReturn(response);
+        given(influxService.findTrend(CULTIVATION_ID, deviceEui, sensorType, unit)).willReturn(response);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/trend", CULTIVATION_ID)
                         .param("device-eui", deviceEui)
                         .param("sensor-type", sensorType)
+                        .param("unit", unit)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
 
         then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
-        then(influxService).should().findTrend(CULTIVATION_ID, deviceEui, sensorType);
+        then(influxService).should().findTrend(CULTIVATION_ID, deviceEui, sensorType, unit);
+    }
+
+    @Test
+    @DisplayName("trend Redis cache hit이면 InfluxDB를 호출하지 않는다")
+    void getTrendUsesRedisCache() throws Exception {
+        String deviceEui = "EUI-001";
+        String sensorType = "TEMPERATURE";
+        String unit = "C";
+        SensorTrendPointListResponse response = new SensorTrendPointListResponse(
+                CULTIVATION_ID, deviceEui, sensorType, unit,
+                List.of(new SensorTrendPointResponse(Instant.now(), BigDecimal.valueOf(22.5))));
+        given(sensorRedisCacheService.findTrend(CULTIVATION_ID, deviceEui, sensorType, unit))
+                .willReturn(response);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/trend", CULTIVATION_ID)
+                        .param("device-eui", deviceEui)
+                        .param("sensor-type", sensorType)
+                        .param("unit", unit)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk());
+
+        then(influxService).shouldHaveNoInteractions();
     }
 
     @Test

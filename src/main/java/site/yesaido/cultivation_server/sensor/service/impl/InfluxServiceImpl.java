@@ -14,6 +14,7 @@ import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
+import site.yesaido.cultivation_server.sensor.support.SensorUnits;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -32,6 +33,19 @@ public class InfluxServiceImpl implements InfluxService {
     private static final String FIELD_SENSOR_TYPE = "sensorType";
     private static final String FIELD_CULTIVATION_ID = "cultivationId";
     private static final String FIELD_UNIT = "unit";
+
+    @Override
+    public List<LatestSensorValueResponse> findValuesByCultivationId(long cultivationId, java.time.Duration range) {
+        long seconds = Math.max(1, range.toSeconds());
+        String query = baseQuery(cultivationId, " |> range(start: -" + seconds + "s)")
+                + " |> filter(fn: (r) => exists r.deviceEui)"
+                + " |> sort(columns: [\"_time\"] )";
+
+        return queryTablesSafely(query).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .map(this::toLatestSensorValue)
+                .toList();
+    }
 
     @Override
     public LatestSensorValueListResponse findLatestByCultivationId(long cultivationId) {
@@ -80,14 +94,18 @@ public class InfluxServiceImpl implements InfluxService {
     public SensorTrendPointListResponse findTrend(
             long cultivationId,
             String deviceEui,
-            String sensorType
+            String sensorType,
+            String unit
     ) {
         Objects.requireNonNull(deviceEui, "deviceEui must not be null");
         Objects.requireNonNull(sensorType, "sensorType must not be null");
+        Objects.requireNonNull(unit, "unit must not be null");
+        String normalizedUnit = Objects.requireNonNull(SensorUnits.normalize(unit), "unit must not be blank");
 
-        String query = baseQuery(cultivationId, " |> range(start: -24h)")
+        String query = baseQuery(cultivationId, " |> range(start: -12h)")
                 + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
                 + " |> filter(fn: (r) => r.sensorType == \"" + escape(sensorType) + "\")"
+                + " |> filter(fn: (r) => r.unit == \"" + escape(normalizedUnit) + "\")"
                 + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
                 + " |> sort(columns: [\"_time\"])";
 
@@ -110,7 +128,7 @@ public class InfluxServiceImpl implements InfluxService {
                 .filter(Objects::nonNull)
                 .findFirst().orElse(null);
 
-        String unit = records.stream()
+        String responseUnit = records.stream()
                 .map(FluxRecord::getValues)
                 .map(values -> stringValue(values, FIELD_UNIT))
                 .filter(Objects::nonNull)
@@ -128,7 +146,7 @@ public class InfluxServiceImpl implements InfluxService {
                 .toList();
 
         return new SensorTrendPointListResponse(
-                cultivationIdFromInfluxDB, deviceEuiFromDB, sensorTypeFromDB, unit, responses
+                cultivationIdFromInfluxDB, deviceEuiFromDB, sensorTypeFromDB, responseUnit, responses
         );
     }
 

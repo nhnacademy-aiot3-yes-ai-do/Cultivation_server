@@ -250,7 +250,8 @@ class InfluxServiceTest {
             SensorTrendPointListResponse response = influxService.findTrend(
                     CULTIVATION_ID,
                     "eui-01",
-                    "TEMPERATURE"
+                    "TEMPERATURE",
+                    "C"
             );
 
             assertThat(response.cultivationId()).isEqualTo(CULTIVATION_ID);
@@ -285,7 +286,8 @@ class InfluxServiceTest {
             assertThatThrownBy(() -> influxService.findTrend(
                     CULTIVATION_ID,
                     "eui-01",
-                    "TEMPERATURE"
+                    "TEMPERATURE",
+                    "C"
             ))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Influx trend value is not numeric");

@@ -1,6 +1,7 @@
 package site.yesaido.cultivation_server.sensor.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
@@ -9,6 +10,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPoi
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
+import site.yesaido.cultivation_server.sensor.service.SensorRedisCacheService;
 
 import java.util.List;
 
@@ -18,17 +20,30 @@ import java.util.List;
 public class SensorValueController {
 
     private final InfluxService influxService;
+    private final SensorRedisCacheService sensorRedisCacheService;
     private final CultivationMemberService cultivationMemberService;
+
+    @Value("${sensor-cache.freshness-seconds:3}")
+    private long freshnessSeconds;
 
     @GetMapping("/trend")
     public ResponseEntity<SensorTrendPointListResponse> getTrend(
             @PathVariable("cultivation-id") Long cultivationId,
             @RequestParam(name = "device-eui", required = true) String deviceEui,
             @RequestParam(name = "sensor-type", required = true) String sensorType,
+            @RequestParam(name = "unit", required = true) String unit,
             @RequestHeader(name = "X-User-Id") Long userId
     ) {
         cultivationMemberService.existCultivationMember(cultivationId, userId);
-        SensorTrendPointListResponse trend = influxService.findTrend(cultivationId, deviceEui, sensorType);
+        SensorTrendPointListResponse trend;
+        try {
+            trend = sensorRedisCacheService.findTrend(cultivationId, deviceEui, sensorType, unit);
+        } catch (RuntimeException e) {
+            trend = null;
+        }
+        if (trend == null) {
+            trend = influxService.findTrend(cultivationId, deviceEui, sensorType, unit);
+        }
         return ResponseEntity.ok(trend);
     }
 
@@ -37,9 +52,19 @@ public class SensorValueController {
                                                                    @RequestHeader("X-User-Id") Long userId,
                                                                    @RequestHeader(value = "X-User-Role", required = false) String role) {
         cultivationMemberService.existCultivationMember(cultivationId, userId, role);
-        LatestSensorValueListResponse response = influxService.findLatestByCultivationId(cultivationId);
+        LatestSensorValueListResponse response;
+        try {
+            var cached = sensorRedisCacheService.findLatest(cultivationId,
+                    java.time.Duration.ofSeconds(freshnessSeconds));
+            response = cached.isEmpty()
+                    ? influxService.findLatestByCultivationId(cultivationId)
+                    : new LatestSensorValueListResponse(cached);
+        } catch (RuntimeException e) {
+            response = influxService.findLatestByCultivationId(cultivationId);
+        }
         return ResponseEntity.ok(response);
     }
+
 
     @GetMapping("/average")
     public ResponseEntity<SensorTypeAverageListResponse> getAverage(
