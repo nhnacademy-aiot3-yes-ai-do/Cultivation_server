@@ -29,7 +29,6 @@ import java.util.Map;
 public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
 
     private final CultivationMemberService cultivationMemberService;
-    private final SensorTypeService sensorTypeService;
     private final CultivationSensorService cultivationSensorService;
     private final CultivationSensorTypeService cultivationSensorTypeService;
     private final EnvironmentSettingService environmentSettingService;
