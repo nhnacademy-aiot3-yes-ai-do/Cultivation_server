@@ -49,7 +49,7 @@ VALUES
     ('TEMPERATURE', '℃'),
     ('HUMIDITY', '%'),
     ('CO2', 'ppm'),
-    ('LIGHT', 'lux')
+    ('LIGHT', 'lx')
 ON CONFLICT (type, value_unit) DO NOTHING;
 
 WITH default_mushrooms(name_ko, name_en, scientific_name, temp_growth_min, temp_growth_max, temp_harvest_min, temp_harvest_max, humidity_growth_min, humidity_growth_max, humidity_harvest_min, humidity_harvest_max, co2_growth_min, co2_growth_max, co2_harvest_min, co2_harvest_max, light_growth_min, light_growth_max, light_harvest_min, light_harvest_max) AS (
@@ -82,8 +82,8 @@ CROSS JOIN LATERAL (VALUES
     ('HUMIDITY', '%', 'HARVEST', dm.humidity_harvest_min, dm.humidity_harvest_max),
     ('CO2', 'ppm', 'GROWTH', dm.co2_growth_min, dm.co2_growth_max),
     ('CO2', 'ppm', 'HARVEST', dm.co2_harvest_min, dm.co2_harvest_max),
-    ('LIGHT', 'lux', 'GROWTH', dm.light_growth_min, dm.light_growth_max),
-    ('LIGHT', 'lux', 'HARVEST', dm.light_harvest_min, dm.light_harvest_max)
+    ('LIGHT', 'lx', 'GROWTH', dm.light_growth_min, dm.light_growth_max),
+    ('LIGHT', 'lx', 'HARVEST', dm.light_harvest_min, dm.light_harvest_max)
 ) AS phase(sensor_type, value_unit, threshold_type, threshold_min, threshold_max)
 JOIN sensor_type st ON st.type = phase.sensor_type AND st.value_unit = phase.value_unit
 ON CONFLICT (sensor_type_id, mushroom_reference_id, threshold_type) DO NOTHING;
