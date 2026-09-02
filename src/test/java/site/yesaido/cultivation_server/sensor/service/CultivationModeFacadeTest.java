@@ -26,9 +26,11 @@ import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorTypeRepository;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceThresholdRepository;
 import site.yesaido.cultivation_server.sensor.service.impl.CultivationModeFacadeImpl;
+import site.yesaido.cultivation_server.sensor.service.model.PreparedEnvironmentSettings;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -57,6 +59,9 @@ class CultivationModeFacadeTest {
     EnvironmentSettingService environmentSettingService;
 
     @Mock
+    EnvironmentSettingPreparationService environmentSettingPreparationService;
+
+    @Mock
     ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -80,7 +85,8 @@ class CultivationModeFacadeTest {
                     .build();
             when(cultivationRepository.findById(CULTIVATION_ID)).thenReturn(Optional.of(cultivation));
 
-            SensorType temperature = sensorType(10L, "TEMPERATURE", "C");
+            SensorType temperature = sensorType(10L, "TEMPERATURE", "°C");
+            SensorType temperatureFahrenheit = sensorType(11L, "TEMPERATURE", "°F");
             SensorType humidity = sensorType(20L, "HUMIDITY", "%");
             when(cultivationSensorTypeRepository.findDistinctSensorTypesByCultivationId(CULTIVATION_ID))
                     .thenReturn(List.of(temperature, humidity));
@@ -92,30 +98,41 @@ class CultivationModeFacadeTest {
                             threshold(humidity, BigDecimal.valueOf(70), BigDecimal.valueOf(90))
                     ));
 
+            List<EnvironmentSettingRequest> rawRequests = List.of(
+                    setting(10L, "20", "28"),
+                    setting(20L, "70", "90")
+            );
+            List<EnvironmentSettingRequest> preparedRequests = List.of(
+                    setting(10L, "20", "28"),
+                    setting(11L, "68", "82.4"),
+                    setting(20L, "70", "90")
+            );
+            Map<Long, SensorType> preparedTypeMap = Map.of(
+                    10L, temperature,
+                    11L, temperatureFahrenheit,
+                    20L, humidity
+            );
+            when(environmentSettingPreparationService.prepare(rawRequests))
+                    .thenReturn(new PreparedEnvironmentSettings(preparedRequests, preparedTypeMap));
+
             CultivationModeChangeResponse actual =
                     cultivationModeFacade.switchToHarvestMode(CULTIVATION_ID, USER_ID);
 
             assertThat(actual).isEqualTo(expectedResponse);
 
-            ArgumentCaptor<List<EnvironmentSettingRequest>> requestsCaptor = ArgumentCaptor.forClass(List.class);
             ArgumentCaptor<ThresholdInfoEvent> eventCaptor = ArgumentCaptor.forClass(ThresholdInfoEvent.class);
 
-            verify(environmentSettingService).apply(eq(CULTIVATION_ID), requestsCaptor.capture(), anyMap());
+            verify(environmentSettingPreparationService).prepare(rawRequests);
+            verify(environmentSettingService).apply(CULTIVATION_ID, preparedRequests, preparedTypeMap);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
-
-            assertThat(requestsCaptor.getValue())
-                    .extracting(EnvironmentSettingRequest::sensorTypeId, EnvironmentSettingRequest::thresholdMin, EnvironmentSettingRequest::thresholdMax)
-                    .containsExactly(
-                            tuple(10L, BigDecimal.valueOf(20), BigDecimal.valueOf(28)),
-                            tuple(20L, BigDecimal.valueOf(70), BigDecimal.valueOf(90))
-                    );
 
             ThresholdInfoEvent event = eventCaptor.getValue();
             assertThat(event.cultivationId()).isEqualTo(CULTIVATION_ID);
             assertThat(event.sensorRangeList())
                     .extracting(SensorRange::sensorType, SensorRange::unit, SensorRange::minValue, SensorRange::maxValue)
                     .containsExactly(
-                            tuple("TEMPERATURE", "C", BigDecimal.valueOf(20), BigDecimal.valueOf(28)),
+                            tuple("TEMPERATURE", "°C", new BigDecimal("20"), new BigDecimal("28")),
+                            tuple("TEMPERATURE", "°F", new BigDecimal("68"), new BigDecimal("82.4")),
                             tuple("HUMIDITY", "%", BigDecimal.valueOf(70), BigDecimal.valueOf(90))
                     );
         }
@@ -131,10 +148,13 @@ class CultivationModeFacadeTest {
             ));
             when(cultivationSensorTypeRepository.findDistinctSensorTypesByCultivationId(CULTIVATION_ID))
                     .thenReturn(List.of());
+            when(environmentSettingPreparationService.prepare(List.of()))
+                    .thenReturn(emptyPreparedSettings());
 
             cultivationModeFacade.switchToHarvestMode(CULTIVATION_ID, USER_ID);
 
             verifyNoInteractions(mushroomReferenceThresholdRepository, environmentSettingService);
+            verify(environmentSettingPreparationService).prepare(List.of());
 
             ArgumentCaptor<ThresholdInfoEvent> eventCaptor = ArgumentCaptor.forClass(ThresholdInfoEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -158,10 +178,13 @@ class CultivationModeFacadeTest {
             when(mushroomReferenceThresholdRepository
                     .findAllByMushroomReference_idAndThresholdType(MUSHROOM_ID, MushroomReferenceThresholdType.HARVEST))
                     .thenReturn(List.of());
+            when(environmentSettingPreparationService.prepare(List.of()))
+                    .thenReturn(emptyPreparedSettings());
 
             cultivationModeFacade.switchToHarvestMode(CULTIVATION_ID, USER_ID);
 
             verifyNoInteractions(environmentSettingService);
+            verify(environmentSettingPreparationService).prepare(List.of());
 
             ArgumentCaptor<ThresholdInfoEvent> eventCaptor = ArgumentCaptor.forClass(ThresholdInfoEvent.class);
             verify(eventPublisher).publishEvent(eventCaptor.capture());
@@ -178,7 +201,8 @@ class CultivationModeFacadeTest {
                     Cultivation.builder().name("느타리버섯 1동").mushroomReference(mushroomReference(MUSHROOM_ID)).build()
             ));
 
-            SensorType temperature = sensorType(10L, "TEMPERATURE", "C");
+            SensorType temperature = sensorType(10L, "TEMPERATURE", "°C");
+            SensorType temperatureFahrenheit = sensorType(11L, "TEMPERATURE", "°F");
             when(cultivationSensorTypeRepository.findDistinctSensorTypesByCultivationId(CULTIVATION_ID))
                     .thenReturn(List.of(temperature));
 
@@ -190,14 +214,24 @@ class CultivationModeFacadeTest {
                             threshold(co2, BigDecimal.valueOf(400), BigDecimal.valueOf(1000))
                     ));
 
+            List<EnvironmentSettingRequest> rawRequests = List.of(
+                    setting(10L, "20", "28")
+            );
+            List<EnvironmentSettingRequest> preparedRequests = List.of(
+                    setting(10L, "20", "28"),
+                    setting(11L, "68", "82.4")
+            );
+            Map<Long, SensorType> preparedTypeMap = Map.of(
+                    10L, temperature,
+                    11L, temperatureFahrenheit
+            );
+            when(environmentSettingPreparationService.prepare(rawRequests))
+                    .thenReturn(new PreparedEnvironmentSettings(preparedRequests, preparedTypeMap));
+
             cultivationModeFacade.switchToHarvestMode(CULTIVATION_ID, USER_ID);
 
-            ArgumentCaptor<List<EnvironmentSettingRequest>> requestsCaptor = ArgumentCaptor.forClass(List.class);
-            verify(environmentSettingService).apply(eq(CULTIVATION_ID), requestsCaptor.capture(), anyMap());
-
-            assertThat(requestsCaptor.getValue())
-                    .extracting(EnvironmentSettingRequest::sensorTypeId)
-                    .containsExactly(10L);
+            verify(environmentSettingPreparationService).prepare(rawRequests);
+            verify(environmentSettingService).apply(CULTIVATION_ID, preparedRequests, preparedTypeMap);
         }
 
         @Test
@@ -210,7 +244,8 @@ class CultivationModeFacadeTest {
                     .isInstanceOf(CultivationAlreadyInHarvestModeException.class);
 
             verifyNoInteractions(cultivationRepository, mushroomReferenceThresholdRepository,
-                    cultivationSensorTypeRepository, environmentSettingService, eventPublisher);
+                    cultivationSensorTypeRepository, environmentSettingService,
+                    environmentSettingPreparationService, eventPublisher);
         }
     }
 
@@ -228,5 +263,13 @@ class CultivationModeFacadeTest {
 
     private MushroomReferenceThreshold threshold(SensorType sensorType, BigDecimal min, BigDecimal max) {
         return new MushroomReferenceThreshold(sensorType, null, MushroomReferenceThresholdType.HARVEST, min, max);
+    }
+
+    private EnvironmentSettingRequest setting(Long sensorTypeId, String min, String max) {
+        return new EnvironmentSettingRequest(sensorTypeId, new BigDecimal(min), new BigDecimal(max));
+    }
+
+    private PreparedEnvironmentSettings emptyPreparedSettings() {
+        return new PreparedEnvironmentSettings(List.of(), Map.of());
     }
 }

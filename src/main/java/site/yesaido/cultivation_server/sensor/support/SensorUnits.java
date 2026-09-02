@@ -2,6 +2,7 @@ package site.yesaido.cultivation_server.sensor.support;
 
 public final class SensorUnits {
 
+    public static final String TEMPERATURE = "TEMPERATURE";
     public static final String CELSIUS = "°C";
     public static final String FAHRENHEIT = "°F";
 

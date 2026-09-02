@@ -17,4 +17,6 @@ public interface SensorTypeService {
 
     // 다른서비스에서 호출용
     List<SensorType> getSensorTypeList(List<Long> sensorTypeIds);
+
+    SensorType getByTypeAndValueUnit(String type, String valueUnit);
 }

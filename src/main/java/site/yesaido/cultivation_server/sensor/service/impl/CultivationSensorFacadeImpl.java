@@ -15,17 +15,13 @@ import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorList
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
-import site.yesaido.cultivation_server.sensor.exception.DuplicateSensorTypeException;
 import site.yesaido.cultivation_server.sensor.service.*;
+import site.yesaido.cultivation_server.sensor.service.model.PreparedEnvironmentSettings;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,12 +29,12 @@ import java.util.stream.Collectors;
 public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
 
     private final CultivationMemberService cultivationMemberService;
-    private final SensorTypeService sensorTypeService;
     private final CultivationSensorService cultivationSensorService;
     private final CultivationSensorTypeService cultivationSensorTypeService;
     private final EnvironmentSettingService environmentSettingService;
 
     private final ApplicationEventPublisher eventPublisher;
+    private final EnvironmentSettingPreparationService environmentSettingPreparationService;
 
     /**
      *
@@ -60,13 +56,25 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     public long register(Long userId, long cultivationId, CreateCultivationSensorRequest request) {
         cultivationMemberService.verifyManagerAccess(cultivationId, userId);
 
-        List<Long> sensorTypeIds = extractAndValidateSensorTypeIds(request.sensorSettings());
+        PreparedEnvironmentSettings prepared =
+                environmentSettingPreparationService.prepare(
+                        request.sensorSettings()
+                );
 
-        // [예외] 등록된 센서 없으면
-        List<SensorType> sensorTypes = sensorTypeService.getSensorTypeList(sensorTypeIds);
-        // 위의 sensorTypes를 Map형태로 변환 (environmentSettingService.apply 매개변수 형태 때문)
-        Map<Long, SensorType> sensorTypeMap = sensorTypes.stream()
-                .collect(Collectors.toMap(SensorType::getId, Function.identity()));
+        List<EnvironmentSettingRequest> preparedSettings =
+                prepared.requests();
+
+        Map<Long, SensorType> sensorTypeMap =
+                prepared.sensorTypeMap();
+
+        List<SensorType> preparedSensorTypes =
+                preparedSettings.stream()
+                        .map(setting ->
+                                sensorTypeMap.get(setting.sensorTypeId())
+                        )
+                        .distinct()
+                        .toList();
+
 
         // 없으면 물리센서 등록
         // 있고 soft deleted 상태면 복구
@@ -75,21 +83,21 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
 
         // 관계생성
         // [예외] 등록하려는 센서타입 없을시
-        cultivationSensorTypeService.syncSensorTypes(sensor, sensorTypes);
+        cultivationSensorTypeService.syncSensorTypes(sensor, preparedSensorTypes);
 
         // [예외] 요청한 센서세팅에 정해둔 센서 타입이 없는 경우
-        environmentSettingService.apply(cultivationId, request.sensorSettings(), sensorTypeMap);
+        environmentSettingService.apply(cultivationId, preparedSettings, sensorTypeMap);
 
         // 서울 시간대 기준
         OffsetDateTime occurredAt = OffsetDateTime.now(ZoneOffset.UTC).withOffsetSameInstant(ZoneOffset.ofHours(9));
 
         // 1. 임계값 발행
         eventPublisher.publishEvent(
-                ThresholdInfoEvent.from(cultivationId, request.sensorSettings(), sensorTypeMap, occurredAt)
+                ThresholdInfoEvent.from(cultivationId, preparedSettings, sensorTypeMap, occurredAt)
         );
 
         // 2. 센서 정보 발행(1,2 둘다 순서보장은 X)
-        sensorTypes.stream()
+        preparedSensorTypes.stream()
                 .map(sensorType -> toSensorInfoUpsertEvent(cultivationId, sensor, sensorType, occurredAt))
                 .forEach(eventPublisher::publishEvent);
 
@@ -103,6 +111,32 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
                 cultivationId,
                 sensor.getLocation(), sensor.getLocationDetail(), sensor.getDeviceModel(), sensor.getDeviceName(), sensor.getDeviceEui(),
                 sensorType.getType(), sensorType.getValueUnit(), occurredAt
+        );
+    }
+
+    @Override
+    @Transactional
+    public void updateEnvironmentSetting(Long userId, long cultivationId, EnvironmentSettingRequest request) {
+        cultivationMemberService.verifyManagerAccess(cultivationId, userId);
+
+        PreparedEnvironmentSettings preparedEnvironmentSettings =
+                environmentSettingPreparationService.prepare(List.of(request));
+
+        for (EnvironmentSettingRequest req : preparedEnvironmentSettings.requests()) {
+            environmentSettingService.updateExisting(cultivationId, req);
+        }
+
+        OffsetDateTime occurredAt = OffsetDateTime.now(ZoneOffset.UTC)
+                .withOffsetSameInstant(ZoneOffset.ofHours(9));
+
+        // 섭씨와 화씨가 모두 담긴 이벤트 발행
+        eventPublisher.publishEvent(
+                ThresholdInfoEvent.from(
+                        cultivationId,
+                        preparedEnvironmentSettings.requests(),
+                        preparedEnvironmentSettings.sensorTypeMap(),
+                        occurredAt
+                )
         );
     }
 
@@ -184,27 +218,6 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     @Transactional(readOnly = true)
     public CultivationSensorListResponse findAll(Long userId, long cultivationId, String role) {
         return doFindAll(userId, cultivationId, role);
-    }
-
-    // 셋에 담아서 중복 SensorId 요청이 들어온 것들이 있으면 중복 센서타입 예외 생성
-    private List<Long> extractAndValidateSensorTypeIds(List<EnvironmentSettingRequest> settings) {
-
-        List<Long> sensorTypeIds = settings.stream()
-                .map(EnvironmentSettingRequest::sensorTypeId)
-                .toList();
-
-        Set<Long> seen = new HashSet<>();
-
-        List<Long> duplicateIds = sensorTypeIds.stream()
-                .filter(sensorTypeId -> !seen.add(sensorTypeId))
-                .distinct()
-                .toList();
-
-        if (!duplicateIds.isEmpty()) {
-            throw new DuplicateSensorTypeException(duplicateIds);
-        }
-
-        return sensorTypeIds;
     }
 
     private CultivationSensorListResponse doFindAll(Long userId, long cultivationId, String role) {

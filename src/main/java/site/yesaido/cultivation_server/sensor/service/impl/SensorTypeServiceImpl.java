@@ -119,4 +119,18 @@ public class SensorTypeServiceImpl implements SensorTypeService {
 
         return sensorTypeList;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SensorType getByTypeAndValueUnit(
+            String type,
+            String valueUnit
+    ) {
+        return sensorTypeRepository
+                .findByTypeAndValueUnit(type, valueUnit)
+                .orElseThrow(() -> new SensorTypeNotFoundException(
+                        "type:%s, valueUnit:%s"
+                                .formatted(type, valueUnit)
+                ));
+    }
 }
