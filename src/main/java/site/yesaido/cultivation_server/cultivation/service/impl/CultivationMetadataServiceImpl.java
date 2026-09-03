@@ -38,7 +38,7 @@ public class CultivationMetadataServiceImpl implements CultivationMetadataServic
                 cultivation,
                 cultivationSensorFacade.findAll(userId, cultivationId),
                 mushroomReferenceService.getMushroomReferenceInfo(cultivation.mushroomId()),
-                influxService.findValuesByCultivationId(cultivationId, Duration.ofHours(12))
+                historyValues(cultivationId, Duration.ofHours(12))
         );
     }
 
@@ -50,39 +50,56 @@ public class CultivationMetadataServiceImpl implements CultivationMetadataServic
                 .filter(java.util.Objects::nonNull)
                 .toList();
         Map<Long, List<LatestSensorValueResponse>> latestByCultivationId = latestValues(cultivationIds);
+        Map<Long, List<LatestSensorValueResponse>> trendByCultivationId = recentHistories(cultivationIds);
         List<CultivationMetadataListResponse.CultivationMetadataListItemResponse> items =
                 summaries.cultivationSummaryResponses().stream()
                         .map(summary -> new CultivationMetadataListResponse.CultivationMetadataListItemResponse(
                                 summary,
-                                latestByCultivationId.getOrDefault(summary.cultivationId(), List.of())
+                                latestByCultivationId.getOrDefault(summary.cultivationId(), List.of()),
+                                trendByCultivationId.getOrDefault(summary.cultivationId(), List.of())
                         ))
                         .toList();
         return new CultivationMetadataListResponse(items);
     }
 
-    private String sensorKey(LatestSensorValueResponse point) {
-        return point.deviceEui() + "|" + point.sensorType() + "|" + point.unit();
+    private List<LatestSensorValueResponse> historyValues(long cultivationId, Duration range) {
+        try {
+            List<LatestSensorValueResponse> cached = sensorRedisCacheService.findHistory(cultivationId, range);
+            if (!cached.isEmpty()) return cached;
+        } catch (RuntimeException exception) {
+            // Redis 장애 시 원본 Influx 조회로 복구한다.
+        }
+        return influxService.findAveragedValuesByCultivationId(cultivationId, range);
+    }
+
+    private Map<Long, List<LatestSensorValueResponse>> recentHistories(List<Long> cultivationIds) {
+        Map<Long, List<LatestSensorValueResponse>> result;
+        try {
+            result = new LinkedHashMap<>(sensorRedisCacheService.findHistory(cultivationIds, Duration.ofHours(1)));
+        } catch (RuntimeException exception) {
+            result = new LinkedHashMap<>();
+        }
+        for (Long cultivationId : cultivationIds) {
+            if (result.getOrDefault(cultivationId, List.of()).isEmpty()) {
+                try {
+                    result.put(cultivationId, historyValues(cultivationId, Duration.ofHours(1)));
+                } catch (RuntimeException exception) {
+                    result.put(cultivationId, List.of());
+                }
+            }
+        }
+        return result;
     }
 
     private Map<Long, List<LatestSensorValueResponse>> latestValues(List<Long> cultivationIds) {
-        Map<Long, List<LatestSensorValueResponse>> result = new LinkedHashMap<>();
         try {
-            result.putAll(sensorRedisCacheService.findLatest(cultivationIds, Duration.ofSeconds(freshnessSeconds)));
+            return sensorRedisCacheService.findLatest(cultivationIds, Duration.ofSeconds(freshnessSeconds));
         } catch (RuntimeException exception) {
-            // Redis 장애 시 Influx batch 결과로 목록을 구성한다.
+            return cultivationIds.stream().collect(java.util.stream.Collectors.toMap(
+                    cultivationId -> cultivationId,
+                    ignored -> List.of(),
+                    (left, right) -> left,
+                    LinkedHashMap::new));
         }
-        try {
-            Map<Long, List<LatestSensorValueResponse>> fallback =
-                    influxService.findLatestByCultivationIds(cultivationIds);
-            fallback.forEach((cultivationId, points) -> {
-                Map<String, LatestSensorValueResponse> merged = new LinkedHashMap<>();
-                result.getOrDefault(cultivationId, List.of()).forEach(point -> merged.put(sensorKey(point), point));
-                points.forEach(point -> merged.putIfAbsent(sensorKey(point), point));
-                result.put(cultivationId, List.copyOf(merged.values()));
-            });
-        } catch (RuntimeException exception) {
-            // Influx 장애 시 Redis에서 확보한 fresh 값만 반환한다.
-        }
-        return result;
     }
 }
