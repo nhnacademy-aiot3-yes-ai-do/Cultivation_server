@@ -383,4 +383,76 @@ class HarvestServiceTest {
         assertThatThrownBy(() -> harvestService.updateProductScoreInternal(cultivationId, request))
                 .isInstanceOf(HarvestNotFoundException.class);
     }
+
+    @Test
+    @DisplayName("상품 점수 업데이트 성공 - 같은 버섯 종류 내 상위 20%~50% 구간이면 MID 등급으로 분류")
+    void updateProductScoreSuccessMidGrade() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Long mushroomId = 1L;
+        ProductScoreUpdateRequest request = new ProductScoreUpdateRequest(new BigDecimal("60"));
+
+        MushroomReference mushroomReference = mock(MushroomReference.class);
+        when(mushroomReference.getId()).thenReturn(mushroomId);
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .mushroomReference(mushroomReference)
+                .build();
+        Harvest harvest = Harvest.builder()
+                .harvestWeight(new BigDecimal("5.0"))
+                .harvestedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
+        when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.of(harvest));
+        // 같은 버섯 종류 내 기존 점수 9건 중 나보다 높은 점수 4건 -> 상위 4/10 = 40% -> MID
+        when(harvestRepository.countByMushroomIdAndProductScoreIsNotNullAndIdNot(eq(mushroomId), any()))
+                .thenReturn(9L);
+        when(harvestRepository.countByMushroomIdAndProductScoreGreaterThanAndIdNot(eq(mushroomId), any(), any()))
+                .thenReturn(4L);
+
+        ProductScoreUpdateResponse response = harvestService.updateProductScore(cultivationId, userId, request);
+
+        assertThat(response.productScore()).isEqualTo(request.productScore());
+        assertThat(response.productGrade()).isEqualTo(ProductGrade.MID);
+    }
+
+    @Test
+    @DisplayName("상품 점수 업데이트 성공 - 같은 버섯 종류 내 하위 50%면 LOW 등급으로 분류")
+    void updateProductScoreSuccessLowGrade() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Long mushroomId = 1L;
+        ProductScoreUpdateRequest request = new ProductScoreUpdateRequest(new BigDecimal("30"));
+
+        MushroomReference mushroomReference = mock(MushroomReference.class);
+        when(mushroomReference.getId()).thenReturn(mushroomId);
+
+        Cultivation cultivation = Cultivation.builder()
+                .userId(userId)
+                .name("버섯 농장")
+                .mushroomReference(mushroomReference)
+                .build();
+        Harvest harvest = Harvest.builder()
+                .harvestWeight(new BigDecimal("5.0"))
+                .harvestedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
+        when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.of(harvest));
+        // 같은 버섯 종류 내 기존 점수 9건 중 나보다 높은 점수 6건 -> 상위 6/10 = 60% -> LOW
+        when(harvestRepository.countByMushroomIdAndProductScoreIsNotNullAndIdNot(eq(mushroomId), any()))
+                .thenReturn(9L);
+        when(harvestRepository.countByMushroomIdAndProductScoreGreaterThanAndIdNot(eq(mushroomId), any(), any()))
+                .thenReturn(6L);
+
+        ProductScoreUpdateResponse response = harvestService.updateProductScore(cultivationId, userId, request);
+
+        assertThat(response.productScore()).isEqualTo(request.productScore());
+        assertThat(response.productGrade()).isEqualTo(ProductGrade.LOW);
+    }
 }
