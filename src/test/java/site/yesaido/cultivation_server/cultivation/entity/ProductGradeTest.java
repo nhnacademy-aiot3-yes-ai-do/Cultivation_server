@@ -11,20 +11,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ProductGradeTest {
 
-    @ParameterizedTest(name = "점수 {0}점은 {1} 등급으로 분류됨")
-    @DisplayName("경계값 포함 점수-등급 매핑 검증")
+    @ParameterizedTest(name = "상위 비율 {0}은 {1} 등급으로 분류됨")
+    @DisplayName("경계값 포함 상위 비율-등급 매핑 검증")
     @CsvSource({
-            "100, TOP",
-            "90, TOP",
-            "89.99, HIGH",
-            "75, HIGH",
-            "74.99, MID",
-            "50, MID",
-            "49.99, LOW",
-            "0, LOW"
+            "0, TOP",
+            "0.05, TOP",
+            "0.0501, HIGH",
+            "0.20, HIGH",
+            "0.2001, MID",
+            "0.50, MID",
+            "0.5001, LOW",
+            "1, LOW"
     })
-    void fromScoreMapsScoreToExpectedGrade(String score, ProductGrade expected) {
-        ProductGrade grade = ProductGrade.fromScore(new BigDecimal(score));
+    void fromPercentileMapsRatioToExpectedGrade(String topPercentile, ProductGrade expected) {
+        ProductGrade grade = ProductGrade.fromPercentile(new BigDecimal(topPercentile));
 
         assertThat(grade).isEqualTo(expected);
     }

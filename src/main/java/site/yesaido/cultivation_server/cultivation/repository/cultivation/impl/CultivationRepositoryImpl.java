@@ -101,7 +101,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                         cultivation.mushroomReference.id,
                         cultivation.cultivationStatus,
                         cultivation.mode,
-                        allMember.id.countDistinct(),
+                        allMember.id.countDistinct(),                                                                   // COUNT(DISTINCT all_member.id)
                         owner.userId,
                         viewer.role,
                         cultivation.startedAt,
@@ -110,14 +110,14 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                         cultivation.updatedAt))
                 .from(cultivation)
                 .join(viewer).on(viewer.cultivation.eq(cultivation))
-                .leftJoin(allMember).on(allMember.cultivation.eq(cultivation))
-                .leftJoin(owner).on(owner.cultivation.eq(cultivation).and(owner.role.eq(MemberRole.OWNER)))
-                .where(viewer.userId.eq(userId),
-                        cultivation.cultivationStatus.notIn(CultivationStatus.FINISHED, CultivationStatus.DELETED))
+                .leftJoin(allMember).on(allMember.cultivation.eq(cultivation))                                          // 해당 재배에 속해 있는 모든 멤버를 연결
+                .leftJoin(owner).on(owner.cultivation.eq(cultivation).and(owner.role.eq(MemberRole.OWNER)))             // 현재 재배와 연결된 멤버를 찾고 그 중에 역할이 OWNER인 사람만 가져옴
+                .where(viewer.userId.eq(userId),                                                                        // 현재 사용자가 해당 재배의 멤버여야 함
+                        cultivation.cultivationStatus.notIn(CultivationStatus.FINISHED, CultivationStatus.DELETED))     // 재배 상태가 FINISHED, DELETED인 것을 제외함
                 .groupBy(cultivation.id, cultivation.name, cultivation.mushroomReference, cultivation.cultivationStatus,
                         cultivation.mode, owner.userId, viewer.role,
-                        cultivation.startedAt, cultivation.finishedAt, cultivation.createdAt, cultivation.updatedAt)
-                .orderBy(cultivation.createdAt.desc(), cultivation.id.desc())
+                        cultivation.startedAt, cultivation.finishedAt, cultivation.createdAt, cultivation.updatedAt)    // countDistinct란 집계함수를 사용했기 때문에 GROUP BY를 사용해야함.
+                .orderBy(cultivation.createdAt.desc(), cultivation.id.desc())                                           // 기준 1. 생성일 내림차순(최신 생성된 재배), 2. ID 내림차순
                 .fetch();
     }
 
@@ -135,7 +135,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                         cultivation.mushroomReference.id,
                         cultivation.cultivationStatus,
                         cultivation.mode,
-                        allMember.id.countDistinct(),
+                        allMember.id.countDistinct(),                                                                   // 해당 재배의 전체 멤버수를 셈
                         owner.userId,
                         viewer.role,
                         cultivation.startedAt,
@@ -143,10 +143,10 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                         cultivation.createdAt,
                         cultivation.updatedAt))
                 .from(cultivation)
-                .leftJoin(viewer).on(viewer.cultivation.eq(cultivation).and(viewer.userId.eq(userId)))
+                .leftJoin(viewer).on(viewer.cultivation.eq(cultivation).and(viewer.userId.eq(userId)))                  // 현재 userId가 이 재배에 참여했다면 그 사람의 role을 가져와라
                 .leftJoin(allMember).on(allMember.cultivation.eq(cultivation))
-                .leftJoin(owner).on(owner.cultivation.eq(cultivation).and(owner.role.eq(MemberRole.OWNER)))
-                .where(cultivation.id.eq(cultivationId))
+                .leftJoin(owner).on(owner.cultivation.eq(cultivation).and(owner.role.eq(MemberRole.OWNER)))             // OWNER의 userId를 찾음
+                .where(cultivation.id.eq(cultivationId))                                                                // 특정 cultivationId의 재배를 찾음
                 .groupBy(cultivation.id, cultivation.name, cultivation.mushroomReference, cultivation.cultivationStatus,
                         cultivation.mode, owner.userId, viewer.role,
                         cultivation.startedAt, cultivation.finishedAt, cultivation.createdAt, cultivation.updatedAt)
