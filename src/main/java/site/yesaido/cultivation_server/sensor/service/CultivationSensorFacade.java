@@ -3,6 +3,7 @@ package site.yesaido.cultivation_server.sensor.service;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.ReusableCultivationSensorListResponse;
 
 public interface CultivationSensorFacade {
     long register(Long userId, long cultivationId, CreateCultivationSensorRequest request);
@@ -16,4 +17,6 @@ public interface CultivationSensorFacade {
 
     CultivationSensorListResponse findAll(Long userId, long cultivationId);
     CultivationSensorListResponse findAll(Long userId, long cultivationId, String role);
+
+    ReusableCultivationSensorListResponse findReusableSensors(Long userId, long excludedCultivationId);
 }
