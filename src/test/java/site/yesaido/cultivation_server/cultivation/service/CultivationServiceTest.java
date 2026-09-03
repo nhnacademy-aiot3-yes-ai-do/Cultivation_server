@@ -19,6 +19,7 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.Cult
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
+import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationMemberServiceImpl;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationServiceImpl;
@@ -105,7 +106,16 @@ class CultivationServiceTest {
         Cultivation cultivation1 = Cultivation.builder().name("농장1").mushroomReference(mushroom).build();
         Cultivation cultivation2 = Cultivation.builder().name("농장2").mushroomReference(mushroom).build();
 
-        when(cultivationRepository.findAllByMemberUserId(userId)).thenReturn(List.of(cultivation1, cultivation2));
+        CultivationSummaryProjection projection1 = mock(CultivationSummaryProjection.class);
+        CultivationSummaryProjection projection2 = mock(CultivationSummaryProjection.class);
+        when(projection1.getCultivationId()).thenReturn(1L);
+        when(projection1.getName()).thenReturn("농장1");
+        when(projection1.getMemberCount()).thenReturn(1L);
+        when(projection2.getCultivationId()).thenReturn(2L);
+        when(projection2.getName()).thenReturn("농장2");
+        when(projection2.getMemberCount()).thenReturn(1L);
+        when(cultivationRepository.findSummaryProjectionsByMemberUserId(userId))
+                .thenReturn(List.of(projection1, projection2));
 
         CultivationSummaryListResponse result = service.getCultivations(userId);
 
@@ -126,8 +136,12 @@ class CultivationServiceTest {
                 .build();
         CultivationMember member = CultivationMember.builder().userId(userId).role(MemberRole.OWNER).build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)).thenReturn(Optional.of(member));
+        CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
+        when(projection.getCultivationId()).thenReturn(cultivationId);
+        when(projection.getName()).thenReturn(cultivation.getName());
+        when(projection.getMyRole()).thenReturn(MemberRole.OWNER);
+        when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(userId, cultivationId))
+                .thenReturn(Optional.of(projection));
 
         CultivationDetailResponse response = service.getCultivation(userId, cultivationId);
         assertThat(response).isNotNull();
@@ -146,13 +160,17 @@ class CultivationServiceTest {
                 .mushroomReference(mushroom)
                 .build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
+        CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
+        when(projection.getCultivationId()).thenReturn(cultivationId);
+        when(projection.getMyRole()).thenReturn(MemberRole.MEMBER);
+        when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(adminId, cultivationId))
+                .thenReturn(Optional.of(projection));
 
-        CultivationDetailResponse response = service.getCultivation(adminId, cultivationId, "ADMIN");
+        CultivationDetailResponse response = service.getCultivation(adminId, cultivationId);
 
         assertThat(response).isNotNull();
-        assertThat(response.myRole()).isNull();
-        verify(cultivationMemberRepository, never()).findByCultivationIdAndUserId(any(), any());
+        assertThat(response.myRole()).isEqualTo(MemberRole.MEMBER);
+        verify(cultivationRepository).findDetailProjectionByUserIdAndCultivationId(adminId, cultivationId);
     }
 
     @Test
@@ -162,8 +180,9 @@ class CultivationServiceTest {
         Long unauthorizedUserId = 100L;
         Cultivation cultivation = Cultivation.builder().name("남의 농장").build();
 
-        when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
-        when(cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, unauthorizedUserId)).thenReturn(Optional.empty());
+        CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
+        when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(unauthorizedUserId, cultivationId))
+                .thenReturn(Optional.of(projection));
 
         assertThatThrownBy(() -> service.getCultivation(unauthorizedUserId, cultivationId)).isInstanceOf(CultivationAccessDeniedException.class);
     }
@@ -174,7 +193,8 @@ class CultivationServiceTest {
         Long invalidCultivationId = 100L;
         Long userId = 1L;
 
-        when(cultivationRepository.findById(invalidCultivationId)).thenReturn(Optional.empty());
+        when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(userId, invalidCultivationId))
+                .thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.getCultivation(userId, invalidCultivationId)).isInstanceOf(CultivationNotFoundException.class);
     }
 

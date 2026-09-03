@@ -19,6 +19,7 @@ import site.yesaido.cultivation_server.sensor.support.SensorUnits;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -71,6 +72,36 @@ public class InfluxServiceImpl implements InfluxService {
         }
 
         return new LatestSensorValueListResponse(list);
+    }
+
+    @Override
+    public Map<Long, List<LatestSensorValueResponse>> findLatestByCultivationIds(List<Long> cultivationIds) {
+        List<Long> ids = cultivationIds == null ? List.of() : cultivationIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+
+        String cultivationFilter = ids.stream()
+                .map(id -> "r.cultivationId == \"" + id + "\"")
+                .collect(java.util.stream.Collectors.joining(" or "));
+        String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
+                + " |> range(start: 0)"
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
+                + " |> filter(fn: (r) => " + cultivationFilter + ")"
+                + " |> group(columns: [\"cultivationId\", \"sensorType\", \"unit\", \"deviceEui\"] )"
+                + " |> last()";
+
+        Map<Long, List<LatestSensorValueResponse>> result = new LinkedHashMap<>();
+        queryTablesSafely(query).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .map(this::toLatestSensorValue)
+                .filter(point -> point.cultivationId() != null)
+                .forEach(point -> result.computeIfAbsent(point.cultivationId(), ignored -> new java.util.ArrayList<>()).add(point));
+        return result;
     }
 
     @Override

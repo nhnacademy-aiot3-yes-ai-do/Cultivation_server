@@ -7,6 +7,7 @@ import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAver
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 public interface InfluxService {
 
@@ -15,6 +16,8 @@ public interface InfluxService {
 
     // 센서·단위·장치별 최신값
     LatestSensorValueListResponse findLatestByCultivationId(long cultivationId);
+
+    Map<Long, List<LatestSensorValueResponse>> findLatestByCultivationIds(List<Long> cultivationIds);
 
     // 최근 24시간 센서 종류, 단위는 통합한 평균
     List<SensorTypeAverageResponse> findAverageByCultivationIdForLast24Hours(long cultivationId);

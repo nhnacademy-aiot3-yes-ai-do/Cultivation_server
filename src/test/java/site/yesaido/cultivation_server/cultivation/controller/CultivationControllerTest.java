@@ -18,9 +18,15 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.Memb
 import site.yesaido.cultivation_server.cultivation.entity.harvest.ProductGrade;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAlreadyInHarvestModeException;
 import site.yesaido.cultivation_server.cultivation.service.CultivationCreationFacade;
+import site.yesaido.cultivation_server.cultivation.service.CultivationMetadataService;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.service.CultivationModeFacade;
+import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
+import site.yesaido.cultivation_server.sensor.service.InfluxService;
+import site.yesaido.cultivation_server.sensor.service.MushroomReferenceService;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -34,7 +40,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(CultivationController.class)
+@WebMvcTest({CultivationController.class, CultivationMetadataController.class})
 class CultivationControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -50,6 +56,18 @@ class CultivationControllerTest {
 
     @MockitoBean
     CultivationModeFacade cultivationModeFacade;
+
+    @MockitoBean
+    CultivationSensorFacade cultivationSensorFacade;
+
+    @MockitoBean
+    MushroomReferenceService mushroomReferenceService;
+
+    @MockitoBean
+    InfluxService influxService;
+
+    @MockitoBean
+    CultivationMetadataService cultivationMetadataService;
 
     @Test
     @DisplayName("경작 생성 API - 정상 요청시 201 Created 반환")
@@ -117,7 +135,7 @@ class CultivationControllerTest {
                 MemberRole.MEMBER, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(cultivationService.getCultivation(eq(userId), eq(cultivationId), isNull())).thenReturn(detail);
+        when(cultivationService.getCultivation(eq(userId), eq(cultivationId))).thenReturn(detail);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
                         .header("X-User-Id", userId))
@@ -136,13 +154,42 @@ class CultivationControllerTest {
                 null, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(cultivationService.getCultivation(adminId, cultivationId, "ADMIN")).thenReturn(detail);
+        when(cultivationService.getCultivation(adminId, cultivationId)).thenReturn(detail);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
                         .header("X-User-Id", adminId)
                         .header("X-User-Role", "ADMIN"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.myRole").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("재배 초기 metadata API - 기본정보와 센서 12시간 history를 한 응답으로 반환")
+    void getCultivationMetadataIncludesInitialSensorHistory() throws Exception {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        CultivationDetailResponse detail = new CultivationDetailResponse(
+                cultivationId, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH,
+                MemberRole.OWNER, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
+        );
+        LatestSensorValueResponse point = new LatestSensorValueResponse(
+                cultivationId, "TEMPERATURE", "°C", BigDecimal.valueOf(21.5),
+                java.time.Instant.parse("2026-09-02T00:00:00Z"), "eui-1", "model", "sensor", "room", "farm"
+        );
+        when(cultivationMetadataService.get(userId, cultivationId))
+                .thenReturn(new CultivationMetadataResponse(
+                        detail,
+                        new CultivationSensorListResponse(List.of(), List.of()),
+                        null,
+                        List.of(point)
+                ));
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/metadata", cultivationId)
+                        .header("X-User-Id", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cultivation.cultivationId").value(cultivationId))
+                .andExpect(jsonPath("$.sensorHistory12h[0].sensorType").value("TEMPERATURE"))
+                .andExpect(jsonPath("$.sensorHistory12h[0].unit").value("°C"));
     }
 
     @Test

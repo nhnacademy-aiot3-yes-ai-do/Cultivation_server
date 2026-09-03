@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.stereotype.Service;
@@ -147,6 +148,39 @@ public class SensorRedisCacheService {
         return findLatest(cultivationId).stream()
                 .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
                 .toList();
+    }
+
+    public Map<Long, List<LatestSensorValueResponse>> findLatest(List<Long> cultivationIds, Duration freshness) {
+        List<Long> ids = cultivationIds == null ? List.of() : cultivationIds.stream()
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) return Map.of();
+        Instant threshold = Instant.now().minus(freshness);
+        List<Object> responses = redis.executePipelined((RedisCallback<Object>) connection -> {
+            for (Long id : ids) {
+                connection.hashCommands().hGetAll((LATEST_PREFIX + id).getBytes(StandardCharsets.UTF_8));
+            }
+            return null;
+        });
+        Map<Long, List<LatestSensorValueResponse>> result = new HashMap<>();
+        for (int i = 0; i < ids.size(); i++) {
+            Object raw = responses.get(i);
+            if (!(raw instanceof Map<?, ?> values)) continue;
+            List<LatestSensorValueResponse> points = values.values().stream()
+                    .map(this::pipelineValue)
+                    .filter(java.util.Objects::nonNull)
+                    .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
+                    .sorted(Comparator.comparing(LatestSensorValueResponse::sensorType,
+                            Comparator.nullsLast(String::compareTo)))
+                    .toList();
+            if (!points.isEmpty()) result.put(ids.get(i), points);
+        }
+        return result;
+    }
+
+    private LatestSensorValueResponse pipelineValue(Object value) {
+        if (value instanceof byte[] bytes) return deserialize(new String(bytes, StandardCharsets.UTF_8));
+        if (value instanceof String text) return deserialize(text);
+        return null;
     }
 
     public List<LatestSensorValueResponse> findLatest(long cultivationId) {
