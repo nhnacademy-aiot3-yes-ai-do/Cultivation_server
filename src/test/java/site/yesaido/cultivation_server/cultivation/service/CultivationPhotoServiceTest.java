@@ -374,9 +374,9 @@ class CultivationPhotoServiceTest {
         ReflectionTestUtils.setField(photo, "id", 500L);
 
         when(cultivationPhotoRepository.findAllForDailyVisionAnalysis(
-                eq(Set.of(CultivationStatus.CREATED, CultivationStatus.RUNNING)),
-                eq(targetDate.atStartOfDay()),
-                eq(targetDate.plusDays(1).atStartOfDay())
+                Set.of(CultivationStatus.CREATED, CultivationStatus.RUNNING),
+                targetDate.atStartOfDay(),
+                targetDate.plusDays(1).atStartOfDay()
         )).thenReturn(List.of(photo));
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
                 .thenReturn("http://storage.java21.net:8000/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");
