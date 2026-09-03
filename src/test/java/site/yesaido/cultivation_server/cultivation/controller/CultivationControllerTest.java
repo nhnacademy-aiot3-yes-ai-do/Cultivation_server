@@ -135,7 +135,7 @@ class CultivationControllerTest {
                 MemberRole.MEMBER, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(cultivationService.getCultivation(eq(userId), eq(cultivationId))).thenReturn(detail);
+        when(cultivationService.getCultivation(userId, cultivationId)).thenReturn(detail);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
                         .header("X-User-Id", userId))
@@ -227,7 +227,7 @@ class CultivationControllerTest {
         );
 
         Page<CultivationHistoryResponse> historyPage = new PageImpl<>(List.of(history), PageRequest.of(0, 20), 1);
-        when(cultivationService.getHistory(eq(userId), any())).thenReturn(historyPage);
+        when(cultivationService.getHistory(anyLong(), any())).thenReturn(historyPage);
 
         mockMvc.perform(get("/api/v1/cultivations/history")
                 .header("X-User-Id", userId)
@@ -251,7 +251,7 @@ class CultivationControllerTest {
 
         Page<CultivationHistoryResponse> lastPage = new PageImpl<>(List.of(historyResponse), PageRequest.of(2, 20), 50);
 
-        when(cultivationService.getHistory(eq(userId), any())).thenReturn(lastPage);
+        when(cultivationService.getHistory(anyLong(), any())).thenReturn(lastPage);
 
         mockMvc.perform(get("/api/v1/cultivations/history")
                 .header("X-User-Id", userId)

@@ -15,7 +15,6 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.*;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
-import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
@@ -134,7 +133,6 @@ class CultivationServiceTest {
                 .name("경작 상세")
                 .mushroomReference(mushroom)
                 .build();
-        CultivationMember member = CultivationMember.builder().userId(userId).role(MemberRole.OWNER).build();
 
         CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
         when(projection.getCultivationId()).thenReturn(cultivationId);
@@ -154,14 +152,7 @@ class CultivationServiceTest {
     void getCultivationDetailSuccessForAdmin() {
         Long adminId = 999L;
         Long cultivationId = 100L;
-        MushroomReference mushroom = new MushroomReference();
-        Cultivation cultivation = Cultivation.builder()
-                .name("경작 상세")
-                .mushroomReference(mushroom)
-                .build();
-
         CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
-        when(projection.getCultivationId()).thenReturn(cultivationId);
         when(projection.getMyRole()).thenReturn(MemberRole.MEMBER);
         when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(adminId, cultivationId))
                 .thenReturn(Optional.of(projection));
@@ -178,7 +169,6 @@ class CultivationServiceTest {
     void getCultivationDetailFailAccessDenied() {
         Long cultivationId = 1L;
         Long unauthorizedUserId = 100L;
-        Cultivation cultivation = Cultivation.builder().name("남의 농장").build();
 
         CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
         when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(unauthorizedUserId, cultivationId))

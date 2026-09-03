@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -135,7 +136,7 @@ public class SensorRedisCacheService {
                 : redis.opsForHash().multiGet(key + HISTORY_VALUES_SUFFIX, List.copyOf(members)).stream()
                 .filter(String.class::isInstance)
                 .map(value -> deserialize((String) value))
-                .filter(point -> point != null)
+                .filter(Objects::nonNull)
                 .toList();
         if (points.isEmpty()) {
             return null;
@@ -201,7 +202,7 @@ public class SensorRedisCacheService {
         return values.values().stream()
                 .filter(String.class::isInstance)
                 .map(value -> deserialize((String) value))
-                .filter(point -> point != null)
+                .filter(Objects::nonNull)
                 .sorted(Comparator.comparing(LatestSensorValueResponse::sensorType,
                         Comparator.nullsLast(String::compareTo)))
                 .toList();
