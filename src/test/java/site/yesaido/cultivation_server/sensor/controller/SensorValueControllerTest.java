@@ -135,8 +135,6 @@ class SensorValueControllerTest {
     @DisplayName("최근 센서값 조회 - 관리자(X-User-Role=ADMIN)면 멤버가 아니어도 조회된다")
     void getLatestSuccessAdminRole() throws Exception {
         Long adminId = 999L;
-        LatestSensorValueListResponse response = new LatestSensorValueListResponse(List.of());
-
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", adminId)
