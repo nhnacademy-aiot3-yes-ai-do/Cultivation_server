@@ -12,6 +12,7 @@ public record CultivationHistoryResponse(
         Long mushroomId,
         CultivationStatus status,
         BigDecimal harvestWeight,
+        BigDecimal productScore,
         ProductGrade productGrade,
         LocalDateTime finishedAt
 ) {}
