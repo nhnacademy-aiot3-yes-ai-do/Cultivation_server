@@ -136,7 +136,7 @@ class SensorRedisCacheServiceTest {
     }
 
     @Test
-    void findTrendCalculatesQuarterHourAverage() throws Exception {
+    void findTrendReturnsStoredResolutionBuckets() throws Exception {
         Instant first = Instant.parse("2026-09-02T00:01:00Z");
         Instant second = Instant.parse("2026-09-02T00:14:00Z");
         LatestSensorValueResponse firstPoint = point(first, "C");
@@ -150,8 +150,9 @@ class SensorRedisCacheServiceTest {
 
         var response = cacheService.findTrend(42L, "EUI-001", "TEMPERATURE", "C");
 
-        assertThat(response.responses()).hasSize(1);
-        assertThat(response.responses().get(0).value()).isEqualByComparingTo("2.0000");
+        assertThat(response.responses()).hasSize(2);
+        assertThat(response.responses().get(0).value()).isEqualByComparingTo("1");
+        assertThat(response.responses().get(1).value()).isEqualByComparingTo("3");
     }
 
     @Test

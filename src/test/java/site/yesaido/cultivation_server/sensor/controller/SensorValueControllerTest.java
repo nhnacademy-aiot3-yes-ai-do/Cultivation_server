@@ -52,8 +52,8 @@ class SensorValueControllerTest {
                 "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반"
         ));
         LatestSensorValueListResponse response = new LatestSensorValueListResponse(latestSensorValueResponses);
-
-        given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willReturn(response);
+        given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(latestSensorValueResponses);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
@@ -61,7 +61,7 @@ class SensorValueControllerTest {
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
 
         then(cultivationMemberService).should().existCultivationMember(eq(CULTIVATION_ID), eq(USER_ID), isNull());
-        then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
+        then(influxService).shouldHaveNoInteractions();
     }
 
     @Test
@@ -78,7 +78,7 @@ class SensorValueControllerTest {
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk());
 
-        then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
+        then(influxService).shouldHaveNoInteractions();
     }
 
     @Test
@@ -101,22 +101,20 @@ class SensorValueControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
 
-        then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
+        then(influxService).shouldHaveNoInteractions();
     }
 
     @Test
-    @DisplayName("Redis 최신값 조회 예외 시 InfluxDB로 fallback한다")
-    void getLatestFallsBackWhenRedisFails() throws Exception {
-        LatestSensorValueListResponse response = new LatestSensorValueListResponse(List.of());
+    @DisplayName("Redis 최신값 조회 예외 시 InfluxDB를 호출하지 않고 503을 반환한다")
+    void getLatestReturnsUnavailableWhenRedisFails() throws Exception {
         given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
                 .willThrow(new RuntimeException("redis unavailable"));
-        given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willReturn(response);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
-                .andExpect(status().isOk());
+                .andExpect(status().isServiceUnavailable());
 
-        then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
+        then(influxService).shouldHaveNoInteractions();
     }
 
 
@@ -139,7 +137,6 @@ class SensorValueControllerTest {
         Long adminId = 999L;
         LatestSensorValueListResponse response = new LatestSensorValueListResponse(List.of());
 
-        given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willReturn(response);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", adminId)
