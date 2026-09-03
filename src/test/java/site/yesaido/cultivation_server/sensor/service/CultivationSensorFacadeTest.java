@@ -623,6 +623,20 @@ class CultivationSensorFacadeTest {
     class Facade_findAll {
 
         @Test
+        @DisplayName("재사용 센서 조회 - 대상 재배지 소유자만 조회한다")
+        void findReusableSensors_successForOwner() {
+            when(cultivationSensorService.findReusableSensors(USER_ID, CULTIVATION_ID))
+                    .thenReturn(List.of());
+
+            var response = cultivationSensorFacade.findReusableSensors(USER_ID, CULTIVATION_ID);
+
+            assertThat(response.sensors()).isEmpty();
+            InOrder inOrder = inOrder(cultivationMemberService, cultivationSensorService);
+            inOrder.verify(cultivationMemberService).verifyOwnerAccess(CULTIVATION_ID, USER_ID);
+            inOrder.verify(cultivationSensorService).findReusableSensors(USER_ID, CULTIVATION_ID);
+        }
+
+        @Test
         @DisplayName("조회 성공 - 멤버면 누구나 가능")
         void findAll_success() {
             when(cultivationSensorService.findAll(CULTIVATION_ID)).thenReturn(List.of());

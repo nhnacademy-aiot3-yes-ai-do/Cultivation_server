@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
+import site.yesaido.cultivation_server.sensor.dto.response.ReusableCultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorConnectStatus;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorAlreadyExistException;
@@ -36,6 +37,32 @@ class CultivationSensorServiceTest {
 
     @InjectMocks
     CultivationSensorServiceImpl cultivationSensorService;
+
+    @Test
+    @DisplayName("사용자의 과거 센서를 EUI별 최신 한 건으로 반환한다")
+    void findReusableSensorsDeduplicatesDeviceEui() {
+        CultivationSensor newest = new CultivationSensor(
+                2L, "EUI-001", "MODEL-NEW", "새 이름", "광주", "1번 선반"
+        );
+        CultivationSensor older = new CultivationSensor(
+                1L, "EUI-001", "MODEL-OLD", "예전 이름", "서울", "창가"
+        );
+        CultivationSensor another = new CultivationSensor(
+                3L, "EUI-002", "MODEL-B", "조도 센서", "부산", "2번 선반"
+        );
+
+        when(cultivationSensorRepository.findReusableSensorsForOwner(7L, 99L))
+                .thenReturn(List.of(newest, older, another));
+
+        List<ReusableCultivationSensorResponse> result =
+                cultivationSensorService.findReusableSensors(7L, 99L);
+
+        assertThat(result).extracting(ReusableCultivationSensorResponse::deviceEui)
+                .containsExactly("EUI-001", "EUI-002");
+        assertThat(result.getFirst().sourceCultivationId()).isEqualTo(2L);
+        assertThat(result.getFirst().deviceModel()).isEqualTo("MODEL-NEW");
+        verify(cultivationSensorRepository).findReusableSensorsForOwner(7L, 99L);
+    }
 
     @Nested
     @DisplayName("센서 등록")
