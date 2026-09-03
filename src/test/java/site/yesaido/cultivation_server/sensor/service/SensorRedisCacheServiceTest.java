@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.*;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import tools.jackson.databind.ObjectMapper;
 
@@ -204,6 +206,118 @@ class SensorRedisCacheServiceTest {
         assertThat(cacheService.findLatest(42L)).isEmpty();
     }
 
+
+    @Test
+    void compactsStoredPointsAndUsesBothClasspathScripts() {
+        Instant now = Instant.now();
+        List<LatestSensorValueResponse> points = List.of(
+                point(now.minusSeconds(10), "C"),
+                point(now.minusSeconds(120), "C"),
+                point(now.minusSeconds(600), "C"),
+                point(now.minusSeconds(7_200), "C"));
+        Set<String> members = Set.of("p1", "p2", "p3", "p4");
+        when(redis.opsForZSet()).thenReturn(zSetOperations);
+        when(redis.opsForHash()).thenReturn(hashOperations);
+        when(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble())).thenReturn(Set.of());
+        when(zSetOperations.range(anyString(), anyLong(), anyLong())).thenReturn(members);
+        when(hashOperations.multiGet(anyString(), anyList())).thenReturn(List.of("p1", "p2", "p3", "p4"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("serialized");
+        when(objectMapper.readValue(anyString(), any(Class.class)))
+                .thenReturn(points.get(0), points.get(1), points.get(2), points.get(3));
+        when(redis.execute(any(SessionCallback.class))).thenAnswer(invocation -> {
+            SessionCallback<Object> callback = invocation.getArgument(0);
+            when(redisOperations.opsForZSet()).thenReturn(zSetOperations);
+            when(redisOperations.opsForHash()).thenReturn(hashOperations);
+            return callback.execute(redisOperations);
+        });
+        when(redisOperations.exec()).thenReturn(List.of());
+
+        cacheService.append(42L, points, Duration.ofHours(12), Duration.ofSeconds(3));
+
+        @SuppressWarnings("unchecked")
+        var latestScripts = org.mockito.ArgumentCaptor.forClass(DefaultRedisScript.class);
+        verify(redis, times(4)).execute(latestScripts.capture(), anyList(),
+                anyString(), anyString(), anyString(), anyString());
+        assertThat(latestScripts.getValue().getScriptAsString()).contains("HGET", "HSET");
+
+        @SuppressWarnings("unchecked")
+        var compactionScripts = org.mockito.ArgumentCaptor.forClass(DefaultRedisScript.class);
+        verify(redis).execute(compactionScripts.capture(), anyList());
+        assertThat(compactionScripts.getValue().getScriptAsString()).contains("RENAME", "KEYS[4]");
+        verify(zSetOperations, atLeastOnce()).add(anyString(), anyString(), anyDouble());
+        verify(hashOperations, atLeastOnce()).put(anyString(), anyString(), eq("serialized"));
+    }
+
+    @Test
+    void loadsRedisLuaScriptsFromClasspathResources() throws Exception {
+        DefaultRedisScript<Long> updateLatest = redisScript("scripts/redis/update-latest.lua");
+        DefaultRedisScript<Long> renameCompaction = redisScript("scripts/redis/rename-compaction.lua");
+
+        assertThat(updateLatest.getResultType()).isEqualTo(Long.class);
+        assertThat(updateLatest.getScriptAsString()).contains("HGET", "ARGV[4]", "should_update");
+        assertThat(renameCompaction.getResultType()).isEqualTo(Long.class);
+        assertThat(renameCompaction.getScriptAsString()).contains("RENAME", "KEYS[4]", "KEYS[1]");
+        assertThat(new ClassPathResource("scripts/redis/update-latest.lua").exists()).isTrue();
+        assertThat(new ClassPathResource("scripts/redis/rename-compaction.lua").exists()).isTrue();
+    }
+
+    @Test
+    void findHistoryBatchReadsMatchingHistoryAndSkipsValuesKey() throws Exception {
+        Instant measuredAt = Instant.now();
+        LatestSensorValueResponse point = point(measuredAt, "C");
+        @SuppressWarnings("unchecked")
+        Cursor<String> cursor = mock(Cursor.class);
+        when(cursor.hasNext()).thenReturn(true, true, true, true, false);
+        when(cursor.next()).thenReturn(
+                "cultivation:sensor:history:v2:42:eui:type:unit",
+                "cultivation:sensor:history:v2:42:eui:type:unit:values",
+                "cultivation:sensor:history:v2:999:eui:type:unit",
+                "unrelated-key");
+        when(redis.scan(any(ScanOptions.class))).thenReturn(cursor);
+        when(redis.opsForZSet()).thenReturn(zSetOperations);
+        when(redis.opsForHash()).thenReturn(hashOperations);
+        when(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble()))
+                .thenReturn(Set.of(measuredAt.toString()));
+        when(hashOperations.multiGet(anyString(), anyList())).thenAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            return key.startsWith("cultivation:sensor:history:v2:42:") ? List.of("point") : List.of();
+        });
+        when(objectMapper.readValue("point", LatestSensorValueResponse.class)).thenReturn(point);
+
+        var result = cacheService.findHistory(List.of(42L, 999L), Duration.ofHours(1));
+
+        assertThat(result.get(42L)).containsExactly(point);
+        assertThat(result.get(999L)).isEmpty();
+        verify(zSetOperations).rangeByScore(
+                eq("cultivation:sensor:history:v2:42:eui:type:unit"), anyDouble(), anyDouble());
+        verify(zSetOperations, never()).rangeByScore(
+                eq("cultivation:sensor:history:v2:42:eui:type:unit:values"), anyDouble(), anyDouble());
+    }
+
+    @Test
+    void nullValueIsIgnoredByAppend() {
+        when(redis.execute(any(SessionCallback.class))).thenAnswer(invocation -> {
+            SessionCallback<Object> callback = invocation.getArgument(0);
+            return callback.execute(redisOperations);
+        });
+        when(redisOperations.exec()).thenReturn(List.of());
+        LatestSensorValueResponse nullValue = new LatestSensorValueResponse(
+                42L, "TEMPERATURE", "C", null, Instant.now(),
+                "EUI-001", "MODEL", "NAME", "LOCATION", "PLACE");
+
+        cacheService.append(42L, List.of(nullValue), Duration.ofHours(12), Duration.ofSeconds(3));
+
+        verify(redisOperations).multi();
+        verify(redisOperations).exec();
+        verify(redis, never()).execute(any(DefaultRedisScript.class), anyList(), any());
+    }
+
+    private DefaultRedisScript<Long> redisScript(String location) {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource(location));
+        script.setResultType(Long.class);
+        return script;
+    }
 
     private LatestSensorValueResponse point(Instant measuredAt, String unit) {
         return new LatestSensorValueResponse(42L, "TEMPERATURE", unit, BigDecimal.ONE,

@@ -2,6 +2,7 @@ package site.yesaido.cultivation_server.sensor.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.*;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -26,25 +27,10 @@ public class SensorRedisCacheService {
     private static final String COMPACTION_PREFIX = "cultivation:sensor:compaction:v2:";
     private static final String LATEST_PREFIX = "cultivation:sensor:latest:v2:";
     private static final String LATEST_TIMESTAMPS_PREFIX = "cultivation:sensor:latest-timestamps:v2:";
-    private static final String RENAME_COMPACTION_SCRIPT = """
-            redis.call('RENAME', KEYS[4], KEYS[2])
-            redis.call('RENAME', KEYS[3], KEYS[1])
-            return 1
-            """;
-    private static final String UPDATE_LATEST_SCRIPT = """
-            local existing = redis.call('HGET', KEYS[2], ARGV[1])
-            local should_update = existing == false
-            if existing ~= false then
-                should_update = tonumber(existing) == nil or tonumber(existing) < tonumber(ARGV[3])
-            end
-            if should_update then
-                redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
-                redis.call('HSET', KEYS[2], ARGV[1], ARGV[3])
-            end
-            redis.call('EXPIRE', KEYS[1], ARGV[4])
-            redis.call('EXPIRE', KEYS[2], ARGV[4])
-            return should_update and 1 or 0
-            """;
+    private static final DefaultRedisScript<Long> RENAME_COMPACTION_SCRIPT =
+            redisScript("scripts/redis/rename-compaction.lua");
+    private static final DefaultRedisScript<Long> UPDATE_LATEST_SCRIPT =
+            redisScript("scripts/redis/update-latest.lua");
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
@@ -53,15 +39,14 @@ public class SensorRedisCacheService {
         Map<String, Set<String>> expiredMembers = new HashMap<>();
         double minimumScore = Instant.now().minus(history).toEpochMilli();
         for (LatestSensorValueResponse point : points) {
-            if (point.deviceEui() == null || point.sensorType() == null || point.measuredAt() == null
-                    || point.value() == null) {
-                continue;
+            if (point.deviceEui() != null && point.sensorType() != null && point.measuredAt() != null
+                    && point.value() != null) {
+                String historyKey = historyKey(cultivationId, point.deviceEui(), point.sensorType(), point.unit());
+                expiredMembers.computeIfAbsent(historyKey, ignored -> {
+                    Set<String> values = redis.opsForZSet().rangeByScore(historyKey, 0, minimumScore);
+                    return values == null ? Set.of() : values;
+                });
             }
-            String historyKey = historyKey(cultivationId, point.deviceEui(), point.sensorType(), point.unit());
-            expiredMembers.computeIfAbsent(historyKey, ignored -> {
-                Set<String> values = redis.opsForZSet().rangeByScore(historyKey, 0, minimumScore);
-                return values == null ? Set.of() : values;
-            });
         }
         redis.execute(new SessionCallback<List<Object>>() {
             @Override
@@ -92,24 +77,22 @@ public class SensorRedisCacheService {
         Instant now = Instant.now();
         double minimumScore = now.minus(history).toEpochMilli();
         for (LatestSensorValueResponse point : points) {
-            if (point.deviceEui() == null || point.sensorType() == null || point.measuredAt() == null
-                    || point.value() == null) {
-                continue;
+            if (point.deviceEui() != null && point.sensorType() != null && point.measuredAt() != null
+                    && point.value() != null) {
+                String serialized = serialize(point);
+                String historyKey = historyKey(cultivationId, point.deviceEui(), point.sensorType(), point.unit());
+                String measuredAt = point.measuredAt().toString();
+                String valuesKey = historyKey + HISTORY_VALUES_SUFFIX;
+                operations.opsForZSet().add(historyKey, measuredAt, point.measuredAt().toEpochMilli());
+                operations.opsForHash().put(valuesKey, measuredAt, serialized);
+                Set<String> expired = expiredMembers.getOrDefault(historyKey, Set.of());
+                if (expired != null && !expired.isEmpty()) {
+                    operations.opsForHash().delete(valuesKey, expired.toArray());
+                }
+                operations.opsForZSet().removeRangeByScore(historyKey, 0, minimumScore);
+                operations.expire(historyKey, history.plus(ttlGrace));
+                operations.expire(valuesKey, history.plus(ttlGrace));
             }
-            String serialized = serialize(point);
-            String historyKey = historyKey(cultivationId, point.deviceEui(), point.sensorType(), point.unit());
-            String measuredAt = point.measuredAt().toString();
-            String valuesKey = historyKey + HISTORY_VALUES_SUFFIX;
-            operations.opsForZSet().add(historyKey, measuredAt, point.measuredAt().toEpochMilli());
-            operations.opsForHash().put(valuesKey, measuredAt, serialized);
-            Set<String> expired = expiredMembers.getOrDefault(historyKey, Set.of());
-            if (expired != null && !expired.isEmpty()) {
-                operations.opsForHash().delete(valuesKey, expired.toArray());
-            }
-            operations.opsForZSet().removeRangeByScore(historyKey, 0, minimumScore);
-            operations.expire(historyKey, history.plus(ttlGrace));
-            operations.expire(valuesKey, history.plus(ttlGrace));
-
         }
     }
 
@@ -118,75 +101,121 @@ public class SensorRedisCacheService {
         String timestampKey = LATEST_TIMESTAMPS_PREFIX + cultivationId;
         long ttlSeconds = Math.max(1, ttl.toSeconds());
         for (LatestSensorValueResponse point : points) {
-            if (point.deviceEui() == null || point.sensorType() == null || point.measuredAt() == null) continue;
-            String serialized = serialize(point);
-            redis.execute(
-                    new DefaultRedisScript<>(UPDATE_LATEST_SCRIPT, Long.class),
-                    List.of(latestKey, timestampKey),
-                    latestField(point), serialized, String.valueOf(point.measuredAt().toEpochMilli()), String.valueOf(ttlSeconds)
-            );
+            if (point.deviceEui() != null && point.sensorType() != null && point.measuredAt() != null) {
+                String serialized = serialize(point);
+                redis.execute(
+                        UPDATE_LATEST_SCRIPT,
+                        List.of(latestKey, timestampKey),
+                        latestField(point), serialized, String.valueOf(point.measuredAt().toEpochMilli()), String.valueOf(ttlSeconds)
+                );
+            }
         }
     }
 
     private void compactHistories(Set<String> historyKeys, Duration history, Duration ttlGrace) {
         Instant now = Instant.now();
         for (String historyKey : historyKeys) {
-            Set<String> members = redis.opsForZSet().range(historyKey, 0, -1);
-            if (members == null || members.isEmpty()) continue;
-            List<LatestSensorValueResponse> points = redis.opsForHash()
-                    .multiGet(historyKey + HISTORY_VALUES_SUFFIX, List.copyOf(members)).stream()
-                    .filter(String.class::isInstance)
-                    .map(value -> deserialize((String) value))
-                    .filter(Objects::nonNull)
-                    .filter(point -> point.measuredAt() != null
-                            && !point.measuredAt().isBefore(now.minus(history)))
-                    .toList();
-            Map<String, List<LatestSensorValueResponse>> buckets = new HashMap<>();
-            for (LatestSensorValueResponse point : points) {
-                long ageSeconds = Math.max(0, Duration.between(point.measuredAt(), now).getSeconds());
-                long resolution = ageSeconds <= 60 ? 3 : ageSeconds <= 300 ? 10 : ageSeconds <= 3600 ? 60 : 300;
-                long bucket = (point.measuredAt().getEpochSecond() / resolution) * resolution;
-                buckets.computeIfAbsent(resolution + ":" + bucket, ignored -> new ArrayList<>()).add(point);
-            }
-            String tempHistoryKey = COMPACTION_PREFIX + UUID.randomUUID();
-            String tempValuesKey = tempHistoryKey + HISTORY_VALUES_SUFFIX;
-            if (buckets.isEmpty()) {
-                redis.delete(List.of(historyKey, historyKey + HISTORY_VALUES_SUFFIX));
-                continue;
-            }
-            boolean wroteBucket = false;
-            for (List<LatestSensorValueResponse> bucketPoints : buckets.values()) {
-                LatestSensorValueResponse first = bucketPoints.get(0);
-                long ageSeconds = Math.max(0, Duration.between(first.measuredAt(), now).getSeconds());
-                long resolution = ageSeconds <= 60 ? 3 : ageSeconds <= 300 ? 10 : ageSeconds <= 3600 ? 60 : 300;
-                long bucket = (first.measuredAt().getEpochSecond() / resolution) * resolution;
-                List<BigDecimal> values = bucketPoints.stream()
-                        .map(LatestSensorValueResponse::value)
-                        .filter(Objects::nonNull)
-                        .toList();
-                if (values.isEmpty()) continue;
-                BigDecimal average = values.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
-                        .divide(BigDecimal.valueOf(values.size()), 4, java.math.RoundingMode.HALF_UP);
-                Instant measuredAt = Instant.ofEpochSecond(bucket);
-                String member = measuredAt.toString();
-                LatestSensorValueResponse averaged = new LatestSensorValueResponse(
-                        first.cultivationId(), first.sensorType(), first.unit(), average, measuredAt,
-                        first.deviceEui(), first.deviceModel(), first.deviceName(), first.location(), first.place());
-                redis.opsForZSet().add(tempHistoryKey, member, measuredAt.toEpochMilli());
+            compactHistory(historyKey, history, ttlGrace, now);
+        }
+    }
+
+    private void compactHistory(String historyKey, Duration history, Duration ttlGrace, Instant now) {
+        Set<String> members = redis.opsForZSet().range(historyKey, 0, -1);
+        if (members == null || members.isEmpty()) return;
+
+        List<LatestSensorValueResponse> points = redis.opsForHash()
+                .multiGet(historyKey + HISTORY_VALUES_SUFFIX, List.copyOf(members)).stream()
+                .filter(String.class::isInstance)
+                .map(value -> deserialize((String) value))
+                .filter(Objects::nonNull)
+                .filter(point -> point.measuredAt() != null
+                        && !point.measuredAt().isBefore(now.minus(history)))
+                .toList();
+        Map<String, List<LatestSensorValueResponse>> buckets = bucketPoints(points, now);
+        if (buckets.isEmpty()) {
+            deleteHistory(historyKey);
+            return;
+        }
+
+        String tempHistoryKey = COMPACTION_PREFIX + UUID.randomUUID();
+        String tempValuesKey = tempHistoryKey + HISTORY_VALUES_SUFFIX;
+        boolean wroteBucket = writeBuckets(buckets, tempHistoryKey, tempValuesKey, now);
+        if (!wroteBucket) {
+            deleteHistory(historyKey);
+            return;
+        }
+
+        redis.expire(tempHistoryKey, history.plus(ttlGrace));
+        redis.expire(tempValuesKey, history.plus(ttlGrace));
+        redis.execute(
+                RENAME_COMPACTION_SCRIPT,
+                List.of(historyKey, historyKey + HISTORY_VALUES_SUFFIX, tempHistoryKey, tempValuesKey)
+        );
+    }
+
+    private Map<String, List<LatestSensorValueResponse>> bucketPoints(
+            List<LatestSensorValueResponse> points, Instant now) {
+        Map<String, List<LatestSensorValueResponse>> buckets = new HashMap<>();
+        for (LatestSensorValueResponse point : points) {
+            long ageSeconds = Math.max(0, Duration.between(point.measuredAt(), now).getSeconds());
+            long resolution = resolutionForAge(ageSeconds);
+            long bucket = bucketStart(point.measuredAt(), resolution);
+            buckets.computeIfAbsent(resolution + ":" + bucket, ignored -> new ArrayList<>()).add(point);
+        }
+        return buckets;
+    }
+
+    private boolean writeBuckets(
+            Map<String, List<LatestSensorValueResponse>> buckets,
+            String tempHistoryKey,
+            String tempValuesKey,
+            Instant now) {
+        boolean wroteBucket = false;
+        for (List<LatestSensorValueResponse> bucketPoints : buckets.values()) {
+            LatestSensorValueResponse averaged = averageBucket(bucketPoints, now);
+            if (averaged != null) {
+                String member = averaged.measuredAt().toString();
+                redis.opsForZSet().add(tempHistoryKey, member, averaged.measuredAt().toEpochMilli());
                 redis.opsForHash().put(tempValuesKey, member, serialize(averaged));
                 wroteBucket = true;
             }
-            if (!wroteBucket) {
-                redis.delete(List.of(historyKey, historyKey + HISTORY_VALUES_SUFFIX));
-                continue;
-            }
-            redis.expire(tempHistoryKey, history.plus(ttlGrace));
-            redis.expire(tempValuesKey, history.plus(ttlGrace));
-            redis.execute(
-                    new DefaultRedisScript<>(RENAME_COMPACTION_SCRIPT, Long.class),
-                    List.of(historyKey, historyKey + HISTORY_VALUES_SUFFIX, tempHistoryKey, tempValuesKey)
-            );
         }
+        return wroteBucket;
+    }
+
+    private LatestSensorValueResponse averageBucket(
+            List<LatestSensorValueResponse> bucketPoints, Instant now) {
+        LatestSensorValueResponse first = bucketPoints.get(0);
+        long ageSeconds = Math.max(0, Duration.between(first.measuredAt(), now).getSeconds());
+        long resolution = resolutionForAge(ageSeconds);
+        long bucket = bucketStart(first.measuredAt(), resolution);
+        List<BigDecimal> values = bucketPoints.stream()
+                .map(LatestSensorValueResponse::value)
+                .filter(Objects::nonNull)
+                .toList();
+        if (values.isEmpty()) return null;
+
+        BigDecimal average = values.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(values.size()), 4, java.math.RoundingMode.HALF_UP);
+        Instant measuredAt = Instant.ofEpochSecond(bucket);
+        return new LatestSensorValueResponse(
+                first.cultivationId(), first.sensorType(), first.unit(), average, measuredAt,
+                first.deviceEui(), first.deviceModel(), first.deviceName(), first.location(), first.place());
+    }
+
+    private long resolutionForAge(long ageSeconds) {
+        if (ageSeconds <= 60) return 3;
+        if (ageSeconds <= 300) return 10;
+        if (ageSeconds <= 3600) return 60;
+        return 300;
+    }
+
+    private long bucketStart(Instant measuredAt, long resolution) {
+        return (measuredAt.getEpochSecond() / resolution) * resolution;
+    }
+
+    private void deleteHistory(String historyKey) {
+        redis.delete(List.of(historyKey, historyKey + HISTORY_VALUES_SUFFIX));
     }
 
     public List<LatestSensorValueResponse> findHistory(long cultivationId, Duration history) {
@@ -203,27 +232,40 @@ public class SensorRedisCacheService {
         ScanOptions options = ScanOptions.scanOptions().match(HISTORY_PREFIX + "*").count(100).build();
         try (Cursor<String> cursor = redis.scan(options)) {
             while (cursor.hasNext()) {
-                String key = cursor.next();
-                if (key.endsWith(HISTORY_VALUES_SUFFIX)) continue;
-                String remainder = key.substring(HISTORY_PREFIX.length());
-                int separator = remainder.indexOf(':');
-                if (separator < 1) continue;
-                Long cultivationId;
-                try { cultivationId = Long.valueOf(remainder.substring(0, separator)); }
-                catch (NumberFormatException ignored) { continue; }
-                if (!ids.contains(cultivationId)) continue;
-                Set<String> members = redis.opsForZSet().rangeByScore(key, threshold.toEpochMilli(), Double.MAX_VALUE);
-                if (members == null || members.isEmpty()) continue;
-                redis.opsForHash().multiGet(key + HISTORY_VALUES_SUFFIX, List.copyOf(members)).stream()
-                        .filter(String.class::isInstance).map(value -> deserialize((String) value))
-                        .filter(Objects::nonNull)
-                        .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
-                        .forEach(point -> result.get(cultivationId).add(point));
+                addHistoryForKey(cursor.next(), ids, threshold, result);
             }
         }
         result.replaceAll((id, points) -> points.stream()
                 .sorted(Comparator.comparing(LatestSensorValueResponse::measuredAt)).toList());
         return result;
+    }
+
+    private void addHistoryForKey(
+            String key,
+            Set<Long> ids,
+            Instant threshold,
+            Map<Long, List<LatestSensorValueResponse>> result) {
+        Long cultivationId = cultivationIdFromHistoryKey(key);
+        if (cultivationId == null || !ids.contains(cultivationId)) return;
+        Set<String> members = redis.opsForZSet().rangeByScore(key, threshold.toEpochMilli(), Double.MAX_VALUE);
+        if (members == null || members.isEmpty()) return;
+        redis.opsForHash().multiGet(key + HISTORY_VALUES_SUFFIX, List.copyOf(members)).stream()
+                .filter(String.class::isInstance).map(value -> deserialize((String) value))
+                .filter(Objects::nonNull)
+                .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
+                .forEach(point -> result.get(cultivationId).add(point));
+    }
+
+    private Long cultivationIdFromHistoryKey(String key) {
+        if (!key.startsWith(HISTORY_PREFIX) || key.endsWith(HISTORY_VALUES_SUFFIX)) return null;
+        String remainder = key.substring(HISTORY_PREFIX.length());
+        int separator = remainder.indexOf(':');
+        if (separator < 1) return null;
+        try {
+            return Long.valueOf(remainder.substring(0, separator));
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private List<LatestSensorValueResponse> findHistory(Set<Long> cultivationIds, Duration history) {
@@ -275,15 +317,16 @@ public class SensorRedisCacheService {
         Map<Long, List<LatestSensorValueResponse>> result = new HashMap<>();
         for (int i = 0; i < ids.size(); i++) {
             Object raw = responses.get(i);
-            if (!(raw instanceof Map<?, ?> values)) continue;
-            List<LatestSensorValueResponse> points = values.values().stream()
-                    .map(this::pipelineValue)
-                    .filter(java.util.Objects::nonNull)
-                    .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
-                    .sorted(Comparator.comparing(LatestSensorValueResponse::sensorType,
-                            Comparator.nullsLast(String::compareTo)))
-                    .toList();
-            if (!points.isEmpty()) result.put(ids.get(i), points);
+            if (raw instanceof Map<?, ?> values) {
+                List<LatestSensorValueResponse> points = values.values().stream()
+                        .map(this::pipelineValue)
+                        .filter(java.util.Objects::nonNull)
+                        .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
+                        .sorted(Comparator.comparing(LatestSensorValueResponse::sensorType,
+                                Comparator.nullsLast(String::compareTo)))
+                        .toList();
+                if (!points.isEmpty()) result.put(ids.get(i), points);
+            }
         }
         return result;
     }
@@ -327,6 +370,13 @@ public class SensorRedisCacheService {
         }
         return Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(normalized.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static DefaultRedisScript<Long> redisScript(String location) {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource(location));
+        script.setResultType(Long.class);
+        return script;
     }
 
     private String serialize(LatestSensorValueResponse point) {
