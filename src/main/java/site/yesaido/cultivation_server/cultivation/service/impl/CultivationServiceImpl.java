@@ -13,13 +13,13 @@ import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
-import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.CultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
+import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
 
@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CultivationServiceImpl implements CultivationService {
-    private static final String ADMIN_ROLE = "ADMIN";
 
     private final CultivationRepository cultivationRepository;
     private final CultivationMemberRepository cultivationMemberRepository;
@@ -68,33 +67,29 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Override
     public CultivationSummaryListResponse getCultivations(Long userId) {
-        List<Cultivation> cultivations = cultivationRepository.findAllByMemberUserId(userId);
-        if (cultivations.isEmpty()) {
+        List<CultivationSummaryProjection> projections = cultivationRepository.findSummaryProjectionsByMemberUserId(userId);
+        if (projections.isEmpty()) {
             return new CultivationSummaryListResponse(List.of());
         }
 
-        List<Long> cultivationIds = cultivations.stream().map(Cultivation::getId).toList();
-        List<CultivationMember> members = cultivationMemberRepository.findAllByCultivationIdIn(cultivationIds);
+        Map<Long, String> nicknameByUserId = resolveOwnerNicknames(
+                projections.stream()
+                        .map(CultivationSummaryProjection::getOwnerUserId)
+                        .filter(java.util.Objects::nonNull)
+                        .toList()
+        );
 
-        Map<Long, Long> memberCountByCultivationId = members.stream()
-                .collect(Collectors.groupingBy(m -> m.getCultivation().getId(), Collectors.counting()));
-
-        Map<Long, Long> ownerIdByCultivationId = members.stream()
-                .filter(m -> m.getRole() == MemberRole.OWNER)
-                .collect(Collectors.toMap(m -> m.getCultivation().getId(), CultivationMember::getUserId));
-
-        Map<Long, String> nicknameByUserId = resolveOwnerNicknames(ownerIdByCultivationId.values());
-
-        List<CultivationSummaryResponse> list = cultivations.stream()
-                .map(c -> {
-                    Long ownerId = ownerIdByCultivationId.get(c.getId());
-                    String ownerNickname = ownerId != null ? nicknameByUserId.get(ownerId) : null;
-                    return toSummary(
-                            c,
-                            memberCountByCultivationId.getOrDefault(c.getId(), 0L).intValue(),
-                            ownerNickname
-                    );
-                })
+        List<CultivationSummaryResponse> list = projections.stream()
+                .map(projection -> new CultivationSummaryResponse(
+                        projection.getCultivationId(),
+                        projection.getName(),
+                        projection.getMushroomId(),
+                        projection.getStatus(),
+                        projection.getMode(),
+                        projection.getMemberCount() == null ? 0 : projection.getMemberCount().intValue(),
+                        nicknameByUserId.get(projection.getOwnerUserId()),
+                        projection.getCreatedAt()
+                ))
                 .toList();
 
         return new CultivationSummaryListResponse(list);
@@ -102,22 +97,13 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Override
     public CultivationDetailResponse getCultivation(Long userId, Long cultivationId) {
-        return getCultivation(userId, cultivationId, null);
-    }
-
-    @Override
-    public CultivationDetailResponse getCultivation(Long userId, Long cultivationId, String role) {
-        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+        CultivationSummaryProjection projection = cultivationRepository
+                .findDetailProjectionByUserIdAndCultivationId(userId, cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-
-        if (ADMIN_ROLE.equals(role)) {
-            return toDetail(cultivation, null);
+        if (projection.getMyRole() == null) {
+            throw new CultivationAccessDeniedException(cultivationId);
         }
-
-        CultivationMember member = cultivationMemberRepository.findByCultivationIdAndUserId(cultivationId, userId)
-                .orElseThrow(() -> new CultivationAccessDeniedException(cultivationId));
-
-        return toDetail(cultivation, member.getRole());
+        return toDetail(projection);
     }
 
     @Override
@@ -212,6 +198,21 @@ public class CultivationServiceImpl implements CultivationService {
                 cultivation.getFinishedAt(),
                 cultivation.getCreatedAt(),
                 cultivation.getUpdatedAt()
+        );
+    }
+
+    private CultivationDetailResponse toDetail(CultivationSummaryProjection projection) {
+        return new CultivationDetailResponse(
+                projection.getCultivationId(),
+                projection.getName(),
+                projection.getMushroomId(),
+                projection.getStatus(),
+                projection.getMode(),
+                projection.getMyRole(),
+                projection.getStartedAt(),
+                projection.getFinishedAt(),
+                projection.getCreatedAt(),
+                projection.getUpdatedAt()
         );
     }
 

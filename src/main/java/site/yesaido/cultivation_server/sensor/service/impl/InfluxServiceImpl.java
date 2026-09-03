@@ -14,10 +14,12 @@ import site.yesaido.cultivation_server.config.InfluxProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.mapper.SensorValuePointMapper;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
+import site.yesaido.cultivation_server.sensor.support.SensorUnits;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -32,6 +34,19 @@ public class InfluxServiceImpl implements InfluxService {
     private static final String FIELD_SENSOR_TYPE = "sensorType";
     private static final String FIELD_CULTIVATION_ID = "cultivationId";
     private static final String FIELD_UNIT = "unit";
+
+    @Override
+    public List<LatestSensorValueResponse> findValuesByCultivationId(long cultivationId, java.time.Duration range) {
+        long seconds = Math.max(1, range.toSeconds());
+        String query = baseQuery(cultivationId, " |> range(start: -" + seconds + "s)")
+                + " |> filter(fn: (r) => exists r.deviceEui)"
+                + " |> sort(columns: [\"_time\"] )";
+
+        return queryTablesSafely(query).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .map(this::toLatestSensorValue)
+                .toList();
+    }
 
     @Override
     public LatestSensorValueListResponse findLatestByCultivationId(long cultivationId) {
@@ -60,6 +75,36 @@ public class InfluxServiceImpl implements InfluxService {
     }
 
     @Override
+    public Map<Long, List<LatestSensorValueResponse>> findLatestByCultivationIds(List<Long> cultivationIds) {
+        List<Long> ids = cultivationIds == null ? List.of() : cultivationIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+
+        String cultivationFilter = ids.stream()
+                .map(id -> "r.cultivationId == \"" + id + "\"")
+                .collect(java.util.stream.Collectors.joining(" or "));
+        String query = "from(bucket: \"" + escape(properties.getBucket()) + "\")"
+                + " |> range(start: 0)"
+                + " |> filter(fn: (r) => r._measurement == \"" + SensorValuePointMapper.MEASUREMENT + "\")"
+                + " |> filter(fn: (r) => r._field == \"" + SensorValuePointMapper.VALUE_FIELD + "\")"
+                + " |> filter(fn: (r) => " + cultivationFilter + ")"
+                + " |> group(columns: [\"cultivationId\", \"sensorType\", \"unit\", \"deviceEui\"] )"
+                + " |> last()";
+
+        Map<Long, List<LatestSensorValueResponse>> result = new LinkedHashMap<>();
+        queryTablesSafely(query).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .map(this::toLatestSensorValue)
+                .filter(point -> point.cultivationId() != null)
+                .forEach(point -> result.computeIfAbsent(point.cultivationId(), ignored -> new java.util.ArrayList<>()).add(point));
+        return result;
+    }
+
+    @Override
     public List<SensorTypeAverageResponse> findAverageByCultivationIdForLast24Hours(long cultivationId) {
 
         String query = baseQuery(cultivationId, " |> range(start: -24h)")
@@ -80,20 +125,28 @@ public class InfluxServiceImpl implements InfluxService {
     public SensorTrendPointListResponse findTrend(
             long cultivationId,
             String deviceEui,
-            String sensorType
+            String sensorType,
+            String unit
     ) {
         Objects.requireNonNull(deviceEui, "deviceEui must not be null");
         Objects.requireNonNull(sensorType, "sensorType must not be null");
+        Objects.requireNonNull(unit, "unit must not be null");
+        String normalizedUnit = Objects.requireNonNull(SensorUnits.normalize(unit), "unit must not be blank");
 
-        String query = baseQuery(cultivationId, " |> range(start: -24h)")
+        String query = baseQuery(cultivationId, " |> range(start: -12h)")
                 + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
                 + " |> filter(fn: (r) => r.sensorType == \"" + escape(sensorType) + "\")"
+                + " |> filter(fn: (r) => r.unit == \"" + escape(normalizedUnit) + "\")"
                 + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
                 + " |> sort(columns: [\"_time\"])";
 
         List<FluxRecord> records = queryTablesSafely(query).stream()
                 .flatMap(table -> table.getRecords().stream())
                 .toList();
+
+        if (records.isEmpty()) {
+            return new SensorTrendPointListResponse(cultivationId, deviceEui, sensorType, normalizedUnit, List.of());
+        }
 
         long cultivationIdFromInfluxDB = toCultivationId(records);
 
@@ -110,7 +163,7 @@ public class InfluxServiceImpl implements InfluxService {
                 .filter(Objects::nonNull)
                 .findFirst().orElse(null);
 
-        String unit = records.stream()
+        String responseUnit = records.stream()
                 .map(FluxRecord::getValues)
                 .map(values -> stringValue(values, FIELD_UNIT))
                 .filter(Objects::nonNull)
@@ -128,7 +181,7 @@ public class InfluxServiceImpl implements InfluxService {
                 .toList();
 
         return new SensorTrendPointListResponse(
-                cultivationIdFromInfluxDB, deviceEuiFromDB, sensorTypeFromDB, unit, responses
+                cultivationIdFromInfluxDB, deviceEuiFromDB, sensorTypeFromDB, responseUnit, responses
         );
     }
 
