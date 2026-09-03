@@ -46,18 +46,37 @@ public class SensorRedisCacheService {
 
     private boolean appendInternal(long cultivationId, List<LatestSensorValueResponse> points,
                                    Duration history, Duration ttlGrace, String lockKey, String token) {
+        Map<String, Set<String>> expiredMembers = findExpiredMembers(cultivationId, points, history);
+        return executeAppendTransaction(cultivationId, points, history, ttlGrace, lockKey, token, expiredMembers);
+    }
+
+    private Map<String, Set<String>> findExpiredMembers(long cultivationId,
+                                                         List<LatestSensorValueResponse> points,
+                                                         Duration history) {
         Map<String, Set<String>> expiredMembers = new HashMap<>();
         double minimumScore = Instant.now().minus(history).toEpochMilli();
         for (LatestSensorValueResponse point : points) {
-            if (point.deviceEui() != null && point.sensorType() != null && point.measuredAt() != null
-                    && point.value() != null) {
+            if (isAppendable(point)) {
                 String historyKey = historyKey(cultivationId, point.deviceEui(), point.sensorType(), point.unit());
-                expiredMembers.computeIfAbsent(historyKey, ignored -> {
-                    Set<String> values = redis.opsForZSet().rangeByScore(historyKey, 0, minimumScore);
-                    return values == null ? Set.of() : values;
-                });
+                expiredMembers.computeIfAbsent(historyKey, ignored -> expiredMembers(historyKey, minimumScore));
             }
         }
+        return expiredMembers;
+    }
+
+    private Set<String> expiredMembers(String historyKey, double minimumScore) {
+        Set<String> values = redis.opsForZSet().rangeByScore(historyKey, 0, minimumScore);
+        return values == null ? Set.of() : values;
+    }
+
+    private boolean isAppendable(LatestSensorValueResponse point) {
+        return point.deviceEui() != null && point.sensorType() != null
+                && point.measuredAt() != null && point.value() != null;
+    }
+
+    private boolean executeAppendTransaction(long cultivationId, List<LatestSensorValueResponse> points,
+                                             Duration history, Duration ttlGrace, String lockKey, String token,
+                                             Map<String, Set<String>> expiredMembers) {
         return Boolean.TRUE.equals(redis.execute(new SessionCallback<Boolean>() {
             @Override
             public Boolean execute(RedisOperations operations) {
@@ -74,8 +93,8 @@ public class SensorRedisCacheService {
                     if (lockKey != null) {
                         updateLatestValues(operations, cultivationId, points, history.plus(ttlGrace));
                     }
-                    List<Object> result = operations.exec();
-                    if (result == null) {
+                    Optional<List<Object>> result = Optional.ofNullable(operations.exec());
+                    if (result.isEmpty()) {
                         return false;
                     }
                     if (lockKey == null) {
@@ -244,7 +263,7 @@ public class SensorRedisCacheService {
 
     private LatestSensorValueResponse averageBucket(
             List<LatestSensorValueResponse> bucketPoints, Instant now) {
-        LatestSensorValueResponse first = bucketPoints.get(0);
+        LatestSensorValueResponse first = bucketPoints.getFirst();
         long ageSeconds = Math.max(0, Duration.between(first.measuredAt(), now).getSeconds());
         long resolution = resolutionForAge(ageSeconds);
         long bucket = bucketStart(first.measuredAt(), resolution);
@@ -351,7 +370,7 @@ public class SensorRedisCacheService {
                 .sorted(Comparator.comparing(LatestSensorValueResponse::measuredAt))
                 .map(point -> new SensorTrendPointResponse(point.measuredAt(), point.value()))
                 .toList();
-        LatestSensorValueResponse first = points.get(0);
+        LatestSensorValueResponse first = points.getFirst();
         return new SensorTrendPointListResponse(cultivationId, deviceEui, sensorType, first.unit(), trend);
     }
 
