@@ -47,14 +47,14 @@ class InfluxTrendQueryTest {
         );
 
         SensorTrendPointListResponse result = service.findTrend(
-                42L, "eui-01", "TEMPERATURE"
+                42L, "eui-01", "TEMPERATURE", ".°C"
         );
 
         assertThat(result.unit()).isEqualTo(".°C");
         assertThat(result.responses())
                 .containsExactly(new SensorTrendPointResponse(measuredAt, BigDecimal.valueOf(24.25)));
         verify(queryApi).query(argThat((String query) ->
-                query.contains("range(start: -24h)")
+                query.contains("range(start: -12h)")
                         && query.contains("r.cultivationId == \"42\"")
                         && query.contains("r.deviceEui == \"eui-01\"")
                         && query.contains("r.sensorType == \"TEMPERATURE\"")

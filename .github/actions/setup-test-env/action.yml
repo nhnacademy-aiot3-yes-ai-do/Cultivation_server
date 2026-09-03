@@ -34,6 +34,11 @@ runs:
         echo "INFLUX_ORG=yes-nhn" >> "$GITHUB_ENV"
         echo "INFLUX_BUCKET=sensor-data" >> "$GITHUB_ENV"
         echo "INFLUX_TOKEN=ci-test-token" >> "$GITHUB_ENV"
+        # Redis service container
+        echo "REDIS_HOST=localhost" >> "$GITHUB_ENV"
+        echo "REDIS_PORT=6379" >> "$GITHUB_ENV"
+        echo "REDIS_PASSWORD=" >> "$GITHUB_ENV"
+        echo "REDIS_DATABASE=0" >> "$GITHUB_ENV"
         echo "CF_ACCESS_CLIENT_ID=" >> "$GITHUB_ENV"
         echo "CF_ACCESS_CLIENT_SECRET=" >> "$GITHUB_ENV"
 
