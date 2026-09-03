@@ -6,17 +6,18 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.Memb
 
 import java.time.LocalDateTime;
 
-public interface CultivationSummaryProjection {
-    Long getCultivationId();
-    String getName();
-    Long getMushroomId();
-    CultivationStatus getStatus();
-    CultivationMode getMode();
-    Long getMemberCount();
-    Long getOwnerUserId();
-    MemberRole getMyRole();
-    LocalDateTime getStartedAt();
-    LocalDateTime getFinishedAt();
-    LocalDateTime getCreatedAt();
-    LocalDateTime getUpdatedAt();
+public record CultivationSummaryProjection(
+        Long cultivationId,
+        String name,
+        Long mushroomId,
+        CultivationStatus status,
+        CultivationMode mode,
+        Long memberCount,
+        Long ownerUserId,
+        MemberRole myRole,
+        LocalDateTime startedAt,
+        LocalDateTime finishedAt,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {
 }

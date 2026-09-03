@@ -5,16 +5,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageListResponse;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 import site.yesaido.cultivation_server.sensor.service.SensorRedisCacheService;
 
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
