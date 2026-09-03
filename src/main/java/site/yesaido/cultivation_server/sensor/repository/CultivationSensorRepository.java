@@ -32,6 +32,24 @@ public interface CultivationSensorRepository extends JpaRepository<CultivationSe
     })
     List<CultivationSensor> findAllByCultivationIdAndIsDeletedFalseOrderByCreatedAtAsc(long cultivationId);
 
+    @Query("""
+              SELECT DISTINCT cultivationSensor
+              FROM CultivationSensor cultivationSensor
+              LEFT JOIN FETCH cultivationSensor.cultivationSensorTypes cultivationSensorType
+              LEFT JOIN FETCH cultivationSensorType.sensorType
+              WHERE cultivationSensor.cultivationId <> :excludedCultivationId
+                AND cultivationSensor.cultivationId IN (
+                    SELECT cultivation.id
+                    FROM Cultivation cultivation
+                    WHERE cultivation.userId = :userId
+                )
+              ORDER BY cultivationSensor.createdAt DESC, cultivationSensor.id DESC
+              """)
+    List<CultivationSensor> findReusableSensorsForOwner(
+            @Param("userId") Long userId,
+            @Param("excludedCultivationId") long excludedCultivationId
+    );
+
     // 활성 재배의 삭제되지 않은 센서와 측정 채널을 snapshot으로 조회합니다.
     @Query("""
               SELECT DISTINCT cultivationSensor

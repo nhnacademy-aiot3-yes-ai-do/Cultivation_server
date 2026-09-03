@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.ReusableCultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorAlreadyExistException;
 import site.yesaido.cultivation_server.sensor.exception.CultivationSensorNotFoundException;
@@ -13,6 +14,8 @@ import site.yesaido.cultivation_server.sensor.repository.CultivationSensorReposi
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorService;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -88,6 +91,24 @@ public class CultivationSensorServiceImpl implements CultivationSensorService {
                 .stream()
                 .map(CultivationSensorResponse::from)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReusableCultivationSensorResponse> findReusableSensors(
+            Long userId,
+            long excludedCultivationId
+    ) {
+        Map<String, ReusableCultivationSensorResponse> sensorsByEui = new LinkedHashMap<>();
+
+        cultivationSensorRepository
+                .findReusableSensorsForOwner(userId, excludedCultivationId)
+                .forEach(sensor -> sensorsByEui.putIfAbsent(
+                        sensor.getDeviceEui(),
+                        ReusableCultivationSensorResponse.from(sensor)
+                ));
+
+        return List.copyOf(sensorsByEui.values());
     }
 
 }

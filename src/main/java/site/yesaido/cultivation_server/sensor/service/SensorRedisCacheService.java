@@ -36,6 +36,16 @@ public class SensorRedisCacheService {
     private final ObjectMapper objectMapper;
 
     public void append(long cultivationId, List<LatestSensorValueResponse> points, Duration history, Duration ttlGrace) {
+        appendInternal(cultivationId, points, history, ttlGrace, null, null);
+    }
+
+    public boolean appendWithLock(long cultivationId, List<LatestSensorValueResponse> points,
+                                  Duration history, Duration ttlGrace, String lockKey, String token) {
+        return appendInternal(cultivationId, points, history, ttlGrace, lockKey, token);
+    }
+
+    private boolean appendInternal(long cultivationId, List<LatestSensorValueResponse> points,
+                                   Duration history, Duration ttlGrace, String lockKey, String token) {
         Map<String, Set<String>> expiredMembers = new HashMap<>();
         double minimumScore = Instant.now().minus(history).toEpochMilli();
         for (LatestSensorValueResponse point : points) {
@@ -48,24 +58,37 @@ public class SensorRedisCacheService {
                 });
             }
         }
-        redis.execute(new SessionCallback<List<Object>>() {
+        return Boolean.TRUE.equals(redis.execute(new SessionCallback<Boolean>() {
             @Override
-            public List<Object> execute(RedisOperations operations) {
+            public Boolean execute(RedisOperations operations) {
+                if (lockKey != null) {
+                    operations.watch(lockKey);
+                    if (!token.equals(operations.opsForValue().get(lockKey))) {
+                        operations.unwatch();
+                        return false;
+                    }
+                }
                 operations.multi();
-                boolean transactionActive = true;
                 try {
                     appendWithinTransaction(operations, cultivationId, points, history, ttlGrace, expiredMembers);
+                    if (lockKey != null) {
+                        updateLatestValues(operations, cultivationId, points, history.plus(ttlGrace));
+                    }
                     List<Object> result = operations.exec();
-                    transactionActive = false;
-                    updateLatestValues(cultivationId, points, history.plus(ttlGrace));
-                    compactHistories(expiredMembers.keySet(), history, ttlGrace);
-                    return result;
+                    if (result == null) {
+                        return false;
+                    }
+                    if (lockKey == null) {
+                        updateLatestValues(redis, cultivationId, points, history.plus(ttlGrace));
+                    }
+                    compactHistories(expiredMembers.keySet(), history, ttlGrace, lockKey, token);
+                    return true;
                 } catch (RuntimeException e) {
-                    if (transactionActive) operations.discard();
+                    operations.discard();
                     throw e;
                 }
             }
-        });
+        }));
     }
 
     private void appendWithinTransaction(RedisOperations<String, String> operations,
@@ -96,14 +119,15 @@ public class SensorRedisCacheService {
         }
     }
 
-    private void updateLatestValues(long cultivationId, List<LatestSensorValueResponse> points, Duration ttl) {
+    private void updateLatestValues(RedisOperations<String, String> operations,
+                                    long cultivationId, List<LatestSensorValueResponse> points, Duration ttl) {
         String latestKey = LATEST_PREFIX + cultivationId;
         String timestampKey = LATEST_TIMESTAMPS_PREFIX + cultivationId;
         long ttlSeconds = Math.max(1, ttl.toSeconds());
         for (LatestSensorValueResponse point : points) {
             if (point.deviceEui() != null && point.sensorType() != null && point.measuredAt() != null) {
                 String serialized = serialize(point);
-                redis.execute(
+                operations.execute(
                         UPDATE_LATEST_SCRIPT,
                         List.of(latestKey, timestampKey),
                         latestField(point), serialized, String.valueOf(point.measuredAt().toEpochMilli()), String.valueOf(ttlSeconds)
@@ -112,16 +136,43 @@ public class SensorRedisCacheService {
         }
     }
 
-    private void compactHistories(Set<String> historyKeys, Duration history, Duration ttlGrace) {
+    private void compactHistories(Set<String> historyKeys, Duration history, Duration ttlGrace,
+                                  String lockKey, String token) {
         Instant now = Instant.now();
         for (String historyKey : historyKeys) {
-            compactHistory(historyKey, history, ttlGrace, now);
+            compactHistory(historyKey, history, ttlGrace, now, lockKey, token);
         }
     }
 
-    private void compactHistory(String historyKey, Duration history, Duration ttlGrace, Instant now) {
+    public int compactCultivation(long cultivationId, Duration history, Duration ttlGrace) {
+        return compactCultivation(cultivationId, history, ttlGrace, null, null);
+    }
+
+    public int compactCultivation(long cultivationId, Duration history, Duration ttlGrace,
+                                  String lockKey, String token) {
+        String prefix = HISTORY_PREFIX + cultivationId + ":";
+        int compacted = 0;
+        ScanOptions options = ScanOptions.scanOptions().match(prefix + "*").count(100).build();
+        try (Cursor<String> cursor = redis.scan(options)) {
+            while (cursor.hasNext()) {
+                String historyKey = cursor.next();
+                if (!historyKey.startsWith(prefix) || historyKey.endsWith(HISTORY_VALUES_SUFFIX)) {
+                    continue;
+                }
+                compactHistory(historyKey, history, ttlGrace, Instant.now(), lockKey, token);
+                compacted++;
+            }
+        }
+        return compacted;
+    }
+
+    private void compactHistory(String historyKey, Duration history, Duration ttlGrace, Instant now,
+                                 String lockKey, String token) {
         Set<String> members = redis.opsForZSet().range(historyKey, 0, -1);
-        if (members == null || members.isEmpty()) return;
+        if (members == null || members.isEmpty()) {
+            redis.delete(historyKey + HISTORY_VALUES_SUFFIX);
+            return;
+        }
 
         List<LatestSensorValueResponse> points = redis.opsForHash()
                 .multiGet(historyKey + HISTORY_VALUES_SUFFIX, List.copyOf(members)).stream()
@@ -139,18 +190,26 @@ public class SensorRedisCacheService {
 
         String tempHistoryKey = COMPACTION_PREFIX + UUID.randomUUID();
         String tempValuesKey = tempHistoryKey + HISTORY_VALUES_SUFFIX;
-        boolean wroteBucket = writeBuckets(buckets, tempHistoryKey, tempValuesKey, now);
-        if (!wroteBucket) {
-            deleteHistory(historyKey);
-            return;
-        }
+        try {
+            boolean wroteBucket = writeBuckets(buckets, tempHistoryKey, tempValuesKey, now);
+            if (!wroteBucket) {
+                deleteHistory(historyKey);
+                return;
+            }
 
-        redis.expire(tempHistoryKey, history.plus(ttlGrace));
-        redis.expire(tempValuesKey, history.plus(ttlGrace));
-        redis.execute(
-                RENAME_COMPACTION_SCRIPT,
-                List.of(historyKey, historyKey + HISTORY_VALUES_SUFFIX, tempHistoryKey, tempValuesKey)
-        );
+            redis.expire(tempHistoryKey, history.plus(ttlGrace));
+            redis.expire(tempValuesKey, history.plus(ttlGrace));
+            Long renamed = lockKey == null
+                    ? redis.execute(RENAME_COMPACTION_SCRIPT,
+                    List.of(historyKey, historyKey + HISTORY_VALUES_SUFFIX, tempHistoryKey, tempValuesKey))
+                    : redis.execute(RENAME_COMPACTION_SCRIPT,
+                    List.of(historyKey, historyKey + HISTORY_VALUES_SUFFIX, tempHistoryKey, tempValuesKey, lockKey), token);
+            if (lockKey != null && !Long.valueOf(1L).equals(renamed)) {
+                throw new IllegalStateException("compaction lock ownership lost");
+            }
+        } finally {
+            redis.delete(List.of(tempHistoryKey, tempValuesKey));
+        }
     }
 
     private Map<String, List<LatestSensorValueResponse>> bucketPoints(

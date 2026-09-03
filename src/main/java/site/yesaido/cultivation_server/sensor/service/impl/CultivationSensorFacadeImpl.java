@@ -13,6 +13,7 @@ import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSenso
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.ReusableCultivationSensorListResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.service.*;
@@ -223,5 +224,17 @@ public class CultivationSensorFacadeImpl implements CultivationSensorFacade {
     private CultivationSensorListResponse doFindAll(Long userId, long cultivationId, String role) {
         cultivationMemberService.existCultivationMember(cultivationId, userId, role);
         return new CultivationSensorListResponse(cultivationSensorService.findAll(cultivationId), environmentSettingService.findAll(cultivationId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReusableCultivationSensorListResponse findReusableSensors(
+            Long userId,
+            long excludedCultivationId
+    ) {
+        cultivationMemberService.verifyOwnerAccess(excludedCultivationId, userId);
+        return new ReusableCultivationSensorListResponse(
+                cultivationSensorService.findReusableSensors(userId, excludedCultivationId)
+        );
     }
 }
