@@ -15,7 +15,7 @@ class CultivationHistoryPageResponseTest {
     @DisplayName("from() - Page의 필드를 그대로 옮겨 담는다")
     void fromCopiesPageFields() {
         CultivationHistoryResponse content = new CultivationHistoryResponse(
-                1L, "버섯 농장", 10L, null, null, null, null);
+                1L, "버섯 농장", 10L, null, null, null, null, null);
         PageImpl<CultivationHistoryResponse> page = new PageImpl<>(
                 List.of(content), PageRequest.of(0, 20), 1L);
 

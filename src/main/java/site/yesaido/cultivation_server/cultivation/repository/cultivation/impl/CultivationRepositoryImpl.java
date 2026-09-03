@@ -64,6 +64,7 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 cultivation.mushroomReference.id,
                 cultivation.cultivationStatus,
                 harvest.harvestWeight,
+                harvest.productScore,
                 harvest.productGrade,
                 endedAt))
                 .from(cultivation)                                                                                      // 어떤 테이블을 기준으로 조회할 것인가?

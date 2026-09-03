@@ -222,6 +222,7 @@ class CultivationControllerTest {
                 1L,
                 CultivationStatus.FINISHED,
                 new BigDecimal("10.5"),
+                new BigDecimal("92.5"),
                 ProductGrade.TOP,
                 LocalDateTime.now()
         );
@@ -246,7 +247,7 @@ class CultivationControllerTest {
         int outOfBoundsPage = 999;
 
         CultivationHistoryResponse historyResponse = new CultivationHistoryResponse(
-                100L, "마지막 이력", 1L, CultivationStatus.FINISHED, new BigDecimal(10.5), ProductGrade.TOP, LocalDateTime.now()
+                100L, "마지막 이력", 1L, CultivationStatus.FINISHED, new BigDecimal(10.5), new BigDecimal("92.5"), ProductGrade.TOP, LocalDateTime.now()
         );
 
         Page<CultivationHistoryResponse> lastPage = new PageImpl<>(List.of(historyResponse), PageRequest.of(2, 20), 50);
