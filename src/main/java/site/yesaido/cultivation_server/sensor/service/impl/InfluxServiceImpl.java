@@ -144,6 +144,10 @@ public class InfluxServiceImpl implements InfluxService {
                 .flatMap(table -> table.getRecords().stream())
                 .toList();
 
+        if (records.isEmpty()) {
+            return new SensorTrendPointListResponse(cultivationId, deviceEui, sensorType, normalizedUnit, List.of());
+        }
+
         long cultivationIdFromInfluxDB = toCultivationId(records);
 
         String deviceEuiFromDB = records.stream()

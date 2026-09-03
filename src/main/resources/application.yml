@@ -89,3 +89,4 @@ sensor-cache:
   query-overlap-seconds: ${SENSOR_CACHE_QUERY_OVERLAP_SECONDS:60}
   poll-initial-delay-ms: ${SENSOR_CACHE_POLL_INITIAL_DELAY_MS:10000}
   lock-lease-seconds: ${SENSOR_CACHE_LOCK_LEASE_SECONDS:600}
+  reconciliation-interval-seconds: ${SENSOR_CACHE_RECONCILIATION_INTERVAL_SECONDS:300}

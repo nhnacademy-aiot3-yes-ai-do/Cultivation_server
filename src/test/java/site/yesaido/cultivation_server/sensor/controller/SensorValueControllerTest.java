@@ -66,7 +66,7 @@ class SensorValueControllerTest {
     }
 
     @Test
-    @DisplayName("최신값 Redis cache hit이면 InfluxDB를 호출하지 않는다")
+    @DisplayName("최신값 조회 시 Redis 값을 InfluxDB 결과와 병합한다")
     void getLatestUsesFreshRedisCache() throws Exception {
         LatestSensorValueResponse point = new LatestSensorValueResponse(
                 CULTIVATION_ID, "TEMPERATURE", "C", new BigDecimal("22.5"), Instant.now(),
@@ -79,7 +79,7 @@ class SensorValueControllerTest {
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk());
 
-        then(influxService).shouldHaveNoInteractions();
+        then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
     }
 
     @Test
@@ -102,7 +102,7 @@ class SensorValueControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
 
-        then(influxService).shouldHaveNoInteractions();
+        then(influxService).should().findLatestByCultivationId(CULTIVATION_ID);
     }
 
     @Test

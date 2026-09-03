@@ -44,6 +44,7 @@ class SensorCacheSchedulerTest {
         ReflectionTestUtils.setField(scheduler, "ttlGraceSeconds", 3L);
         ReflectionTestUtils.setField(scheduler, "queryOverlapSeconds", 60L);
         ReflectionTestUtils.setField(scheduler, "lockLeaseSeconds", 600L);
+        ReflectionTestUtils.setField(scheduler, "reconciliationIntervalSeconds", 300L);
         when(redis.opsForValue()).thenReturn(valueOperations);
         lenient().when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
     }
@@ -63,6 +64,7 @@ class SensorCacheSchedulerTest {
         scheduler.poll();
 
         verify(influxService, times(2)).findValuesByCultivationId(eq(2L), any(Duration.class));
+        verify(influxService, times(2)).findValuesByCultivationId(eq(1L), any(Duration.class));
         verify(cacheService, times(2)).append(eq(1L), eq(List.of()), any(Duration.class), any(Duration.class));
     }
 
@@ -87,6 +89,7 @@ class SensorCacheSchedulerTest {
                 .thenReturn(List.of());
 
         ReflectionTestUtils.setField(scheduler, "warmedUp", true);
+        ReflectionTestUtils.setField(scheduler, "lastReconciliationAt", Instant.now());
         scheduler.poll();
 
         verify(influxService).findValuesByCultivationId(eq(1L), argThat(duration ->
@@ -104,6 +107,7 @@ class SensorCacheSchedulerTest {
                 .thenReturn(List.of());
 
         ReflectionTestUtils.setField(scheduler, "warmedUp", true);
+        ReflectionTestUtils.setField(scheduler, "lastReconciliationAt", Instant.now());
         scheduler.poll();
 
         verify(influxService).findValuesByCultivationId(eq(1L), eq(Duration.ofSeconds(60)));

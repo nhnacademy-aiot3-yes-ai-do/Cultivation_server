@@ -42,22 +42,39 @@ public class SensorCacheScheduler {
     private long queryOverlapSeconds;
     @Value("${sensor-cache.lock-lease-seconds:600}")
     private long lockLeaseSeconds;
+    @Value("${sensor-cache.reconciliation-interval-seconds:300}")
+    private long reconciliationIntervalSeconds;
     private final AtomicBoolean running = new AtomicBoolean();
     private volatile boolean warmedUp;
+    private volatile Instant lastReconciliationAt;
 
     @EventListener(ApplicationReadyEvent.class)
     public void warmUp() {
-        warmedUp = refresh(Duration.ofHours(historyHours), true);
+        boolean success = refresh(Duration.ofHours(historyHours), true);
+        if (success) {
+            lastReconciliationAt = Instant.now();
+        }
+        warmedUp = success;
     }
 
     @Scheduled(fixedDelayString = "${sensor-cache.poll-interval-ms:2000}",
             initialDelayString = "${sensor-cache.poll-initial-delay-ms:10000}")
     public void poll() {
         if (!warmedUp) {
-            warmedUp = refresh(Duration.ofHours(historyHours), true);
+            boolean success = refresh(Duration.ofHours(historyHours), true);
+            if (success) {
+                lastReconciliationAt = Instant.now();
+            }
+            warmedUp = success;
             return;
         }
-        refresh(Duration.ofSeconds(queryOverlapSeconds), false);
+        Instant now = Instant.now();
+        boolean reconciliation = lastReconciliationAt == null
+                || Duration.between(lastReconciliationAt, now).getSeconds() >= reconciliationIntervalSeconds;
+        if (reconciliation) {
+            lastReconciliationAt = now;
+        }
+        refresh(reconciliation ? Duration.ofHours(historyHours) : Duration.ofSeconds(queryOverlapSeconds), reconciliation);
     }
 
     private boolean refresh(Duration range, boolean warmup) {
@@ -85,9 +102,10 @@ public class SensorCacheScheduler {
                     .map(CultivationSensor::getCultivationId)
                     .distinct()
                     .toList();
-            success = cultivationIds.stream()
+            List<Boolean> results = cultivationIds.stream()
                     .map(cultivationId -> refreshCultivation(cultivationId, range, warmup))
-                    .allMatch(Boolean.TRUE::equals);
+                    .toList();
+            success = results.stream().allMatch(Boolean.TRUE::equals);
         } catch (Exception e) {
             log.warn("센서 Redis 캐시 갱신 실패: 원본 InfluxDB 조회는 유지됩니다.");
         } finally {
@@ -108,6 +126,9 @@ public class SensorCacheScheduler {
             Instant now = Instant.now();
             String watermarkKey = WATERMARK_PREFIX + cultivationId;
             Duration queryRange = warmup ? range : queryRange(watermarkKey, now, range);
+            queryRange = queryRange.compareTo(Duration.ofHours(historyHours)) > 0
+                    ? Duration.ofHours(historyHours)
+                    : queryRange;
             var points = influxService.findValuesByCultivationId(cultivationId, queryRange);
             cacheService.append(cultivationId, points,
                     Duration.ofHours(historyHours), Duration.ofSeconds(ttlGraceSeconds));
