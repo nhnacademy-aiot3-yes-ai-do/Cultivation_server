@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Executors;
@@ -79,8 +80,8 @@ public class SensorCacheScheduler {
             });
     private volatile boolean warmedUp;
     private volatile Instant lastReconciliationAt;
-    private volatile List<Long> cachedCultivationIds = List.of();
-    private volatile Instant cultivationIdsCachedAt;
+    private final AtomicReference<List<Long>> cachedCultivationIds = new AtomicReference<>(List.of());
+    private final AtomicReference<Instant> cultivationIdsCachedAt = new AtomicReference<>();
 
     @EventListener(ApplicationReadyEvent.class)
     public void warmUp() {
@@ -216,18 +217,18 @@ public class SensorCacheScheduler {
 
     private List<Long> cultivationIdsSnapshot() {
         Instant now = Instant.now();
-        Instant cachedAt = cultivationIdsCachedAt;
+        Instant cachedAt = cultivationIdsCachedAt.get();
         if (cachedAt != null
                 && Duration.between(cachedAt, now).getSeconds() < Math.max(1, sensorSnapshotCacheSeconds)) {
-            return cachedCultivationIds;
+            return cachedCultivationIds.get();
         }
         Set<CultivationStatus> statuses = Set.of(CultivationStatus.CREATED, CultivationStatus.RUNNING);
         List<Long> ids = sensorRepository.findAllForDataGeneratorSnapshot(statuses).stream()
                 .map(CultivationSensor::getCultivationId)
                 .distinct()
                 .toList();
-        cachedCultivationIds = ids;
-        cultivationIdsCachedAt = now;
+        cachedCultivationIds.set(List.copyOf(ids));
+        cultivationIdsCachedAt.set(now);
         return ids;
     }
 
