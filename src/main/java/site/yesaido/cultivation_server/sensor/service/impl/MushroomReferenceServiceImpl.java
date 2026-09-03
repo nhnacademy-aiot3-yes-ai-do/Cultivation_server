@@ -119,10 +119,10 @@ public class MushroomReferenceServiceImpl implements MushroomReferenceService {
             MushroomReferenceThreshold threshold = updateThresholds.get(id);
             MushroomReferenceThresholdRequest request = thresholdUpdateRequests.get(id);
 
-            if(!request.thresholdMin().equals(threshold.getThresholdMin())) {
+            if (request.thresholdMin().compareTo(threshold.getThresholdMin()) != 0) {
                 threshold.setThresholdMin(request.thresholdMin());
             }
-            if(!request.thresholdMax().equals(threshold.getThresholdMax())) {
+            if (request.thresholdMax().compareTo(threshold.getThresholdMax()) != 0) {
                 threshold.setThresholdMax(request.thresholdMax());
             }
             if(!request.sensorTypeId().equals(threshold.getSensorType().getId())) {
