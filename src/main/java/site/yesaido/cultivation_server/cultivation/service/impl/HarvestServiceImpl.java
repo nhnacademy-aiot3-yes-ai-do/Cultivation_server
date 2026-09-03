@@ -1,5 +1,8 @@
 package site.yesaido.cultivation_server.cultivation.service.impl;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,8 @@ import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedEvent;
 import site.yesaido.cultivation_server.rabbitmq.event.HarvestCompletedPayload;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -121,8 +126,24 @@ public class HarvestServiceImpl implements HarvestService {
     private ProductScoreUpdateResponse applyProductScore(Long cultivationId, ProductScoreUpdateRequest request) {
         Harvest harvest = harvestRepository.findByCultivationId(cultivationId)
                 .orElseThrow(() -> new HarvestNotFoundException(cultivationId));
-        ProductGrade grade = ProductGrade.fromScore(request.productScore());
+
+        Long mushroomId = harvest.getCultivation().getMushroomReference().getId();
+        ProductGrade grade = calculateRelativeGrade(mushroomId, harvest.getId(), request.productScore());
         harvest.updateProductGrade(request.productScore(), grade);
         return new ProductScoreUpdateResponse(harvest.getId(), harvest.getProductScore(), harvest.getProductGrade());
+    }
+
+    // 같은 버섯 종류 내에서, 나보다 높은 점수의 비율(상위 %)로 상대 등급을 매긴다.
+    private ProductGrade calculateRelativeGrade(Long mushroomId, Long harvestId, BigDecimal productScore) {
+        long othersTotal = harvestRepository.countByMushroomIdAndProductScoreIsNotNullAndIdNot(mushroomId, harvestId);
+        long totalCount = othersTotal + 1; // 이번 건 자신도 모집단에 포함
+
+        long higherThanMine = harvestRepository.countByMushroomIdAndProductScoreGreaterThanAndIdNot(
+                mushroomId, productScore, harvestId);
+
+        BigDecimal topPercentile = BigDecimal.valueOf(higherThanMine)
+                .divide(BigDecimal.valueOf(totalCount), 4, RoundingMode.HALF_UP);
+
+        return ProductGrade.fromPercentile(topPercentile);
     }
 }
