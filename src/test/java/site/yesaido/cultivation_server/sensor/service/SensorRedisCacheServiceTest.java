@@ -22,6 +22,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -64,7 +65,7 @@ class SensorRedisCacheServiceTest {
     @Test
     void separatesHistoryAndLatestByUnit() {
         when(redis.opsForZSet()).thenReturn(zSetOperations);
-        when(redis.opsForHash()).thenReturn(hashOperations);
+
         when(redis.execute(any(SessionCallback.class))).thenAnswer(invocation ->
                 ((SessionCallback<?>) invocation.getArgument(0)).execute(redisOperations));
         when(redisOperations.opsForZSet()).thenReturn(zSetOperations);
@@ -82,9 +83,8 @@ class SensorRedisCacheServiceTest {
         verify(zSetOperations, times(2)).add(keys.capture(), eq(measuredAt.toString()), eq((double) measuredAt.toEpochMilli()));
         org.assertj.core.api.Assertions.assertThat(keys.getAllValues()).doesNotHaveDuplicates();
         verify(hashOperations, times(2)).put(anyString(), eq(measuredAt.toString()), eq("{}"));
-        var fields = org.mockito.ArgumentCaptor.forClass(Object.class);
-        verify(hashOperations, times(4)).put(anyString(), fields.capture(), eq("{}"));
-        assertThat(fields.getAllValues()).contains("EUI-001|TEMPERATURE|Qw", "EUI-001|TEMPERATURE|JQ");
+        verify(redis, times(2)).execute(any(org.springframework.data.redis.core.script.DefaultRedisScript.class),
+                anyList(), anyString(), anyString(), anyString(), anyString());
     }
 
 

@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.RedisOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
@@ -33,13 +34,26 @@ public class SensorRedisCacheService {
     private static final String HISTORY_PREFIX = "cultivation:sensor:history:v2:";
     private static final String HISTORY_VALUES_SUFFIX = ":values";
     private static final String LATEST_PREFIX = "cultivation:sensor:latest:v2:";
+    private static final String LATEST_TIMESTAMPS_PREFIX = "cultivation:sensor:latest-timestamps:v2:";
+    private static final String UPDATE_LATEST_SCRIPT = """
+            local existing = redis.call('HGET', KEYS[2], ARGV[1])
+            local should_update = existing == false
+            if existing ~= false then
+                should_update = tonumber(existing) == nil or tonumber(existing) < tonumber(ARGV[3])
+            end
+            if should_update then
+                redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+                redis.call('HSET', KEYS[2], ARGV[1], ARGV[3])
+            end
+            redis.call('EXPIRE', KEYS[1], ARGV[4])
+            redis.call('EXPIRE', KEYS[2], ARGV[4])
+            return should_update and 1 or 0
+            """;
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
 
     public void append(long cultivationId, List<LatestSensorValueResponse> points, Duration history, Duration ttlGrace) {
-        String latestKey = LATEST_PREFIX + cultivationId;
-        Map<String, String> latestValues = new HashMap<>();
         Map<String, Set<String>> expiredMembers = new HashMap<>();
         double minimumScore = Instant.now().minus(history).toEpochMilli();
         for (LatestSensorValueResponse point : points) {
@@ -47,11 +61,6 @@ public class SensorRedisCacheService {
                 continue;
             }
             String historyKey = historyKey(cultivationId, point.deviceEui(), point.sensorType(), point.unit());
-            String field = latestField(point);
-            latestValues.computeIfAbsent(field, ignored -> {
-                Object value = redis.opsForHash().get(latestKey, field);
-                return value instanceof String existing ? existing : null;
-            });
             expiredMembers.computeIfAbsent(historyKey, ignored -> {
                 Set<String> values = redis.opsForZSet().rangeByScore(historyKey, 0, minimumScore);
                 return values == null ? Set.of() : values;
@@ -62,9 +71,10 @@ public class SensorRedisCacheService {
             public List<Object> execute(RedisOperations operations) {
                 operations.multi();
                 try {
-                    appendWithinTransaction(operations, cultivationId, points, history, ttlGrace,
-                            latestValues, expiredMembers);
-                    return operations.exec();
+                    appendWithinTransaction(operations, cultivationId, points, history, ttlGrace, expiredMembers);
+                    List<Object> result = operations.exec();
+                    updateLatestValues(cultivationId, points, history.plus(ttlGrace));
+                    return result;
                 } catch (RuntimeException e) {
                     operations.discard();
                     throw e;
@@ -78,12 +88,9 @@ public class SensorRedisCacheService {
                                          List<LatestSensorValueResponse> points,
                                          Duration history,
                                          Duration ttlGrace,
-                                         Map<String, String> latestValues,
                                          Map<String, Set<String>> expiredMembers) {
         Instant now = Instant.now();
         double minimumScore = now.minus(history).toEpochMilli();
-        String latestKey = LATEST_PREFIX + cultivationId;
-
         for (LatestSensorValueResponse point : points) {
             if (point.deviceEui() == null || point.sensorType() == null || point.measuredAt() == null) {
                 continue;
@@ -102,15 +109,21 @@ public class SensorRedisCacheService {
             operations.expire(historyKey, history.plus(ttlGrace));
             operations.expire(valuesKey, history.plus(ttlGrace));
 
-            String field = latestField(point);
-            String existing = latestValues.get(field);
-            if (existing == null || isNewer(point, existing)) {
-                operations.opsForHash().put(latestKey, field, serialized);
-                latestValues.put(field, serialized);
-            }
         }
-        if (!points.isEmpty()) {
-            operations.expire(latestKey, history.plus(ttlGrace));
+    }
+
+    private void updateLatestValues(long cultivationId, List<LatestSensorValueResponse> points, Duration ttl) {
+        String latestKey = LATEST_PREFIX + cultivationId;
+        String timestampKey = LATEST_TIMESTAMPS_PREFIX + cultivationId;
+        long ttlSeconds = Math.max(1, ttl.toSeconds());
+        for (LatestSensorValueResponse point : points) {
+            if (point.deviceEui() == null || point.sensorType() == null || point.measuredAt() == null) continue;
+            String serialized = serialize(point);
+            redis.execute(
+                    new DefaultRedisScript<>(UPDATE_LATEST_SCRIPT, Long.class),
+                    List.of(latestKey, timestampKey),
+                    latestField(point), serialized, String.valueOf(point.measuredAt().toEpochMilli()), String.valueOf(ttlSeconds)
+            );
         }
     }
 
@@ -195,10 +208,6 @@ public class SensorRedisCacheService {
     }
 
 
-    private boolean isNewer(LatestSensorValueResponse point, String existing) {
-        LatestSensorValueResponse cached = deserialize(existing);
-        return cached == null || point.measuredAt().isAfter(cached.measuredAt());
-    }
 
     private String historyKey(long cultivationId, String deviceEui, String sensorType, String unit) {
         return HISTORY_PREFIX + cultivationId + ":" + deviceEui + ":" + sensorType + ":" + encodeUnit(unit);

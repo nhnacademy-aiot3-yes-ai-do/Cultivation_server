@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -32,7 +33,15 @@ public class SensorCacheScheduler {
 
     private static final String LOCK_KEY = "cultivation:sensor:cache:refresh-lock";
     private static final String WATERMARK_PREFIX = "cultivation:sensor:cache:watermark:";
-    private static final String UNLOCK_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+    private static final DefaultRedisScript<Long> UNLOCK_SCRIPT = redisScript("scripts/redis/unlock.lua");
+    private static final DefaultRedisScript<Long> RENEW_SCRIPT = redisScript("scripts/redis/renew.lua");
+
+    private static DefaultRedisScript<Long> redisScript(String location) {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource(location));
+        script.setResultType(Long.class);
+        return script;
+    }
 
     @Value("${sensor-cache.history-hours:12}")
     private long historyHours;
@@ -102,15 +111,17 @@ public class SensorCacheScheduler {
                     .map(CultivationSensor::getCultivationId)
                     .distinct()
                     .toList();
-            List<Boolean> results = cultivationIds.stream()
-                    .map(cultivationId -> refreshCultivation(cultivationId, range, warmup))
-                    .toList();
-            success = results.stream().allMatch(Boolean.TRUE::equals);
+            success = true;
+            for (Long cultivationId : cultivationIds) {
+                if (!renewLock(token, lease) || !refreshCultivation(cultivationId, range, warmup)) {
+                    success = false;
+                }
+            }
         } catch (Exception e) {
             log.warn("센서 Redis 캐시 갱신 실패: 원본 InfluxDB 조회는 유지됩니다.");
         } finally {
             try {
-                redis.execute(new DefaultRedisScript<>(UNLOCK_SCRIPT, Long.class),
+                redis.execute(UNLOCK_SCRIPT,
                         List.of(LOCK_KEY), token);
             } catch (RuntimeException e) {
                 log.warn("센서 캐시 분산락 해제 실패: lease 만료를 기다립니다.");
@@ -121,11 +132,21 @@ public class SensorCacheScheduler {
         return success;
     }
 
+    private boolean renewLock(String token, Duration lease) {
+        try {
+            Long renewed = redis.execute(RENEW_SCRIPT,
+                    List.of(LOCK_KEY), token, String.valueOf(lease.toSeconds()));
+            return Long.valueOf(1L).equals(renewed);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     private boolean refreshCultivation(long cultivationId, Duration range, boolean warmup) {
         try {
             Instant now = Instant.now();
             String watermarkKey = WATERMARK_PREFIX + cultivationId;
-            Duration queryRange = warmup ? range : queryRange(watermarkKey, now, range);
+            Duration queryRange = warmup ? range : queryRange(watermarkKey, now, Duration.ofHours(historyHours));
             queryRange = queryRange.compareTo(Duration.ofHours(historyHours)) > 0
                     ? Duration.ofHours(historyHours)
                     : queryRange;

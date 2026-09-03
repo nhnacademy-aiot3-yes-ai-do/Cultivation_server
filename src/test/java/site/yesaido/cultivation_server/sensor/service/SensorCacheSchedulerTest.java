@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.test.util.ReflectionTestUtils;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
@@ -47,6 +48,8 @@ class SensorCacheSchedulerTest {
         ReflectionTestUtils.setField(scheduler, "reconciliationIntervalSeconds", 300L);
         when(redis.opsForValue()).thenReturn(valueOperations);
         lenient().when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
+        lenient().when(redis.execute(any(DefaultRedisScript.class), anyList(), anyString(), anyString()))
+                .thenReturn(1L);
     }
 
     @Test
@@ -110,7 +113,7 @@ class SensorCacheSchedulerTest {
         ReflectionTestUtils.setField(scheduler, "lastReconciliationAt", Instant.now());
         scheduler.poll();
 
-        verify(influxService).findValuesByCultivationId(eq(1L), eq(Duration.ofSeconds(60)));
+        verify(influxService).findValuesByCultivationId(eq(1L), eq(Duration.ofHours(12)));
     }
 
     private CultivationSensor sensor(long cultivationId) {
