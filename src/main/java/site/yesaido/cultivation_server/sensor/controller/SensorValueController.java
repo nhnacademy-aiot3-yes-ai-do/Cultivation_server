@@ -2,16 +2,18 @@ package site.yesaido.cultivation_server.sensor.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageListResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 import site.yesaido.cultivation_server.sensor.service.SensorRedisCacheService;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -55,32 +57,13 @@ public class SensorValueController {
         try {
             var cached = sensorRedisCacheService.findLatest(cultivationId,
                     java.time.Duration.ofSeconds(freshnessSeconds));
-            LatestSensorValueListResponse source = influxService.findLatestByCultivationId(cultivationId);
-            response = mergeLatestValues(source, cached);
+            response = new LatestSensorValueListResponse(cached);
         } catch (RuntimeException e) {
-            response = influxService.findLatestByCultivationId(cultivationId);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new LatestSensorValueListResponse(List.of()));
         }
         return ResponseEntity.ok(response);
     }
-
-    private LatestSensorValueListResponse mergeLatestValues(
-            LatestSensorValueListResponse source,
-            List<LatestSensorValueResponse> cached
-    ) {
-        Map<String, LatestSensorValueResponse> merged = new LinkedHashMap<>();
-        if (source != null && source.latestSensorValueResponses() != null) {
-            source.latestSensorValueResponses().forEach(value -> merged.put(sensorKey(value), value));
-        }
-        if (cached != null) {
-            cached.forEach(value -> merged.put(sensorKey(value), value));
-        }
-        return new LatestSensorValueListResponse(List.copyOf(merged.values()));
-    }
-
-    private String sensorKey(LatestSensorValueResponse value) {
-        return value.deviceEui() + "|" + value.sensorType() + "|" + value.unit();
-    }
-
 
     @GetMapping("/average")
     public ResponseEntity<SensorTypeAverageListResponse> getAverage(

@@ -13,10 +13,12 @@ public record CultivationMetadataListResponse(
 
     public record CultivationMetadataListItemResponse(
             CultivationSummaryResponse cultivation,
-            List<LatestSensorValueResponse> latestSensorValues
+            List<LatestSensorValueResponse> latestSensorValues,
+            List<LatestSensorValueResponse> sensorTrend1h
     ) {
         public CultivationMetadataListItemResponse {
             latestSensorValues = latestSensorValues == null ? List.of() : List.copyOf(latestSensorValues);
+            sensorTrend1h = sensorTrend1h == null ? List.of() : List.copyOf(sensorTrend1h);
         }
     }
 }

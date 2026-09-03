@@ -32,17 +32,36 @@ public class InfluxServiceImpl implements InfluxService {
     private static final String FIELD_UNIT = "unit";
 
     @Override
-    public List<LatestSensorValueResponse> findValuesByCultivationId(long cultivationId, java.time.Duration range) {
+    public List<LatestSensorValueResponse> findAveragedValuesByCultivationId(long cultivationId, java.time.Duration range) {
         long seconds = Math.max(1, range.toSeconds());
-        String query = baseQuery(cultivationId, " |> range(start: -" + seconds + "s)")
+        List<LatestSensorValueResponse> points = new java.util.ArrayList<>();
+        if (seconds <= 60) {
+            points.addAll(queryAveragedValues(cultivationId, "-" + seconds + "s", null, "3s"));
+        } else if (seconds <= 300) {
+            points.addAll(queryAveragedValues(cultivationId, "-1m", null, "3s"));
+            points.addAll(queryAveragedValues(cultivationId, "-" + seconds + "s", "-1m", "10s"));
+        } else {
+            points.addAll(queryAveragedValues(cultivationId, "-1m", null, "3s"));
+            points.addAll(queryAveragedValues(cultivationId, "-5m", "-1m", "10s"));
+            points.addAll(queryAveragedValues(cultivationId, "-" + Math.min(seconds, 3600) + "s", "-5m", "1m"));
+            if (seconds > 3600) {
+                points.addAll(queryAveragedValues(cultivationId, "-" + seconds + "s", "-1h", "5m"));
+            }
+        }
+        return points;
+    }
+
+    @Override
+    public List<LatestSensorValueResponse> findValuesByCultivationId(long cultivationId, java.time.Duration range) {
+        String query = baseQuery(cultivationId, " |> range(start: -" + Math.max(1, range.toSeconds()) + "s)")
                 + " |> filter(fn: (r) => exists r.deviceEui)"
                 + " |> sort(columns: [\"_time\"] )";
-
         return queryTablesSafely(query).stream()
                 .flatMap(table -> table.getRecords().stream())
                 .map(this::toLatestSensorValue)
                 .toList();
     }
+
 
     @Override
     public LatestSensorValueListResponse findLatestByCultivationId(long cultivationId) {
@@ -204,6 +223,26 @@ public class InfluxServiceImpl implements InfluxService {
                 .filter(Objects::nonNull).findFirst().orElse(null);
 
         return Long.parseLong(Objects.requireNonNull(cultivationIdFromInfluxDB));
+    }
+
+    private List<LatestSensorValueResponse> queryAveragedValues(
+            long cultivationId,
+            String start,
+            String stop,
+            String every
+    ) {
+        String range = stop == null
+                ? " |> range(start: " + start + ")"
+                : " |> range(start: " + start + ", stop: " + stop + ")";
+        String query = baseQuery(cultivationId, range)
+                + " |> filter(fn: (r) => exists r.deviceEui)"
+                + " |> group(columns: [\"deviceEui\", \"sensorType\", \"unit\"])"
+                + " |> aggregateWindow(every: " + every + ", fn: mean, createEmpty: false)"
+                + " |> sort(columns: [\"_time\"] )";
+        return queryTablesSafely(query).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .map(this::toLatestSensorValue)
+                .toList();
     }
 
     private SensorTypeAverageResponse toSensorTypeAverage(FluxRecord fluxRecord) {
