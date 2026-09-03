@@ -13,7 +13,7 @@ import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
-import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
+
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
@@ -173,33 +173,6 @@ public class CultivationServiceImpl implements CultivationService {
         cultivation.delete();
     }
 
-    // Helper Method
-    private CultivationSummaryResponse toSummary(Cultivation cultivation, int memberCount, String ownerNickname) {
-        return new CultivationSummaryResponse(
-                cultivation.getId(),
-                cultivation.getName(),
-                cultivation.getMushroomReference().getId(),
-                cultivation.getCultivationStatus(),
-                cultivation.getMode(),
-                memberCount,
-                ownerNickname,
-                cultivation.getCreatedAt());
-    }
-
-    private CultivationDetailResponse toDetail(Cultivation cultivation, MemberRole myRole) {
-        return new CultivationDetailResponse(
-                cultivation.getId(),
-                cultivation.getName(),
-                cultivation.getMushroomReference().getId(),
-                cultivation.getCultivationStatus(),
-                cultivation.getMode(),
-                myRole,
-                cultivation.getStartedAt(),
-                cultivation.getFinishedAt(),
-                cultivation.getCreatedAt(),
-                cultivation.getUpdatedAt()
-        );
-    }
 
     private CultivationDetailResponse toDetail(CultivationSummaryProjection projection) {
         return new CultivationDetailResponse(
