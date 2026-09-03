@@ -249,7 +249,7 @@ class SensorRedisCacheServiceTest {
     }
 
     @Test
-    void loadsRedisLuaScriptsFromClasspathResources() throws Exception {
+    void loadsRedisLuaScriptsFromClasspathResources() {
         DefaultRedisScript<Long> updateLatest = redisScript("scripts/redis/update-latest.lua");
         DefaultRedisScript<Long> renameCompaction = redisScript("scripts/redis/rename-compaction.lua");
 
