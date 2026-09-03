@@ -12,12 +12,15 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.Cult
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.QCultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.QCultivationMember;
 import site.yesaido.cultivation_server.cultivation.entity.harvest.QHarvest;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepositoryCustom;
+import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
@@ -82,5 +85,73 @@ public class CultivationRepositoryImpl implements CultivationRepositoryCustom {
                 .fetchOne();
 
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    @Override
+    public List<CultivationSummaryProjection> findSummaryProjectionsByMemberUserId(Long userId) {
+        QCultivation cultivation = QCultivation.cultivation;
+        QCultivationMember viewer = new QCultivationMember("viewer");
+        QCultivationMember allMember = new QCultivationMember("allMember");
+        QCultivationMember owner = new QCultivationMember("owner");
+
+        return queryFactory
+                .select(Projections.constructor(CultivationSummaryProjection.class,
+                        cultivation.id,
+                        cultivation.name,
+                        cultivation.mushroomReference.id,
+                        cultivation.cultivationStatus,
+                        cultivation.mode,
+                        allMember.id.countDistinct(),
+                        owner.userId,
+                        viewer.role,
+                        cultivation.startedAt,
+                        cultivation.finishedAt,
+                        cultivation.createdAt,
+                        cultivation.updatedAt))
+                .from(cultivation)
+                .join(viewer).on(viewer.cultivation.eq(cultivation))
+                .leftJoin(allMember).on(allMember.cultivation.eq(cultivation))
+                .leftJoin(owner).on(owner.cultivation.eq(cultivation).and(owner.role.eq(MemberRole.OWNER)))
+                .where(viewer.userId.eq(userId),
+                        cultivation.cultivationStatus.notIn(CultivationStatus.FINISHED, CultivationStatus.DELETED))
+                .groupBy(cultivation.id, cultivation.name, cultivation.mushroomReference, cultivation.cultivationStatus,
+                        cultivation.mode, owner.userId, viewer.role,
+                        cultivation.startedAt, cultivation.finishedAt, cultivation.createdAt, cultivation.updatedAt)
+                .orderBy(cultivation.createdAt.desc(), cultivation.id.desc())
+                .fetch();
+    }
+
+    @Override
+    public Optional<CultivationSummaryProjection> findDetailProjectionByUserIdAndCultivationId(Long userId, Long cultivationId) {
+        QCultivation cultivation = QCultivation.cultivation;
+        QCultivationMember viewer = new QCultivationMember("viewer");
+        QCultivationMember allMember = new QCultivationMember("allMember");
+        QCultivationMember owner = new QCultivationMember("owner");
+
+        CultivationSummaryProjection result = queryFactory
+                .select(Projections.constructor(CultivationSummaryProjection.class,
+                        cultivation.id,
+                        cultivation.name,
+                        cultivation.mushroomReference.id,
+                        cultivation.cultivationStatus,
+                        cultivation.mode,
+                        allMember.id.countDistinct(),
+                        owner.userId,
+                        viewer.role,
+                        cultivation.startedAt,
+                        cultivation.finishedAt,
+                        cultivation.createdAt,
+                        cultivation.updatedAt))
+                .from(cultivation)
+                .leftJoin(viewer).on(viewer.cultivation.eq(cultivation).and(viewer.userId.eq(userId)))
+                .leftJoin(allMember).on(allMember.cultivation.eq(cultivation))
+                .leftJoin(owner).on(owner.cultivation.eq(cultivation).and(owner.role.eq(MemberRole.OWNER)))
+                .where(cultivation.id.eq(cultivationId))
+                .groupBy(cultivation.id, cultivation.name, cultivation.mushroomReference, cultivation.cultivationStatus,
+                        cultivation.mode, owner.userId, viewer.role,
+                        cultivation.startedAt, cultivation.finishedAt, cultivation.createdAt, cultivation.updatedAt)
+                .fetchOne();
+
+        return Optional.ofNullable(result);
     }
 }

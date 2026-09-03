@@ -18,10 +18,10 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivatio
 import site.yesaido.cultivation_server.cultivation.entity.cultivationmember.MemberRole;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
-import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationMemberServiceImpl;
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationServiceImpl;
+import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
 
@@ -107,12 +107,12 @@ class CultivationServiceTest {
 
         CultivationSummaryProjection projection1 = mock(CultivationSummaryProjection.class);
         CultivationSummaryProjection projection2 = mock(CultivationSummaryProjection.class);
-        when(projection1.getCultivationId()).thenReturn(1L);
-        when(projection1.getName()).thenReturn("농장1");
-        when(projection1.getMemberCount()).thenReturn(1L);
-        when(projection2.getCultivationId()).thenReturn(2L);
-        when(projection2.getName()).thenReturn("농장2");
-        when(projection2.getMemberCount()).thenReturn(1L);
+        when(projection1.cultivationId()).thenReturn(1L);
+        when(projection1.name()).thenReturn("농장1");
+        when(projection1.memberCount()).thenReturn(1L);
+        when(projection2.cultivationId()).thenReturn(2L);
+        when(projection2.name()).thenReturn("농장2");
+        when(projection2.memberCount()).thenReturn(1L);
         when(cultivationRepository.findSummaryProjectionsByMemberUserId(userId))
                 .thenReturn(List.of(projection1, projection2));
 
@@ -135,9 +135,9 @@ class CultivationServiceTest {
                 .build();
 
         CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
-        when(projection.getCultivationId()).thenReturn(cultivationId);
-        when(projection.getName()).thenReturn(cultivation.getName());
-        when(projection.getMyRole()).thenReturn(MemberRole.OWNER);
+        when(projection.cultivationId()).thenReturn(cultivationId);
+        when(projection.name()).thenReturn(cultivation.getName());
+        when(projection.myRole()).thenReturn(MemberRole.OWNER);
         when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(userId, cultivationId))
                 .thenReturn(Optional.of(projection));
 
@@ -153,7 +153,7 @@ class CultivationServiceTest {
         Long adminId = 999L;
         Long cultivationId = 100L;
         CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
-        when(projection.getMyRole()).thenReturn(MemberRole.MEMBER);
+        when(projection.myRole()).thenReturn(MemberRole.MEMBER);
         when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(adminId, cultivationId))
                 .thenReturn(Optional.of(projection));
 

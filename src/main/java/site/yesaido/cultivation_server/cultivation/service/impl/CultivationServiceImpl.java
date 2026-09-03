@@ -13,7 +13,6 @@ import site.yesaido.cultivation_server.cultivation.dto.user.UserSummaryResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationMode;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
-
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
@@ -74,21 +73,21 @@ public class CultivationServiceImpl implements CultivationService {
 
         Map<Long, String> nicknameByUserId = resolveOwnerNicknames(
                 projections.stream()
-                        .map(CultivationSummaryProjection::getOwnerUserId)
+                        .map(CultivationSummaryProjection::ownerUserId)
                         .filter(java.util.Objects::nonNull)
                         .toList()
         );
 
         List<CultivationSummaryResponse> list = projections.stream()
                 .map(projection -> new CultivationSummaryResponse(
-                        projection.getCultivationId(),
-                        projection.getName(),
-                        projection.getMushroomId(),
-                        projection.getStatus(),
-                        projection.getMode(),
-                        projection.getMemberCount() == null ? 0 : projection.getMemberCount().intValue(),
-                        nicknameByUserId.get(projection.getOwnerUserId()),
-                        projection.getCreatedAt()
+                        projection.cultivationId(),
+                        projection.name(),
+                        projection.mushroomId(),
+                        projection.status(),
+                        projection.mode(),
+                        projection.memberCount() == null ? 0 : projection.memberCount().intValue(),
+                        nicknameByUserId.get(projection.ownerUserId()),
+                        projection.createdAt()
                 ))
                 .toList();
 
@@ -100,7 +99,7 @@ public class CultivationServiceImpl implements CultivationService {
         CultivationSummaryProjection projection = cultivationRepository
                 .findDetailProjectionByUserIdAndCultivationId(userId, cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-        if (projection.getMyRole() == null) {
+        if (projection.myRole() == null) {
             throw new CultivationAccessDeniedException(cultivationId);
         }
         return toDetail(projection);
@@ -176,16 +175,16 @@ public class CultivationServiceImpl implements CultivationService {
 
     private CultivationDetailResponse toDetail(CultivationSummaryProjection projection) {
         return new CultivationDetailResponse(
-                projection.getCultivationId(),
-                projection.getName(),
-                projection.getMushroomId(),
-                projection.getStatus(),
-                projection.getMode(),
-                projection.getMyRole(),
-                projection.getStartedAt(),
-                projection.getFinishedAt(),
-                projection.getCreatedAt(),
-                projection.getUpdatedAt()
+                projection.cultivationId(),
+                projection.name(),
+                projection.mushroomId(),
+                projection.status(),
+                projection.mode(),
+                projection.myRole(),
+                projection.startedAt(),
+                projection.finishedAt(),
+                projection.createdAt(),
+                projection.updatedAt()
         );
     }
 
