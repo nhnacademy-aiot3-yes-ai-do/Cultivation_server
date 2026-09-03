@@ -29,5 +29,5 @@ public interface SensorTypeRepository extends JpaRepository<SensorType, Long> {
 
     SensorType findSensorTypeById(Long id);
 
-    Optional<SensorType> findByType(String type);
+    Optional<SensorType> findByTypeAndValueUnit(String type, String valueUnit);
 }

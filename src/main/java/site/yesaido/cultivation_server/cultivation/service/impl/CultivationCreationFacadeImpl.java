@@ -11,15 +11,15 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.rabbitmq.event.ThresholdInfoEvent;
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
+import site.yesaido.cultivation_server.sensor.service.EnvironmentSettingPreparationService;
 import site.yesaido.cultivation_server.sensor.service.EnvironmentSettingService;
 import site.yesaido.cultivation_server.sensor.service.SensorTypeService;
+import site.yesaido.cultivation_server.sensor.service.model.PreparedEnvironmentSettings;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,13 +29,20 @@ public class CultivationCreationFacadeImpl implements CultivationCreationFacade 
     private final SensorTypeService sensorTypeService;
     private final EnvironmentSettingService environmentSettingService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EnvironmentSettingPreparationService environmentSettingPreparationService;
 
     @Override
     @Transactional
     public CultivationCreateResponse create(Long userId, CultivationCreateRequest request) {
-        List<EnvironmentSettingRequest> settings = request.environmentSettingRequests();
+        PreparedEnvironmentSettings prepared =
+                environmentSettingPreparationService.prepare(
+                        request.environmentSettingRequests()
+                );
+
+        List<EnvironmentSettingRequest> settings = prepared.requests();
+
         // 요청한 각 임계값 센서의 고유번호별 센서타입 매칭
-        Map<Long, SensorType> sensorTypeMap = toMapSensorType(settings);
+        Map<Long, SensorType> sensorTypeMap = prepared.sensorTypeMap();
 
         CultivationCreateResponse cultivationResponse = cultivationService.create(request, userId);
 
@@ -56,19 +63,5 @@ public class CultivationCreationFacadeImpl implements CultivationCreationFacade 
         eventPublisher.publishEvent(thresholdEvent);
 
         return cultivationResponse;
-    }
-
-    private Map<Long, SensorType> toMapSensorType(List<EnvironmentSettingRequest> settings) {
-        List<Long> sensorTypeIds = settings.stream()
-                .map(EnvironmentSettingRequest::sensorTypeId)
-                .toList();
-
-        List<SensorType> sensorTypes = sensorTypeService.getSensorTypeList(sensorTypeIds);
-
-        return sensorTypes.stream()
-                .collect(Collectors.toMap(
-                        SensorType::getId,
-                        Function.identity()
-                ));
     }
 }

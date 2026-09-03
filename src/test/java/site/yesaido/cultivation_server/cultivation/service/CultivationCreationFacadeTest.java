@@ -20,8 +20,10 @@ import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequ
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.exception.InvalidThresholdRangeException;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeNotFoundException;
+import site.yesaido.cultivation_server.sensor.service.EnvironmentSettingPreparationService;
 import site.yesaido.cultivation_server.sensor.service.EnvironmentSettingService;
 import site.yesaido.cultivation_server.sensor.service.SensorTypeService;
+import site.yesaido.cultivation_server.sensor.service.model.PreparedEnvironmentSettings;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,6 +47,9 @@ class CultivationCreationFacadeTest {
 
     @Mock
     EnvironmentSettingService environmentSettingService;
+
+    @Mock
+    EnvironmentSettingPreparationService environmentSettingPreparationService;
 
     @Mock
     ApplicationEventPublisher eventPublisher;
@@ -74,8 +79,22 @@ class CultivationCreationFacadeTest {
                             BigDecimal.valueOf(80)
                     );
 
+            EnvironmentSettingRequest fahrenheitSetting =
+                    new EnvironmentSettingRequest(
+                            11L,
+                            new BigDecimal("64.4000"),
+                            new BigDecimal("75.2000")
+                    );
+
             List<EnvironmentSettingRequest> settings =
                     List.of(temperatureSetting, humiditySetting);
+
+            List<EnvironmentSettingRequest> preparedSettings =
+                    List.of(
+                            temperatureSetting,
+                            fahrenheitSetting,
+                            humiditySetting
+                    );
 
             CultivationCreateRequest request =
                     new CultivationCreateRequest(
@@ -92,17 +111,25 @@ class CultivationCreationFacadeTest {
                     );
 
             SensorType temperature =
-                    sensorType(10L, "TEMPERATURE", "C");
+                    sensorType(10L, "TEMPERATURE", "°C");
+
+            SensorType fahrenheit =
+                    sensorType(11L, "TEMPERATURE", "°F");
 
             SensorType humidity =
                     sensorType(20L, "HUMIDITY", "%");
 
-            List<Long> sensorTypeIds = List.of(10L, 20L);
-            List<SensorType> sensorTypes =
-                    List.of(temperature, humidity);
+            Map<Long, SensorType> preparedTypeMap = Map.of(
+                    10L, temperature,
+                    11L, fahrenheit,
+                    20L, humidity
+            );
 
-            when(sensorTypeService.getSensorTypeList(sensorTypeIds))
-                    .thenReturn(sensorTypes);
+            when(environmentSettingPreparationService.prepare(settings))
+                    .thenReturn(new PreparedEnvironmentSettings(
+                            preparedSettings,
+                            preparedTypeMap
+                    ));
 
             when(cultivationService.create(request, USER_ID))
                     .thenReturn(expectedResponse);
@@ -121,14 +148,14 @@ class CultivationCreationFacadeTest {
                     ArgumentCaptor.forClass(ThresholdInfoEvent.class);
 
             InOrder inOrder = inOrder(
-                    sensorTypeService,
+                    environmentSettingPreparationService,
                     cultivationService,
                     environmentSettingService,
                     eventPublisher
             );
 
-            inOrder.verify(sensorTypeService)
-                    .getSensorTypeList(sensorTypeIds);
+            inOrder.verify(environmentSettingPreparationService)
+                    .prepare(settings);
 
             inOrder.verify(cultivationService)
                     .create(request, USER_ID);
@@ -136,7 +163,7 @@ class CultivationCreationFacadeTest {
             inOrder.verify(environmentSettingService)
                     .apply(
                             eq(CULTIVATION_ID),
-                            eq(settings),
+                            eq(preparedSettings),
                             mapCaptor.capture()
                     );
 
@@ -145,6 +172,7 @@ class CultivationCreationFacadeTest {
 
             assertThat(mapCaptor.getValue())
                     .containsEntry(10L, temperature)
+                    .containsEntry(11L, fahrenheit)
                     .containsEntry(20L, humidity);
 
             ThresholdInfoEvent event = eventCaptor.getValue();
@@ -168,9 +196,15 @@ class CultivationCreationFacadeTest {
                     .containsExactly(
                             tuple(
                                     "TEMPERATURE",
-                                    "C",
+                                    "°C",
                                     BigDecimal.valueOf(18),
                                     BigDecimal.valueOf(24)
+                            ),
+                            tuple(
+                                    "TEMPERATURE",
+                                    "°F",
+                                    new BigDecimal("64.4000"),
+                                    new BigDecimal("75.2000")
                             ),
                             tuple(
                                     "HUMIDITY",
@@ -200,7 +234,7 @@ class CultivationCreationFacadeTest {
                             settings
                     );
 
-            when(sensorTypeService.getSensorTypeList(List.of(999L)))
+            when(environmentSettingPreparationService.prepare(settings))
                     .thenThrow(
                             new SensorTypeNotFoundException(
                                     "sensorTypeId:999"
@@ -211,6 +245,9 @@ class CultivationCreationFacadeTest {
             assertThatThrownBy(() ->
                     cultivationCreationFacade.create(USER_ID, request)
             ).isInstanceOf(SensorTypeNotFoundException.class);
+
+            verify(environmentSettingPreparationService)
+                    .prepare(settings);
 
             verifyNoInteractions(
                     cultivationService,
@@ -248,10 +285,13 @@ class CultivationCreationFacadeTest {
                     );
 
             SensorType temperature =
-                    sensorType(10L, "TEMPERATURE", "C");
+                    sensorType(10L, "TEMPERATURE", "°C");
 
-            when(sensorTypeService.getSensorTypeList(List.of(10L)))
-                    .thenReturn(List.of(temperature));
+            when(environmentSettingPreparationService.prepare(settings))
+                    .thenReturn(new PreparedEnvironmentSettings(
+                            settings,
+                            Map.of(10L, temperature)
+                    ));
 
             when(cultivationService.create(request, USER_ID))
                     .thenReturn(response);

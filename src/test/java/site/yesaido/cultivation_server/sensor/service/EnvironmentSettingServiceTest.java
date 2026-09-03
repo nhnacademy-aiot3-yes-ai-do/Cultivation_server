@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.entity.EnvironmentSetting;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
+import site.yesaido.cultivation_server.sensor.exception.EnvironmentSettingNotFoundException;
 import site.yesaido.cultivation_server.sensor.exception.InvalidThresholdRangeException;
 import site.yesaido.cultivation_server.sensor.repository.EnvironmentSettingRepository;
 import site.yesaido.cultivation_server.sensor.service.impl.EnvironmentSettingServiceImpl;
@@ -16,6 +17,7 @@ import site.yesaido.cultivation_server.sensor.service.impl.EnvironmentSettingSer
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -132,6 +134,71 @@ class EnvironmentSettingServiceTest {
 
         assertThatThrownBy(() -> service.apply(cultivationId, requests, sensorTypes))
                 .isInstanceOf(InvalidThresholdRangeException.class);
+    }
+
+    @Test
+    @DisplayName("기존 환경설정의 임계값만 수정")
+    void updateExistingChangesThresholds() {
+        long cultivationId = 1L;
+        long sensorTypeId = 10L;
+        SensorType sensorType = mock(SensorType.class);
+        EnvironmentSetting setting = new EnvironmentSetting(
+                cultivationId,
+                sensorType,
+                new BigDecimal("18.0"),
+                new BigDecimal("24.0")
+        );
+        EnvironmentSettingRequest request = new EnvironmentSettingRequest(
+                sensorTypeId,
+                new BigDecimal("19.0"),
+                new BigDecimal("25.0")
+        );
+
+        given(environmentSettingRepository.findByCultivationIdAndSensorType_Id(cultivationId, sensorTypeId))
+                .willReturn(Optional.of(setting));
+
+        service.updateExisting(cultivationId, request);
+
+        assertThat(setting.getThresholdMin()).isEqualByComparingTo("19.0");
+        assertThat(setting.getThresholdMax()).isEqualByComparingTo("25.0");
+        then(environmentSettingRepository).should(never()).save(any(EnvironmentSetting.class));
+        then(environmentSettingRepository).should(never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("기존 환경설정이 없으면 새로 만들지 않고 404 예외")
+    void updateExistingRejectsMissingSetting() {
+        long cultivationId = 1L;
+        long sensorTypeId = 10L;
+        EnvironmentSettingRequest request = new EnvironmentSettingRequest(
+                sensorTypeId,
+                new BigDecimal("19.0"),
+                new BigDecimal("25.0")
+        );
+
+        given(environmentSettingRepository.findByCultivationIdAndSensorType_Id(cultivationId, sensorTypeId))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateExisting(cultivationId, request))
+                .isInstanceOf(EnvironmentSettingNotFoundException.class);
+
+        then(environmentSettingRepository).should(never()).save(any(EnvironmentSetting.class));
+        then(environmentSettingRepository).should(never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("기존 환경설정 수정에서도 최소값이 최대값보다 크면 예외")
+    void updateExistingRejectsInvalidRangeBeforeLookup() {
+        EnvironmentSettingRequest request = new EnvironmentSettingRequest(
+                10L,
+                new BigDecimal("30.0"),
+                new BigDecimal("10.0")
+        );
+
+        assertThatThrownBy(() -> service.updateExisting(1L, request))
+                .isInstanceOf(InvalidThresholdRangeException.class);
+
+        then(environmentSettingRepository).shouldHaveNoInteractions();
     }
 
 }

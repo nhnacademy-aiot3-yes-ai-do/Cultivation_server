@@ -19,9 +19,12 @@ import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.storage.MinioObjectStorage;
 import site.yesaido.common.storage.MinioObjectStorageException;
 import site.yesaido.common.storage.StorageType;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.DailyCultivationPhotoListResponse;
+import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.DailyCultivationPhotoResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationphoto.PhotoUploadResponse;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.entity.cultivationphoto.CultivationPhoto;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
@@ -31,9 +34,11 @@ import site.yesaido.cultivation_server.cultivation.service.impl.CultivationAcces
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationPhotoServiceImpl;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -353,5 +358,73 @@ class CultivationPhotoServiceTest {
 
         assertThat(response.photoUploadResponses().getFirst().uri())
                 .isEqualTo("https://yes-nhn.site/storage-proxy/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");
+    }
+
+    @Test
+    @DisplayName("일별 사진 조회 성공 - 활성 상태(CREATED, RUNNING) 재배지만 조회하고, presigned URL은 원본(내부) 그대로 반환한다")
+    void getDailyPhotosSuccess() {
+        LocalDate targetDate = LocalDate.of(2026, 8, 28);
+        Cultivation cultivation = Cultivation.builder().id(100L).userId(1L).name("버섯 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/100/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.of(2026, 8, 28, 10, 0))
+                .cultivation(cultivation)
+                .build();
+        ReflectionTestUtils.setField(photo, "id", 500L);
+
+        when(cultivationPhotoRepository.findAllForDailyVisionAnalysis(
+                eq(Set.of(CultivationStatus.CREATED, CultivationStatus.RUNNING)),
+                eq(targetDate.atStartOfDay()),
+                eq(targetDate.plusDays(1).atStartOfDay())
+        )).thenReturn(List.of(photo));
+        when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
+                .thenReturn("http://storage.java21.net:8000/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");
+
+        DailyCultivationPhotoListResponse response = cultivationPhotoService.getDailyPhotos(targetDate);
+
+        assertThat(response.targetDate()).isEqualTo(targetDate);
+        assertThat(response.photos()).hasSize(1);
+        DailyCultivationPhotoResponse item = response.photos().getFirst();
+        assertThat(item.cultivationId()).isEqualTo(100L);
+        assertThat(item.photoId()).isEqualTo(500L);
+        // 내부 API이므로 공개 프록시 주소로 치환되지 않고 원본 presigned URL 그대로 내려가야 한다
+        assertThat(item.presignedUrl()).isEqualTo("http://storage.java21.net:8000/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");
+        assertThat(item.expiresAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("일별 사진 조회 성공 - 해당 날짜에 사진이 없으면 빈 목록을 반환한다")
+    void getDailyPhotosSuccessEmpty() {
+        LocalDate targetDate = LocalDate.of(2026, 8, 28);
+
+        when(cultivationPhotoRepository.findAllForDailyVisionAnalysis(any(), any(), any()))
+                .thenReturn(List.of());
+
+        DailyCultivationPhotoListResponse response = cultivationPhotoService.getDailyPhotos(targetDate);
+
+        assertThat(response.targetDate()).isEqualTo(targetDate);
+        assertThat(response.photos()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("일별 사진 조회 실패 - MinIO presigned URL 발급 실패 시 서버 예외로 변환된다")
+    void getDailyPhotosFailMinioPresignError() {
+        LocalDate targetDate = LocalDate.of(2026, 8, 28);
+        Cultivation cultivation = Cultivation.builder().id(100L).userId(1L).name("버섯 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/100/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.of(2026, 8, 28, 10, 0))
+                .cultivation(cultivation)
+                .build();
+
+        when(cultivationPhotoRepository.findAllForDailyVisionAnalysis(any(), any(), any()))
+                .thenReturn(List.of(photo));
+        when(minioObjectStorage.presignedGetUrl(anyString(), eq(Duration.ofMinutes(30))))
+                .thenThrow(new MinioObjectStorageException("presigned URL 발급 실패", new RuntimeException("연결 실패")));
+
+        assertThatThrownBy(() -> cultivationPhotoService.getDailyPhotos(targetDate))
+                .isInstanceOf(CustomServerException.class);
     }
 }

@@ -7,6 +7,7 @@ import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequ
 import site.yesaido.cultivation_server.sensor.dto.response.EnvironmentSettingResponse;
 import site.yesaido.cultivation_server.sensor.entity.EnvironmentSetting;
 import site.yesaido.cultivation_server.sensor.entity.SensorType;
+import site.yesaido.cultivation_server.sensor.exception.EnvironmentSettingNotFoundException;
 import site.yesaido.cultivation_server.sensor.exception.InvalidThresholdRangeException;
 import site.yesaido.cultivation_server.sensor.exception.SensorTypeNotFoundException;
 import site.yesaido.cultivation_server.sensor.repository.EnvironmentSettingRepository;
@@ -72,6 +73,20 @@ public class EnvironmentSettingServiceImpl implements EnvironmentSettingService 
         if (!newSettings.isEmpty()) {
             environmentSettingRepository.saveAll(newSettings);
         }
+    }
+
+    @Override
+    @Transactional
+    public void updateExisting(long cultivationId, EnvironmentSettingRequest request) {
+        validateThresholdRange(request);
+
+        EnvironmentSetting setting = environmentSettingRepository
+                .findByCultivationIdAndSensorType_Id(cultivationId, request.sensorTypeId())
+                .orElseThrow(() -> new EnvironmentSettingNotFoundException(
+                        "cultivationId:%d, sensorTypeId:%d".formatted(cultivationId, request.sensorTypeId())
+                ));
+
+        setting.updateThreshold(request.thresholdMin(), request.thresholdMax());
     }
 
     @Override

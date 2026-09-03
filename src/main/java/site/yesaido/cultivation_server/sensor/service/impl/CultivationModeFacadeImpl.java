@@ -17,7 +17,9 @@ import site.yesaido.cultivation_server.sensor.entity.SensorType;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorTypeRepository;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceThresholdRepository;
 import site.yesaido.cultivation_server.sensor.service.CultivationModeFacade;
+import site.yesaido.cultivation_server.sensor.service.EnvironmentSettingPreparationService;
 import site.yesaido.cultivation_server.sensor.service.EnvironmentSettingService;
+import site.yesaido.cultivation_server.sensor.service.model.PreparedEnvironmentSettings;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -29,11 +31,12 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CultivationModeFacadeImpl implements CultivationModeFacade {
-    private final CultivationService cultivationService;
     private final CultivationRepository cultivationRepository;
     private final MushroomReferenceThresholdRepository mushroomReferenceThresholdRepository;
     private final CultivationSensorTypeRepository cultivationSensorTypeRepository;
+    private final CultivationService cultivationService;
     private final EnvironmentSettingService environmentSettingService;
+    private final EnvironmentSettingPreparationService environmentSettingPreparationService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -72,19 +75,19 @@ public class CultivationModeFacadeImpl implements CultivationModeFacade {
         }
 
         // 수확 환경으로 변경하라는 요청을 조립
-        List<EnvironmentSettingRequest> requests = harvestThresholds.stream()
+        List<EnvironmentSettingRequest> rawRequests = harvestThresholds.stream()
                 .map(threshold -> new EnvironmentSettingRequest(
                         threshold.getSensorType().getId(),
                         threshold.getThresholdMin(),
                         threshold.getThresholdMax()))
                 .toList();
 
-        Map<Long, SensorType> sensorTypeMap = harvestThresholds.stream()
-                .collect(Collectors.toMap(
-                        threshold -> threshold.getSensorType().getId(),
-                        MushroomReferenceThreshold::getSensorType,
-                        (a,b) -> a
-                ));
+        PreparedEnvironmentSettings preparedSettings =
+        environmentSettingPreparationService.prepare(rawRequests);
+
+        List<EnvironmentSettingRequest> requests = preparedSettings.requests();
+        Map<Long, SensorType> sensorTypeMap = preparedSettings.sensorTypeMap();
+
         // 적용할 임계값이 있을 때만 환경설정에 반영
         if (!requests.isEmpty()) {
             environmentSettingService.apply(cultivationId, requests, sensorTypeMap);

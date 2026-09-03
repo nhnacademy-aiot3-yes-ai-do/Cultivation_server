@@ -311,4 +311,52 @@ class HarvestServiceTest {
 
         verify(harvestRepository, never()).existsByCultivationId(cultivationId);
     }
+
+    @Test
+    @DisplayName("상품 점수 업데이트(internal) 성공 - 매니저 권한 검증 없이 처리된다")
+    void updateProductScoreInternalSuccess() {
+        Long cultivationId = 100L;
+        ProductScoreUpdateRequest request = new ProductScoreUpdateRequest(new BigDecimal("80"));
+
+        Cultivation cultivation = Cultivation.builder().name("버섯 농장").build();
+        Harvest harvest = Harvest.builder()
+                .harvestWeight(new BigDecimal("5.0"))
+                .harvestedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
+        when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.of(harvest));
+
+        ProductScoreUpdateResponse response = harvestService.updateProductScoreInternal(cultivationId, request);
+
+        assertThat(response.productScore()).isEqualTo(request.productScore());
+        assertThat(response.productGrade()).isEqualTo(ProductGrade.HIGH);
+        verify(cultivationMemberService, never()).verifyManagerAccess(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("상품 점수 업데이트(internal) 실패 - 존재하지 않는 재배")
+    void updateProductScoreInternalFailCultivationNotFound() {
+        Long cultivationId = 100L;
+        ProductScoreUpdateRequest request = new ProductScoreUpdateRequest(new BigDecimal("80"));
+
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(false);
+
+        assertThatThrownBy(() -> harvestService.updateProductScoreInternal(cultivationId, request))
+                .isInstanceOf(CultivationNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("상품 점수 업데이트(internal) 실패 - 수확 기록이 없는 경우")
+    void updateProductScoreInternalFailHarvestNotFound() {
+        Long cultivationId = 100L;
+        ProductScoreUpdateRequest request = new ProductScoreUpdateRequest(new BigDecimal("80"));
+
+        when(cultivationRepository.existsById(cultivationId)).thenReturn(true);
+        when(harvestRepository.findByCultivationId(cultivationId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> harvestService.updateProductScoreInternal(cultivationId, request))
+                .isInstanceOf(HarvestNotFoundException.class);
+    }
 }
