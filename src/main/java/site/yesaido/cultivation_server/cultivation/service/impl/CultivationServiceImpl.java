@@ -15,7 +15,6 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivatio
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
-import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
@@ -152,6 +151,7 @@ public class CultivationServiceImpl implements CultivationService {
         return page;
     }
 
+    @Override
     @Transactional
     public void deleteWithoutRole(Long cultivationId, Long userId) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
