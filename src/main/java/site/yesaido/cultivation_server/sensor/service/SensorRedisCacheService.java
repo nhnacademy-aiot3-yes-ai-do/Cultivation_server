@@ -428,6 +428,49 @@ public class SensorRedisCacheService {
         return result;
     }
 
+    public Map<Long, List<LatestSensorValueResponse>> findLatestBySensorEuis(
+            Map<Long, Set<String>> sensorEuisByCultivationId,
+            Duration freshness
+    ) {
+        if (sensorEuisByCultivationId == null || sensorEuisByCultivationId.isEmpty()) {
+            return Map.of();
+        }
+        Instant threshold = Instant.now().minus(freshness);
+        List<Long> cultivationIds = sensorEuisByCultivationId.keySet().stream().toList();
+        List<Object> responses = redis.executePipelined((RedisCallback<Object>) connection -> {
+            for (Long cultivationId : cultivationIds) {
+                connection.hashCommands().hGetAll(
+                        (LATEST_PREFIX + cultivationId).getBytes(StandardCharsets.UTF_8));
+            }
+            return null;
+        });
+        Map<Long, List<LatestSensorValueResponse>> result = new LinkedHashMap<>();
+        for (int i = 0; i < cultivationIds.size(); i++) {
+            Set<String> allowedEuis = sensorEuisByCultivationId.getOrDefault(cultivationIds.get(i), Set.of());
+            List<LatestSensorValueResponse> points = pipelinePoints(responses.get(i), allowedEuis, threshold);
+            result.put(cultivationIds.get(i), points);
+        }
+        return result;
+    }
+
+    private List<LatestSensorValueResponse> pipelinePoints(
+            Object raw,
+            Set<String> allowedEuis,
+            Instant threshold
+    ) {
+        if (!(raw instanceof Map<?, ?> values)) {
+            return List.of();
+        }
+        return values.values().stream()
+                .map(this::pipelineValue)
+                .filter(Objects::nonNull)
+                .filter(point -> allowedEuis.contains(point.deviceEui()))
+                .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
+                .sorted(Comparator.comparing(LatestSensorValueResponse::sensorType,
+                        Comparator.nullsLast(String::compareTo)))
+                .toList();
+    }
+
     private LatestSensorValueResponse pipelineValue(Object value) {
         if (value instanceof byte[] bytes) return deserialize(new String(bytes, StandardCharsets.UTF_8));
         if (value instanceof String text) return deserialize(text);

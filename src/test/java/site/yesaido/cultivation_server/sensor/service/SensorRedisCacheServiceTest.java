@@ -345,7 +345,7 @@ class SensorRedisCacheServiceTest {
     @Test
     void findLatestBatchReturnsEmptyForNullOrEmptyIds() {
         assertThat(cacheService.findLatest(null, Duration.ofSeconds(3))).isEmpty();
-        assertThat(cacheService.findLatest(List.of(), Duration.ofSeconds(3))).isEmpty();
+        assertThat(cacheService.findLatest(List.<Long>of(), Duration.ofSeconds(3))).isEmpty();
         verify(redis, never()).executePipelined(any(RedisCallback.class));
     }
 
