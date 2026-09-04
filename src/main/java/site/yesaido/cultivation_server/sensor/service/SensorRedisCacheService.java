@@ -93,8 +93,8 @@ public class SensorRedisCacheService {
                     if (lockKey != null) {
                         updateLatestValues(operations, cultivationId, points, history.plus(ttlGrace));
                     }
-                    Optional<List<Object>> result = Optional.ofNullable(operations.exec());
-                    if (result.isEmpty()) {
+                    List<Object> result = operations.exec();
+                    if (transactionAborted(result)) {
                         return false;
                     }
                     if (lockKey == null) {
@@ -108,6 +108,10 @@ public class SensorRedisCacheService {
                 }
             }
         }));
+    }
+
+    private boolean transactionAborted(List<Object> result) {
+        return result == null;
     }
 
     private void appendWithinTransaction(RedisOperations<String, String> operations,
