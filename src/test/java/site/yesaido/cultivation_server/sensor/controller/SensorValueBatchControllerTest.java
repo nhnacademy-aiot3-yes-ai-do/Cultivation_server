@@ -2,7 +2,6 @@ package site.yesaido.cultivation_server.sensor.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
-import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueBatchResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.service.SensorLatestBatchService;
 

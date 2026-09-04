@@ -78,63 +78,97 @@ public class SensorValueController {
     private ResponseEntity<LatestSensorValueListResponse> resolveLatestWithoutFreshCache(
             Long cultivationId, SensorRedisCacheService.LatestCacheReadResult initialCacheResult) {
         if (!initialCacheResult.points().isEmpty()) {
-            return ResponseEntity.ok(new LatestSensorValueListResponse(
-                    initialCacheResult.points(), initialCacheResult.hasStaleValues()
-                            ? LatestSensorCacheStatus.PARTIAL
-                            : LatestSensorCacheStatus.FRESH));
+            return cacheResponse(initialCacheResult);
         }
 
         AtomicBoolean sourceOwner = new AtomicBoolean();
         CompletableFuture<LatestSensorValueListResponse> fallback = latestFallbacks.computeIfAbsent(
-                cultivationId, ignored -> {
-                    sourceOwner.set(true);
-                    return new CompletableFuture<>();
-                });
+                cultivationId, ignored -> createFallback(sourceOwner));
         try {
             if (sourceOwner.get()) {
-                try {
-                    LatestSensorValueListResponse source = influxService.findLatestByCultivationId(cultivationId);
-                    if (source == null || source.latestSensorValueResponses() == null) {
-                        throw new IllegalStateException("Influx latest response is null");
-                    }
-                    fallback.complete(source);
-                } catch (Error e) {
-                    fallback.completeExceptionally(e);
-                    throw e;
-                } catch (RuntimeException e) {
-                    fallback.completeExceptionally(e);
-                }
+                loadInfluxFallback(cultivationId, fallback);
             }
-            LatestSensorValueListResponse source = awaitFallback(fallback);
-            try {
-                var refreshedCache = sensorRedisCacheService.findLatestWithStatus(cultivationId,
-                        java.time.Duration.ofSeconds(freshnessSeconds));
-                if (!refreshedCache.points().isEmpty()) {
-                    return ResponseEntity.ok(new LatestSensorValueListResponse(
-                            refreshedCache.points(), refreshedCache.hasStaleValues()
-                                    ? LatestSensorCacheStatus.PARTIAL
-                                    : LatestSensorCacheStatus.FRESH));
-                }
-            } catch (RuntimeException e) {
-                log.warn("센서 최신값 fallback 후 Redis 재확인 실패: cultivationId={}, stage=redis-latest-refresh",
-                        cultivationId, e);
-            }
-            LatestSensorCacheStatus status = source.latestSensorValueResponses().isEmpty()
-                    ? LatestSensorCacheStatus.NO_DATA
-                    : LatestSensorCacheStatus.SOURCE_FALLBACK;
-            return ResponseEntity.ok(new LatestSensorValueListResponse(
-                    source.latestSensorValueResponses(), status));
+            return resolveFallbackResponse(cultivationId, fallback);
         } catch (RuntimeException e) {
             log.warn("센서 최신값 fallback 실패: cultivationId={}, stage=influx-latest", cultivationId, e);
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(new LatestSensorValueListResponse(List.of(),
-                            initialCacheResult.hasStaleValues()
-                                    ? LatestSensorCacheStatus.REDIS_PENDING
-                                    : LatestSensorCacheStatus.NO_DATA));
+            return unavailableResponse(initialCacheResult);
         } finally {
-            if (sourceOwner.get()) {
-                latestFallbacks.remove(cultivationId, fallback);
+            removeFallbackWhenOwner(cultivationId, fallback, sourceOwner);
+        }
+    }
+
+    private CompletableFuture<LatestSensorValueListResponse> createFallback(AtomicBoolean sourceOwner) {
+        sourceOwner.set(true);
+        return new CompletableFuture<>();
+    }
+
+    private void loadInfluxFallback(
+            Long cultivationId, CompletableFuture<LatestSensorValueListResponse> fallback) {
+        try {
+            LatestSensorValueListResponse source = influxService.findLatestByCultivationId(cultivationId);
+            if (source == null || source.latestSensorValueResponses() == null) {
+                throw new IllegalStateException("Influx latest response is null");
             }
+            fallback.complete(source);
+        } catch (RuntimeException e) {
+            fallback.completeExceptionally(e);
+        } finally {
+            if (!fallback.isDone()) {
+                fallback.completeExceptionally(new IllegalStateException("Influx latest fallback failed"));
+            }
+        }
+    }
+
+    private ResponseEntity<LatestSensorValueListResponse> resolveFallbackResponse(
+            Long cultivationId,
+            CompletableFuture<LatestSensorValueListResponse> fallback) {
+        LatestSensorValueListResponse source = awaitFallback(fallback);
+        SensorRedisCacheService.LatestCacheReadResult refreshed = refreshCache(cultivationId);
+        if (refreshed != null && !refreshed.points().isEmpty()) {
+            return cacheResponse(refreshed);
+        }
+
+        LatestSensorCacheStatus status = source.latestSensorValueResponses().isEmpty()
+                ? LatestSensorCacheStatus.NO_DATA
+                : LatestSensorCacheStatus.SOURCE_FALLBACK;
+        return ResponseEntity.ok(new LatestSensorValueListResponse(
+                source.latestSensorValueResponses(), status));
+    }
+
+    private SensorRedisCacheService.LatestCacheReadResult refreshCache(Long cultivationId) {
+        try {
+            return sensorRedisCacheService.findLatestWithStatus(
+                    cultivationId, java.time.Duration.ofSeconds(freshnessSeconds));
+        } catch (RuntimeException e) {
+            log.warn("센서 최신값 fallback 후 Redis 재확인 실패: cultivationId={}, stage=redis-latest-refresh",
+                    cultivationId, e);
+            return null;
+        }
+    }
+
+    private ResponseEntity<LatestSensorValueListResponse> cacheResponse(
+            SensorRedisCacheService.LatestCacheReadResult cacheResult) {
+        return ResponseEntity.ok(new LatestSensorValueListResponse(
+                cacheResult.points(), cacheResult.hasStaleValues()
+                        ? LatestSensorCacheStatus.PARTIAL
+                        : LatestSensorCacheStatus.FRESH));
+    }
+
+    private ResponseEntity<LatestSensorValueListResponse> unavailableResponse(
+            SensorRedisCacheService.LatestCacheReadResult initialCacheResult) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new LatestSensorValueListResponse(List.of(),
+                        initialCacheResult.hasStaleValues()
+                                ? LatestSensorCacheStatus.REDIS_PENDING
+                                : LatestSensorCacheStatus.NO_DATA));
+    }
+
+    private void removeFallbackWhenOwner(
+            Long cultivationId,
+            CompletableFuture<LatestSensorValueListResponse> fallback,
+            AtomicBoolean sourceOwner) {
+        if (sourceOwner.get()) {
+            latestFallbacks.remove(cultivationId, fallback);
         }
     }
 

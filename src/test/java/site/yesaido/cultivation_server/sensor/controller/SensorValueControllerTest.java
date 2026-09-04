@@ -213,8 +213,8 @@ class SensorValueControllerTest {
     }
 
     @Test
-    @DisplayName("Influx fallback 중 Error가 발생해도 대기 요청은 무한 대기하지 않는다")
-    void errorDuringLatestFallbackCompletesSharedFuture() throws Exception {
+    @DisplayName("Influx fallback 중 예외가 발생해도 대기 요청은 무한 대기하지 않는다")
+    void exceptionDuringLatestFallbackCompletesSharedFuture() throws Exception {
         AtomicInteger cacheCalls = new AtomicInteger();
         CountDownLatch secondCacheMiss = new CountDownLatch(1);
         given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
@@ -226,7 +226,7 @@ class SensorValueControllerTest {
                 });
         given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willAnswer(invocation -> {
             secondCacheMiss.await();
-            throw new AssertionError("influx fatal error");
+            throw new IllegalStateException("influx unavailable");
         });
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -235,24 +235,14 @@ class SensorValueControllerTest {
                     () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
             Future<ResponseEntity<LatestSensorValueListResponse>> second = executor.submit(
                     () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
-            int failures = 0;
             int unavailableResponses = 0;
             for (Future<ResponseEntity<LatestSensorValueListResponse>> request : List.of(first, second)) {
-                try {
-                    ResponseEntity<LatestSensorValueListResponse> response = request.get();
-                    if (response.getStatusCode().value() == 503) {
-                        unavailableResponses++;
-                    }
-                } catch (java.util.concurrent.ExecutionException e) {
-                    if (e.getCause() instanceof AssertionError) {
-                        failures++;
-                    } else {
-                        throw e;
-                    }
+                ResponseEntity<LatestSensorValueListResponse> response = request.get();
+                if (response.getStatusCode().value() == 503) {
+                    unavailableResponses++;
                 }
             }
-            org.junit.jupiter.api.Assertions.assertEquals(1, failures);
-            org.junit.jupiter.api.Assertions.assertEquals(1, unavailableResponses);
+            org.junit.jupiter.api.Assertions.assertEquals(2, unavailableResponses);
         } finally {
             executor.shutdownNow();
         }
