@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -54,6 +56,10 @@ class CultivationPhotoServiceTest {
     private MinioObjectStorage minioObjectStorage;
     @Mock
     private CultivationAccessGuard cultivationAccessGuard;
+    @Mock
+    private StringRedisTemplate redis;
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     private CultivationPhotoServiceImpl cultivationPhotoService;
@@ -82,6 +88,7 @@ class CultivationPhotoServiceTest {
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(minioObjectStorage.presignedGetUrl(anyString(), eq(Duration.ofMinutes(30)))).thenReturn("http://storage.example.com/test-bucket/objectKey");
+        when(redis.opsForValue()).thenReturn(valueOperations);
 
         PhotoUploadResponse response = cultivationPhotoService.uploadPhoto(cultivationId, userId, file);
 
@@ -203,6 +210,7 @@ class CultivationPhotoServiceTest {
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId, null)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
+        when(redis.opsForValue()).thenReturn(valueOperations);
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
         PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
@@ -225,6 +233,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(cultivation)
                 .build();
 
+        when(redis.opsForValue()).thenReturn(valueOperations);
         when(cultivationAccessGuard.requireMember(cultivationId, adminId, "ADMIN")).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
@@ -349,6 +358,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(cultivation)
                 .build();
 
+        when(redis.opsForValue()).thenReturn(valueOperations);
         when(cultivationAccessGuard.requireMember(cultivationId, userId, null)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
@@ -426,5 +436,60 @@ class CultivationPhotoServiceTest {
 
         assertThatThrownBy(() -> cultivationPhotoService.getDailyPhotos(targetDate))
                 .isInstanceOf(CustomServerException.class);
+    }
+
+    @Test
+    @DisplayName("사진 목록 조회 - Redis에 캐시된 presigned URL이 있으면 MinIO를 다시 호출하지 않는다")
+    void getPhotosUsesCachedPresignedUrlWhenAvailable() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/100/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+        String cachedUrl = "http://storage.java21.net:8000/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=cached";
+
+        when(cultivationAccessGuard.requireMember(cultivationId, userId, null)).thenReturn(cultivation);
+        when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
+        when(redis.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("cultivation:photo:presigned-url:" + photo.getObjectKey())).thenReturn(cachedUrl);
+
+        PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
+
+        assertThat(response.photoUploadResponses().getFirst().uri())
+                .isEqualTo("https://yes-nhn.site/storage-proxy/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=cached");
+        verify(minioObjectStorage, never()).presignedGetUrl(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("사진 목록 조회 - 캐시가 비어있으면 새로 발급한 presigned URL을 Redis에 저장한다")
+    void getPhotosCachesNewlyIssuedPresignedUrl() {
+        Long userId = 1L;
+        Long cultivationId = 100L;
+        Cultivation cultivation = Cultivation.builder().id(cultivationId).userId(userId).name("버섯 농장").build();
+        CultivationPhoto photo = CultivationPhoto.builder()
+                .objectKey("cultivation-photo/100/uuid.jpg")
+                .storageType(StorageType.MINIO)
+                .uploadedAt(LocalDateTime.now())
+                .cultivation(cultivation)
+                .build();
+
+        when(cultivationAccessGuard.requireMember(cultivationId, userId, null)).thenReturn(cultivation);
+        when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
+        when(redis.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(anyString())).thenReturn(null);
+        when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
+                .thenReturn("http://storage.example.com/test-bucket/photo.jpg");
+
+        cultivationPhotoService.getPhotos(cultivationId, userId);
+
+        verify(valueOperations, times(1)).set(
+                eq("cultivation:photo:presigned-url:" + photo.getObjectKey()),
+                eq("http://storage.example.com/test-bucket/photo.jpg"),
+                eq(Duration.ofMinutes(25))
+        );
     }
 }

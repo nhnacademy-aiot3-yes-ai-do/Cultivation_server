@@ -3,6 +3,7 @@ package site.yesaido.cultivation_server.cultivation.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -39,12 +40,15 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     private static final String OBJECT_KEY_LOG_SEGMENT = ", objectKey: ";
     private static final String CAUSE_LOG_SEGMENT = ", cause: ";
     private static final Duration PRESIGNED_URL_TTL = Duration.ofMinutes(30);
+    private static final Duration PRESIGNED_URL_CACHE_TTL = Duration.ofMinutes(25);
+    private static final String PRESIGNED_URL_CACHE_PREFIX = "cultivation:photo:presigned-url:";
     private static final Set<CultivationStatus> ACTIVE_CULTIVATION_STATUSES = Set.of(CultivationStatus.CREATED, CultivationStatus.RUNNING);
     private static final ZoneOffset SEOUL_OFFSET = ZoneOffset.ofHours(9);
 
     private final CultivationPhotoRepository cultivationPhotoRepository;
     private final MinioObjectStorage minioObjectStorage;
     private final CultivationAccessGuard cultivationAccessGuard;
+    private final StringRedisTemplate redis;
 
     @Value("${minio.bucket}")
     private String bucket;
@@ -165,17 +169,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
     // Helper Method
     private PhotoUploadResponse toResponse(CultivationPhoto cultivationPhoto) {
         String objectKey = cultivationPhoto.getObjectKey();
-        String presignedUrl;
-        try {
-            presignedUrl = minioObjectStorage.presignedGetUrl(objectKey, PRESIGNED_URL_TTL);
-        } catch (MinioObjectStorageException e) {
-            throw new CustomServerException(
-                    "사진 URL 발급 실패했습니다.",
-                    "MINIO presigned URL 발급 실패" + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
-                    ServerErrorLevel.WARN_LEVEL
-            );
-        }
-
+        String presignedUrl = presignedUrlCached(objectKey);
         String publicUrl = presignedUrl.startsWith(minioInternalBaseUrl)
                 ? minioPublicBaseUrl + presignedUrl.substring(minioInternalBaseUrl.length())
                 : presignedUrl;
@@ -211,5 +205,26 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
                 presignedUrl,
                 expiresAt
         );
+    }
+
+    private String presignedUrlCached(String objectKey) {
+        String cacheKey = PRESIGNED_URL_CACHE_PREFIX + objectKey;
+        String cached = redis.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        String presignedUrl;
+        try {
+            presignedUrl = minioObjectStorage.presignedGetUrl(objectKey, PRESIGNED_URL_TTL);
+        } catch (MinioObjectStorageException e) {
+            throw new CustomServerException(
+                    "사진 URL 발급 실패했습니다.",
+                    "MINIO presigned URL 발급 실패" + OBJECT_KEY_LOG_SEGMENT + objectKey + CAUSE_LOG_SEGMENT + e.getMessage(),
+                    ServerErrorLevel.WARN_LEVEL
+            );
+        }
+        redis.opsForValue().set(cacheKey, presignedUrl, PRESIGNED_URL_CACHE_TTL);
+        return presignedUrl;
     }
 }
