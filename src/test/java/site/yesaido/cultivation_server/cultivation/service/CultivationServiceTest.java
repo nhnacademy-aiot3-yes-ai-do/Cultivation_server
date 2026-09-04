@@ -256,7 +256,7 @@ class CultivationServiceTest {
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
 
-        service.delete(cultivationId, userId);
+        service.deleteWithOwner(cultivationId, userId);
 
         assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.DELETED);
         verify(cultivationMemberService).verifyOwnerAccess(cultivationId, userId, null);
@@ -313,7 +313,7 @@ class CultivationServiceTest {
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.of(cultivation));
 
-        assertThatThrownBy(() -> service.delete(cultivationId, userId))
+        assertThatThrownBy(() -> service.deleteWithOwner(cultivationId, userId))
                 .isInstanceOf(CultivationAlreadyDeletedException.class);
     }
 
@@ -325,7 +325,7 @@ class CultivationServiceTest {
 
         when(cultivationRepository.findById(cultivationId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.delete(cultivationId, userId))
+        assertThatThrownBy(() -> service.deleteWithOwner(cultivationId, userId))
                 .isInstanceOf(CultivationNotFoundException.class);
     }
 
