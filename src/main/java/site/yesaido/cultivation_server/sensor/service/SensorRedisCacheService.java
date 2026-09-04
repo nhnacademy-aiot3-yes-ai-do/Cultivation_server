@@ -378,6 +378,21 @@ public class SensorRedisCacheService {
         return new SensorTrendPointListResponse(cultivationId, deviceEui, sensorType, first.unit(), trend);
     }
 
+    public record LatestCacheReadResult(
+            List<LatestSensorValueResponse> points,
+            boolean hasStaleValues
+    ) {
+    }
+
+    public LatestCacheReadResult findLatestWithStatus(long cultivationId, Duration freshness) {
+        List<LatestSensorValueResponse> all = findLatest(cultivationId);
+        Instant threshold = Instant.now().minus(freshness);
+        List<LatestSensorValueResponse> fresh = all.stream()
+                .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
+                .toList();
+        return new LatestCacheReadResult(fresh, all.size() > fresh.size());
+    }
+
     public List<LatestSensorValueResponse> findLatest(long cultivationId, Duration freshness) {
         Instant threshold = Instant.now().minus(freshness);
         return findLatest(cultivationId).stream()
@@ -411,6 +426,49 @@ public class SensorRedisCacheService {
             }
         }
         return result;
+    }
+
+    public Map<Long, List<LatestSensorValueResponse>> findLatestBySensorEuis(
+            Map<Long, Set<String>> sensorEuisByCultivationId,
+            Duration freshness
+    ) {
+        if (sensorEuisByCultivationId == null || sensorEuisByCultivationId.isEmpty()) {
+            return Map.of();
+        }
+        Instant threshold = Instant.now().minus(freshness);
+        List<Long> cultivationIds = sensorEuisByCultivationId.keySet().stream().toList();
+        List<Object> responses = redis.executePipelined((RedisCallback<Object>) connection -> {
+            for (Long cultivationId : cultivationIds) {
+                connection.hashCommands().hGetAll(
+                        (LATEST_PREFIX + cultivationId).getBytes(StandardCharsets.UTF_8));
+            }
+            return null;
+        });
+        Map<Long, List<LatestSensorValueResponse>> result = new LinkedHashMap<>();
+        for (int i = 0; i < cultivationIds.size(); i++) {
+            Set<String> allowedEuis = sensorEuisByCultivationId.getOrDefault(cultivationIds.get(i), Set.of());
+            List<LatestSensorValueResponse> points = pipelinePoints(responses.get(i), allowedEuis, threshold);
+            result.put(cultivationIds.get(i), points);
+        }
+        return result;
+    }
+
+    private List<LatestSensorValueResponse> pipelinePoints(
+            Object raw,
+            Set<String> allowedEuis,
+            Instant threshold
+    ) {
+        if (!(raw instanceof Map<?, ?> values)) {
+            return List.of();
+        }
+        return values.values().stream()
+                .map(this::pipelineValue)
+                .filter(Objects::nonNull)
+                .filter(point -> allowedEuis.contains(point.deviceEui()))
+                .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
+                .sorted(Comparator.comparing(LatestSensorValueResponse::sensorType,
+                        Comparator.nullsLast(String::compareTo)))
+                .toList();
     }
 
     private LatestSensorValueResponse pipelineValue(Object value) {
