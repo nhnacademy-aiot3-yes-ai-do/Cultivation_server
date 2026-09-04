@@ -185,6 +185,85 @@ class SensorCacheSchedulerTest {
         verify(influxService).findValuesByCultivationId(1L, Duration.ofHours(12));
     }
 
+    @Test
+    void reusesCultivationSnapshotDuringCacheWindow() {
+        CultivationSensor sensor = sensor(1L);
+        when(sensorRepository.findAllForDataGeneratorSnapshot(any()))
+                .thenReturn(List.of(sensor));
+        when(influxService.findValuesByCultivationId(eq(1L), any(Duration.class)))
+                .thenReturn(List.of());
+
+        scheduler.warmUp();
+        scheduler.poll();
+
+        verify(sensorRepository, times(1)).findAllForDataGeneratorSnapshot(any());
+        verify(influxService, times(2)).findValuesByCultivationId(eq(1L), any(Duration.class));
+    }
+
+    @Test
+    void treatsAppendFailureAsRefreshFailureWithoutWritingWatermark() {
+        CultivationSensor sensor = sensor(1L);
+        when(sensorRepository.findAllForDataGeneratorSnapshot(any()))
+                .thenReturn(List.of(sensor));
+        when(influxService.findValuesByCultivationId(eq(1L), any(Duration.class)))
+                .thenReturn(List.of());
+        when(cacheService.appendWithLock(eq(1L), anyList(), any(Duration.class),
+                any(Duration.class), anyString(), anyString())).thenReturn(false);
+
+        scheduler.warmUp();
+
+        verify(cacheService, times(3)).appendWithLock(eq(1L), eq(List.of()), any(Duration.class),
+                any(Duration.class), anyString(), anyString());
+        verify(valueOperations, never()).set(eq("cultivation:sensor:cache:watermark:1"),
+                anyString(), any(Duration.class));
+    }
+
+    @Test
+    void isolatesRedisLockAcquisitionFailureFromScheduler() {
+        CultivationSensor sensor = sensor(1L);
+        when(sensorRepository.findAllForDataGeneratorSnapshot(any()))
+                .thenReturn(List.of(sensor));
+        when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class)))
+                .thenThrow(new RuntimeException("redis unavailable"));
+
+        scheduler.poll();
+
+        verifyNoInteractions(influxService, cacheService);
+    }
+
+    @Test
+    void skipsWatermarkWhenInfluxReturnsNull() {
+        CultivationSensor sensor = sensor(1L);
+        when(sensorRepository.findAllForDataGeneratorSnapshot(any()))
+                .thenReturn(List.of(sensor));
+        when(influxService.findValuesByCultivationId(eq(1L), any(Duration.class)))
+                .thenReturn(null);
+
+        scheduler.warmUp();
+
+        verify(cacheService, never()).appendWithLock(anyLong(), anyList(), any(Duration.class),
+                any(Duration.class), anyString(), anyString());
+        verify(valueOperations, never()).set(eq("cultivation:sensor:cache:watermark:1"),
+                anyString(), any(Duration.class));
+    }
+
+    @Test
+    void usesConfiguredRangeWhenWatermarkIsMissing() {
+        CultivationSensor sensor = sensor(1L);
+        when(sensorRepository.findAllForDataGeneratorSnapshot(any()))
+                .thenReturn(List.of(sensor));
+        when(valueOperations.get("cultivation:sensor:cache:watermark:1")).thenReturn(null);
+        when(influxService.findValuesByCultivationId(eq(1L), any(Duration.class)))
+                .thenReturn(List.of());
+        ReflectionTestUtils.setField(scheduler, "warmedUp", true);
+        ReflectionTestUtils.setField(scheduler, "lastReconciliationAt", Instant.now());
+
+        scheduler.poll();
+
+        verify(influxService).findValuesByCultivationId(eq(1L), argThat(duration ->
+                duration.equals(Duration.ofHours(12))));
+    }
+
     private CultivationSensor sensor(long cultivationId) {
         CultivationSensor sensor = mock(CultivationSensor.class);
         when(sensor.getCultivationId()).thenReturn(cultivationId);

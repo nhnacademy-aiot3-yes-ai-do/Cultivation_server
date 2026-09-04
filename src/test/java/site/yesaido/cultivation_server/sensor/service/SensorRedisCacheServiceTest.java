@@ -124,6 +124,135 @@ class SensorRedisCacheServiceTest {
     }
 
     @Test
+    void appendWithLockReturnsFalseWhenTokenDoesNotMatch() {
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redis.execute(any(SessionCallback.class))).thenAnswer(invocation -> {
+            SessionCallback<Object> callback = invocation.getArgument(0);
+            when(redisOperations.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.get("lock")).thenReturn("another-token");
+            return callback.execute(redisOperations);
+        });
+
+        boolean appended = cacheService.appendWithLock(42L, List.of(), Duration.ofHours(12),
+                Duration.ofSeconds(3), "lock", "expected-token");
+
+        assertThat(appended).isFalse();
+        verify(redisOperations).watch("lock");
+        verify(redisOperations).unwatch();
+        verify(redisOperations, never()).multi();
+    }
+
+    @Test
+    void appendWithLockReturnsFalseWhenTransactionIsAborted() {
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redis.execute(any(SessionCallback.class))).thenAnswer(invocation -> {
+            SessionCallback<Object> callback = invocation.getArgument(0);
+            when(redisOperations.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.get("lock")).thenReturn("expected-token");
+            when(redisOperations.exec()).thenReturn(null);
+            return callback.execute(redisOperations);
+        });
+
+        boolean appended = cacheService.appendWithLock(42L, List.of(), Duration.ofHours(12),
+                Duration.ofSeconds(3), "lock", "expected-token");
+
+        assertThat(appended).isFalse();
+        verify(redisOperations).watch("lock");
+        verify(redisOperations).multi();
+        verify(redisOperations).exec();
+        verify(redis, never()).execute(any(DefaultRedisScript.class), anyList(), any());
+    }
+
+    @Test
+    void compactCultivationDeletesOrphanValuesKeyForEmptyHistory() {
+        @SuppressWarnings("unchecked")
+        Cursor<String> cursor = mock(Cursor.class);
+        when(cursor.hasNext()).thenReturn(true, false);
+        when(cursor.next()).thenReturn("cultivation:sensor:history:v2:42:eui:type:unit");
+        when(redis.scan(any(ScanOptions.class))).thenReturn(cursor);
+        when(redis.opsForZSet()).thenReturn(zSetOperations);
+        when(zSetOperations.range(anyString(), anyLong(), anyLong())).thenReturn(Set.of());
+
+        int compacted = cacheService.compactCultivation(42L, Duration.ofHours(12), Duration.ofSeconds(3));
+
+        assertThat(compacted).isEqualTo(1);
+        verify(redis).delete("cultivation:sensor:history:v2:42:eui:type:unit:values");
+    }
+
+    @Test
+    void compactCultivationSkipsValuesKeysAndOtherCultivations() {
+        @SuppressWarnings("unchecked")
+        Cursor<String> cursor = mock(Cursor.class);
+        when(cursor.hasNext()).thenReturn(true, true, false);
+        when(cursor.next()).thenReturn(
+                "cultivation:sensor:history:v2:42:eui:type:unit:values",
+                "cultivation:sensor:history:v2:999:eui:type:unit");
+        when(redis.scan(any(ScanOptions.class))).thenReturn(cursor);
+
+        int compacted = cacheService.compactCultivation(42L, Duration.ofHours(12), Duration.ofSeconds(3));
+
+        assertThat(compacted).isZero();
+        verify(redis, never()).opsForZSet();
+    }
+
+    @Test
+    void findHistoryReturnsEmptyForNullAndEmptyCultivationIds() {
+        assertThat(cacheService.findHistory((List<Long>) null, Duration.ofHours(1))).isEmpty();
+        assertThat(cacheService.findHistory(List.of(), Duration.ofHours(1))).isEmpty();
+        verify(redis, never()).scan(any(ScanOptions.class));
+    }
+
+    @Test
+    void findTrendReturnsEmptyTrendWhenStoredPointsHaveNoMeasuredAtOrValue() throws Exception {
+        Instant now = Instant.now();
+        LatestSensorValueResponse invalid = new LatestSensorValueResponse(
+                42L, "TEMPERATURE", "C", null, null, "EUI-001", "MODEL", "NAME", "LOCATION", "PLACE");
+        when(redis.opsForZSet()).thenReturn(zSetOperations);
+        when(redis.opsForHash()).thenReturn(hashOperations);
+        when(zSetOperations.range(anyString(), anyLong(), anyLong())).thenReturn(Set.of(now.toString()));
+        when(hashOperations.multiGet(anyString(), anyList())).thenReturn(List.of("invalid"));
+        when(objectMapper.readValue("invalid", LatestSensorValueResponse.class)).thenReturn(invalid);
+
+        var response = cacheService.findTrend(42L, "EUI-001", "TEMPERATURE", "C");
+
+        assertThat(response).isNotNull();
+        assertThat(response.responses()).isEmpty();
+    }
+
+    @Test
+    void findTrendReturnsNullWhenHistoryMembersAreMissing() {
+        when(redis.opsForZSet()).thenReturn(zSetOperations);
+        when(zSetOperations.range(anyString(), anyLong(), anyLong())).thenReturn(null);
+
+        assertThat(cacheService.findTrend(42L, "EUI-001", "TEMPERATURE", "C")).isNull();
+    }
+
+    @Test
+    void findLatestReturnsEmptyWhenStoredEntriesAreNotStrings() {
+        when(redis.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.entries(anyString())).thenReturn(Map.of("bad", 123));
+
+        assertThat(cacheService.findLatest(42L)).isEmpty();
+    }
+
+    @Test
+    void findHistorySkipsMalformedAndValuesKeys() {
+        @SuppressWarnings("unchecked")
+        Cursor<String> cursor = mock(Cursor.class);
+        when(cursor.hasNext()).thenReturn(true, true, false);
+        when(cursor.next()).thenReturn(
+                "cultivation:sensor:history:v2:not-a-number:eui:type:unit",
+                "cultivation:sensor:history:v2:42:eui:type:unit:values");
+        when(redis.scan(any(ScanOptions.class))).thenReturn(cursor);
+
+        var result = cacheService.findHistory(List.of(42L), Duration.ofHours(1));
+
+        assertThat(result).containsKey(42L);
+        assertThat(result.get(42L)).isEmpty();
+        verify(redis, never()).opsForZSet();
+    }
+
+    @Test
     void findTrendReturnsNullForMissingOrInvalidValues() {
         when(redis.opsForZSet()).thenReturn(zSetOperations);
         when(redis.opsForHash()).thenReturn(hashOperations);
