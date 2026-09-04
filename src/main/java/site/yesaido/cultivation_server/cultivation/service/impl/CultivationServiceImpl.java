@@ -15,7 +15,6 @@ import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivatio
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.exception.*;
 import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
-import site.yesaido.cultivation_server.cultivation.repository.cultivationmember.CultivationMemberRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
@@ -36,7 +35,6 @@ import java.util.stream.Collectors;
 public class CultivationServiceImpl implements CultivationService {
 
     private final CultivationRepository cultivationRepository;
-    private final CultivationMemberRepository cultivationMemberRepository;
     private final MushroomReferenceRepository mushroomReferenceRepository;
     private final CultivationMemberService cultivationMemberService;
     private final UserClient userClient;
@@ -155,11 +153,20 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Override
     @Transactional
-    public void delete(Long cultivationId, Long userId) {
-        delete(cultivationId, userId, null);
+    public void deleteWithoutRole(Long cultivationId, Long userId) {
+        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
+        cultivationMemberService.verifyOwnerAccess(cultivationId, userId, null);
+
+        if (cultivation.getCultivationStatus() == CultivationStatus.DELETED) {
+            throw new CultivationAlreadyDeletedException(cultivationId);
+        }
+        cultivation.delete();
     }
 
     @Override
+    @Transactional
     public void delete(Long cultivationId, Long userId, String role) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));

@@ -228,6 +228,30 @@ class SensorRedisCacheServiceTest {
     }
 
     @Test
+    void distinguishesStaleValuesFromEmptyLatestCache() {
+        when(redis.opsForHash()).thenReturn(hashOperations);
+        LatestSensorValueResponse stale = point(Instant.now().minusSeconds(10), "C");
+        when(hashOperations.entries(anyString())).thenReturn(Map.of("sensor", "stale"));
+        when(objectMapper.readValue(eq("stale"), any(Class.class))).thenReturn(stale);
+
+        var result = cacheService.findLatestWithStatus(42L, Duration.ofSeconds(3));
+
+        assertThat(result.points()).isEmpty();
+        assertThat(result.hasStaleValues()).isTrue();
+    }
+
+    @Test
+    void reportsEmptyLatestCacheWhenRedisHasNoValues() {
+        when(redis.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.entries(anyString())).thenReturn(Map.of());
+
+        var result = cacheService.findLatestWithStatus(42L, Duration.ofSeconds(3));
+
+        assertThat(result.points()).isEmpty();
+        assertThat(result.hasStaleValues()).isFalse();
+    }
+
+    @Test
     void findLatestReturnsEmptyWhenStoredEntriesAreNotStrings() {
         when(redis.opsForHash()).thenReturn(hashOperations);
         when(hashOperations.entries(anyString())).thenReturn(Map.of("bad", 123));
@@ -321,7 +345,7 @@ class SensorRedisCacheServiceTest {
     @Test
     void findLatestBatchReturnsEmptyForNullOrEmptyIds() {
         assertThat(cacheService.findLatest(null, Duration.ofSeconds(3))).isEmpty();
-        assertThat(cacheService.findLatest(List.of(), Duration.ofSeconds(3))).isEmpty();
+        assertThat(cacheService.findLatest(List.<Long>of(), Duration.ofSeconds(3))).isEmpty();
         verify(redis, never()).executePipelined(any(RedisCallback.class));
     }
 

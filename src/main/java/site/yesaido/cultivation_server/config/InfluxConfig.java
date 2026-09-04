@@ -8,13 +8,24 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
+
 @Configuration
 @EnableConfigurationProperties(InfluxProperties.class)
 public class InfluxConfig {
 
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(15);
+    private static final Duration WRITE_TIMEOUT = Duration.ofSeconds(15);
+    private static final Duration CALL_TIMEOUT = Duration.ofSeconds(30);
+
     @Bean(destroyMethod = "close")
     public InfluxDBClient influxDBClient(InfluxProperties properties) {
-        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+        OkHttpClient.Builder httpClient = new OkHttpClient.Builder()
+                .connectTimeout(CONNECT_TIMEOUT)
+                .readTimeout(READ_TIMEOUT)
+                .writeTimeout(WRITE_TIMEOUT)
+                .callTimeout(CALL_TIMEOUT);
 
         if (properties.getCloudflare().isConfigured()) {
             httpClient.addInterceptor(chain -> chain.proceed(
