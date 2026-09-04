@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 public class CultivationServiceImpl implements CultivationService {
 
     private final CultivationRepository cultivationRepository;
-    private final CultivationMemberRepository cultivationMemberRepository;
     private final MushroomReferenceRepository mushroomReferenceRepository;
     private final CultivationMemberService cultivationMemberService;
     private final UserClient userClient;
@@ -154,7 +153,7 @@ public class CultivationServiceImpl implements CultivationService {
     }
 
     @Transactional
-    public void deleteWithOwner(Long cultivationId, Long userId) {
+    public void deleteWithoutRole(Long cultivationId, Long userId) {
         Cultivation cultivation = cultivationRepository.findById(cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
 

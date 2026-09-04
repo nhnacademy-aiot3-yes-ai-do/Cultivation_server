@@ -26,7 +26,7 @@ public interface CultivationService {
     Page<CultivationHistoryResponse> getHistory(Long userId, Pageable pageable);
 
     // 경작 삭제 (OWNER만 가능)
-    void deleteWithOwner(Long cultivationId, Long userId);
+    void deleteWithoutRole(Long cultivationId, Long userId);
     // 경작 삭제 (시스템 관리자)
     void delete(Long cultivationId, Long userId, String role);
 }
