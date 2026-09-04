@@ -487,9 +487,9 @@ class CultivationPhotoServiceTest {
         cultivationPhotoService.getPhotos(cultivationId, userId);
 
         verify(valueOperations, times(1)).set(
-                eq("cultivation:photo:presigned-url:" + photo.getObjectKey()),
-                eq("http://storage.example.com/test-bucket/photo.jpg"),
-                eq(Duration.ofMinutes(25))
+                "cultivation:photo:presigned-url:" + photo.getObjectKey(),
+                "http://storage.example.com/test-bucket/photo.jpg",
+                Duration.ofMinutes(25)
         );
     }
 }
