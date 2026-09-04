@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -54,6 +56,10 @@ class CultivationPhotoServiceTest {
     private MinioObjectStorage minioObjectStorage;
     @Mock
     private CultivationAccessGuard cultivationAccessGuard;
+    @Mock
+    private StringRedisTemplate redis;
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     private CultivationPhotoServiceImpl cultivationPhotoService;
@@ -82,6 +88,7 @@ class CultivationPhotoServiceTest {
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId)).thenReturn(cultivation);
         when(minioObjectStorage.presignedGetUrl(anyString(), eq(Duration.ofMinutes(30)))).thenReturn("http://storage.example.com/test-bucket/objectKey");
+        when(redis.opsForValue()).thenReturn(valueOperations);
 
         PhotoUploadResponse response = cultivationPhotoService.uploadPhoto(cultivationId, userId, file);
 
@@ -203,6 +210,7 @@ class CultivationPhotoServiceTest {
 
         when(cultivationAccessGuard.requireMember(cultivationId, userId, null)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
+        when(redis.opsForValue()).thenReturn(valueOperations);
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30))).thenReturn("http://storage.example.com/test-bucket/photo.jpg");
 
         PhotoUploadListResponse response = cultivationPhotoService.getPhotos(cultivationId, userId);
@@ -225,6 +233,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(cultivation)
                 .build();
 
+        when(redis.opsForValue()).thenReturn(valueOperations);
         when(cultivationAccessGuard.requireMember(cultivationId, adminId, "ADMIN")).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
@@ -349,6 +358,7 @@ class CultivationPhotoServiceTest {
                 .cultivation(cultivation)
                 .build();
 
+        when(redis.opsForValue()).thenReturn(valueOperations);
         when(cultivationAccessGuard.requireMember(cultivationId, userId, null)).thenReturn(cultivation);
         when(cultivationPhotoRepository.findByCultivationIdOrderByUploadedAtDesc(cultivationId)).thenReturn(List.of(photo));
         when(minioObjectStorage.presignedGetUrl(photo.getObjectKey(), Duration.ofMinutes(30)))
