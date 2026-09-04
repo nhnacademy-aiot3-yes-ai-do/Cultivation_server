@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
@@ -16,10 +17,16 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SensorValueController.class)
@@ -30,6 +37,9 @@ class SensorValueControllerTest {
 
     @Autowired
     MockMvc mockMvc;
+
+    @Autowired
+    SensorValueController sensorValueController;
 
     @Autowired
     ObjectMapper objectMapper;
@@ -51,9 +61,10 @@ class SensorValueControllerTest {
                 CULTIVATION_ID, "TEMPERATURE", "C", new BigDecimal("22.5"), Instant.now(),
                 "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반"
         ));
-        LatestSensorValueListResponse response = new LatestSensorValueListResponse(latestSensorValueResponses);
-        given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
-                .willReturn(latestSensorValueResponses);
+        LatestSensorValueListResponse response = new LatestSensorValueListResponse(
+                latestSensorValueResponses, site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorCacheStatus.FRESH);
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(new SensorRedisCacheService.LatestCacheReadResult(latestSensorValueResponses, false));
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
@@ -70,13 +81,30 @@ class SensorValueControllerTest {
         LatestSensorValueResponse point = new LatestSensorValueResponse(
                 CULTIVATION_ID, "TEMPERATURE", "C", new BigDecimal("22.5"), Instant.now(),
                 "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반");
-        given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
-                .willReturn(List.of(point));
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(new SensorRedisCacheService.LatestCacheReadResult(List.of(point), false));
 
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk());
+
+        then(influxService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("fresh와 stale 값이 섞이면 partial 상태를 반환한다")
+    void getLatestReturnsPartialWhenCacheContainsStaleValues() throws Exception {
+        LatestSensorValueResponse point = new LatestSensorValueResponse(
+                CULTIVATION_ID, "TEMPERATURE", "C", new BigDecimal("22.5"), Instant.now(),
+                "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반");
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(new SensorRedisCacheService.LatestCacheReadResult(List.of(point), true));
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cacheStatus").value("PARTIAL"));
 
         then(influxService).shouldHaveNoInteractions();
     }
@@ -92,9 +120,10 @@ class SensorValueControllerTest {
                 CULTIVATION_ID, "TEMPERATURE", "°F", new BigDecimal("72.5"), measuredAt,
                 "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반");
         LatestSensorValueListResponse response =
-                new LatestSensorValueListResponse(List.of(celsius, fahrenheit));
-        given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
-                .willReturn(List.of(celsius, fahrenheit));
+                new LatestSensorValueListResponse(List.of(celsius, fahrenheit),
+                        site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorCacheStatus.FRESH);
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(new SensorRedisCacheService.LatestCacheReadResult(List.of(celsius, fahrenheit), false));
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
@@ -105,9 +134,9 @@ class SensorValueControllerTest {
     }
 
     @Test
-    @DisplayName("Redis 최신값 조회 예외 시 InfluxDB를 호출하지 않고 503을 반환한다")
+    @DisplayName("Redis 최신값 조회 예외 시 503을 반환한다")
     void getLatestReturnsUnavailableWhenRedisFails() throws Exception {
-        given(sensorRedisCacheService.findLatest(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
                 .willThrow(new RuntimeException("redis unavailable"));
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
@@ -116,7 +145,120 @@ class SensorValueControllerTest {
 
         then(influxService).shouldHaveNoInteractions();
     }
+    @Test
+    @DisplayName("Redis에 최신값이 없고 Influx에 값이 있으면 source fallback 상태를 반환한다")
+    void getLatestReturnsSourceFallbackWhenRedisIsNotFresh() throws Exception {
+        LatestSensorValueResponse point = new LatestSensorValueResponse(
+                CULTIVATION_ID, "TEMPERATURE", "C", new BigDecimal("22.5"), Instant.now(),
+                "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반");
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(new SensorRedisCacheService.LatestCacheReadResult(List.of(), true));
+        given(influxService.findLatestByCultivationId(CULTIVATION_ID))
+                .willReturn(new LatestSensorValueListResponse(List.of(point)));
 
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cacheStatus").value("SOURCE_FALLBACK"));
+    }
+
+    @Test
+    @DisplayName("Redis와 Influx 모두 값이 없으면 no data 상태를 반환한다")
+    void getLatestReturnsNoDataWhenBothSourcesAreEmpty() throws Exception {
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(new SensorRedisCacheService.LatestCacheReadResult(List.of(), false));
+        given(influxService.findLatestByCultivationId(CULTIVATION_ID))
+                .willReturn(new LatestSensorValueListResponse(List.of()));
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cacheStatus").value("NO_DATA"));
+    }
+
+
+    @Test
+    @DisplayName("동일 cultivation의 동시 fallback은 Influx를 한 번만 호출한다")
+    void latestFallbackIsSingleFlightPerCultivation() throws Exception {
+        AtomicInteger cacheCalls = new AtomicInteger();
+        CountDownLatch secondCacheMiss = new CountDownLatch(1);
+        LatestSensorValueResponse point = new LatestSensorValueResponse(
+                CULTIVATION_ID, "TEMPERATURE", "C", new BigDecimal("22.5"), Instant.now(),
+                "EUI-001", "MODEL-A", "배양실 센서", "ROOM-1", "북쪽 선반");
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willAnswer(invocation -> {
+                    if (cacheCalls.incrementAndGet() >= 2) {
+                        secondCacheMiss.countDown();
+                    }
+                    return new SensorRedisCacheService.LatestCacheReadResult(List.of(), false);
+                });
+        given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willAnswer(invocation -> {
+            secondCacheMiss.await();
+            return new LatestSensorValueListResponse(List.of(point));
+        });
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<ResponseEntity<LatestSensorValueListResponse>> first = executor.submit(
+                    () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
+            Future<ResponseEntity<LatestSensorValueListResponse>> second = executor.submit(
+                    () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
+            first.get();
+            second.get();
+        } finally {
+            executor.shutdownNow();
+        }
+
+        then(influxService).should(times(1)).findLatestByCultivationId(CULTIVATION_ID);
+    }
+
+    @Test
+    @DisplayName("Influx fallback 중 Error가 발생해도 대기 요청은 무한 대기하지 않는다")
+    void errorDuringLatestFallbackCompletesSharedFuture() throws Exception {
+        AtomicInteger cacheCalls = new AtomicInteger();
+        CountDownLatch secondCacheMiss = new CountDownLatch(1);
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willAnswer(invocation -> {
+                    if (cacheCalls.incrementAndGet() >= 2) {
+                        secondCacheMiss.countDown();
+                    }
+                    return new SensorRedisCacheService.LatestCacheReadResult(List.of(), false);
+                });
+        given(influxService.findLatestByCultivationId(CULTIVATION_ID)).willAnswer(invocation -> {
+            secondCacheMiss.await();
+            throw new AssertionError("influx fatal error");
+        });
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<ResponseEntity<LatestSensorValueListResponse>> first = executor.submit(
+                    () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
+            Future<ResponseEntity<LatestSensorValueListResponse>> second = executor.submit(
+                    () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
+            int failures = 0;
+            int unavailableResponses = 0;
+            for (Future<ResponseEntity<LatestSensorValueListResponse>> request : List.of(first, second)) {
+                try {
+                    ResponseEntity<LatestSensorValueListResponse> response = request.get();
+                    if (response.getStatusCode().value() == 503) {
+                        unavailableResponses++;
+                    }
+                } catch (java.util.concurrent.ExecutionException e) {
+                    if (e.getCause() instanceof AssertionError) {
+                        failures++;
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+            org.junit.jupiter.api.Assertions.assertEquals(1, failures);
+            org.junit.jupiter.api.Assertions.assertEquals(1, unavailableResponses);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        then(influxService).should(times(1)).findLatestByCultivationId(CULTIVATION_ID);
+    }
 
     @Test
     @DisplayName("재배 멤버가 아니면 최근 센서값 조회 없이 403을 반환한다")
@@ -135,6 +277,10 @@ class SensorValueControllerTest {
     @DisplayName("최근 센서값 조회 - 관리자(X-User-Role=ADMIN)면 멤버가 아니어도 조회된다")
     void getLatestSuccessAdminRole() throws Exception {
         Long adminId = 999L;
+        given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
+                .willReturn(new SensorRedisCacheService.LatestCacheReadResult(List.of(), false));
+        given(influxService.findLatestByCultivationId(CULTIVATION_ID))
+                .willReturn(new LatestSensorValueListResponse(List.of()));
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values", CULTIVATION_ID)
                         .header("X-User-Id", adminId)

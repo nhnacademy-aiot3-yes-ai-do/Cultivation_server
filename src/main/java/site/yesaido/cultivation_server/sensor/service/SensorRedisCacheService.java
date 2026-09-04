@@ -378,6 +378,21 @@ public class SensorRedisCacheService {
         return new SensorTrendPointListResponse(cultivationId, deviceEui, sensorType, first.unit(), trend);
     }
 
+    public record LatestCacheReadResult(
+            List<LatestSensorValueResponse> points,
+            boolean hasStaleValues
+    ) {
+    }
+
+    public LatestCacheReadResult findLatestWithStatus(long cultivationId, Duration freshness) {
+        List<LatestSensorValueResponse> all = findLatest(cultivationId);
+        Instant threshold = Instant.now().minus(freshness);
+        List<LatestSensorValueResponse> fresh = all.stream()
+                .filter(point -> point.measuredAt() != null && !point.measuredAt().isBefore(threshold))
+                .toList();
+        return new LatestCacheReadResult(fresh, all.size() > fresh.size());
+    }
+
     public List<LatestSensorValueResponse> findLatest(long cultivationId, Duration freshness) {
         Instant threshold = Instant.now().minus(freshness);
         return findLatest(cultivationId).stream()
