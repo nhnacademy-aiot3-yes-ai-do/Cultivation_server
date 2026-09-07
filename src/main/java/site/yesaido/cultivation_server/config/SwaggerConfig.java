@@ -42,8 +42,9 @@ public class SwaggerConfig {
                                 `/api/v1/internal/**` 내부 연동 API와 테스트용 엔드포인트는 문서에서 제외됩니다.
                                 """))
                 .servers(List.of(
-                        new Server().url("http://localhost:" + serverPort).description("로컬 직접 호출"),
-                        new Server().url("https://yes-nhn.site").description("운영 Gateway")
+                        new Server().url("https://api.yes-nhn.site").description("운영 Gateway"),
+                        new Server().url("http://localhost:8000").description("로컬 Gateway"),
+                        new Server().url("http://localhost:" + serverPort).description("로컬 직접 호출")
                 ));
     }
 }
