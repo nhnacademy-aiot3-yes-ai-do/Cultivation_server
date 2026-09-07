@@ -4,10 +4,13 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
+
+import static java.util.Objects.requireNonNull;
 
 @Getter
 @NoArgsConstructor
@@ -40,6 +43,12 @@ public class CultivationSensor {
     @Enumerated(EnumType.STRING)
     private SensorConnectStatus sensorStatus;
 
+    @Column(name = "monitoring_started_at", nullable = false)
+    private Instant monitoringStartedAt;
+
+    @Column(name = "last_measured_at")
+    private Instant lastMeasuredAt;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -53,10 +62,10 @@ public class CultivationSensor {
         this.deviceName = deviceName;
         this.location = location;
         this.locationDetail = locationDetail;
-
         this.sensorStatus = SensorConnectStatus.OFFLINE;
+        this.monitoringStartedAt = Instant.now();
+        this.lastMeasuredAt = null;
         this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
-
         this.cultivationSensorTypes = new HashSet<>();
     }
 
@@ -79,6 +88,18 @@ public class CultivationSensor {
         this.location = location;
         this.locationDetail = locationDetail;
         this.sensorStatus = SensorConnectStatus.OFFLINE;
+        this.monitoringStartedAt = Instant.now();
+        this.lastMeasuredAt = null;
         this.isDeleted = false;
+    }
+
+    public void updateLastMeasuredAt(Instant measuredAt) {
+        requireNonNull(measuredAt, "measuredAt");
+
+        if (isDeleted) { return; }
+
+        if (lastMeasuredAt == null || measuredAt.isAfter(lastMeasuredAt)) {
+            lastMeasuredAt = measuredAt;
+        }
     }
 }
