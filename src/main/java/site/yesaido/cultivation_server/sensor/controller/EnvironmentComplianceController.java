@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.EnvironmentComplianceResponse;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
+import site.yesaido.cultivation_server.sensor.controller.docs.EnvironmentComplianceControllerDocs;
 import site.yesaido.cultivation_server.sensor.service.EnvironmentComplianceService;
 
 import java.time.LocalDate;
@@ -14,10 +15,11 @@ import java.time.ZoneId;
 @RestController
 @RequestMapping("/api/v1/cultivations/{cultivation-id}/environment-compliance")
 @RequiredArgsConstructor
-public class EnvironmentComplianceController {
+public class EnvironmentComplianceController implements EnvironmentComplianceControllerDocs {
     private final EnvironmentComplianceService environmentComplianceService;
     private final CultivationMemberService cultivationMemberService;
 
+    @Override
     @GetMapping
     public ResponseEntity<EnvironmentComplianceResponse> get(@PathVariable("cultivation-id") Long cultivationId,
                                                              @RequestHeader("X-User-Id") Long userId) {
@@ -25,6 +27,7 @@ public class EnvironmentComplianceController {
         return ResponseEntity.ok(environmentComplianceService.getCompliance(cultivationId));
     }
 
+    @Override
     @GetMapping("/daily")
     public ResponseEntity<EnvironmentComplianceResponse> getDaily(@PathVariable("cultivation-id") Long cultivationId,
                                                                   @RequestParam(value = "date", required = false)
@@ -35,6 +38,7 @@ public class EnvironmentComplianceController {
         return ResponseEntity.ok(environmentComplianceService.getDailyCompliance(cultivationId, targetDate));
     }
 
+    @Override
     @GetMapping("/period")
     public ResponseEntity<EnvironmentComplianceResponse> getPeriod(@PathVariable("cultivation-id") Long cultivationId,
                                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
