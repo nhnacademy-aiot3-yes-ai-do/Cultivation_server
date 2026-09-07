@@ -4,16 +4,18 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import site.yesaido.cultivation_server.sensor.controller.docs.EnvironmentSettingControllerDocs;
 import site.yesaido.cultivation_server.sensor.dto.request.EnvironmentSettingRequest;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/cultivations/{cultivation-id}/environment-settings")
-public class EnvironmentSettingController {
+public class EnvironmentSettingController implements EnvironmentSettingControllerDocs {
 
     private final CultivationSensorFacade cultivationSensorFacade;
 
+    @Override
     @PutMapping
     public ResponseEntity<Void> update(
             @RequestHeader("X-User-Id") Long userId,

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import site.yesaido.cultivation_server.sensor.controller.docs.CultivationSensorControllerDocs;
 import site.yesaido.cultivation_server.sensor.dto.request.CreateCultivationSensorRequest;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorListResponse;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
@@ -14,10 +15,11 @@ import java.net.URI;
 @RequestMapping("/api/v1/cultivations/{cultivation-id}/sensors")
 @RestController
 @RequiredArgsConstructor
-public class CultivationSensorController {
+public class CultivationSensorController implements CultivationSensorControllerDocs {
 
     private final CultivationSensorFacade cultivationSensorFacade;
 
+    @Override
     @PostMapping
     public ResponseEntity<Void> register(
             @RequestHeader("X-User-Id") Long userId,
@@ -35,6 +37,7 @@ public class CultivationSensorController {
         return ResponseEntity.created(location).build();
     }
 
+    @Override
     @DeleteMapping("/{sensor-id}")
     public ResponseEntity<Void> delete(
             @RequestHeader("X-User-Id") Long userId,
@@ -46,6 +49,7 @@ public class CultivationSensorController {
         return ResponseEntity.noContent().build();
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<CultivationSensorListResponse> getAllCultivationSensor(
             @RequestHeader("X-User-Id") Long userId,

@@ -182,6 +182,13 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
+        <!-- API 문서 (OpenAPI 3 / Swagger UI). Spring Boot 4 대응 버전. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.1.1</version>
+        </dependency>
+
 
     </dependencies>
     <dependencyManagement>

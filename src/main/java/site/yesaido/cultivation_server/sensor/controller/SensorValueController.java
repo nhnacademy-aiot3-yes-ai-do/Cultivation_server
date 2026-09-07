@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
+import site.yesaido.cultivation_server.sensor.controller.docs.SensorValueControllerDocs;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorCacheStatus;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
@@ -25,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/cultivations/{cultivation-id}/sensor-values")
-public class SensorValueController {
+public class SensorValueController implements SensorValueControllerDocs {
 
     private final InfluxService influxService;
     private final SensorRedisCacheService sensorRedisCacheService;
@@ -36,6 +37,7 @@ public class SensorValueController {
     @Value("${sensor-cache.freshness-seconds:3}")
     private long freshnessSeconds;
 
+    @Override
     @GetMapping("/trend")
     public ResponseEntity<SensorTrendPointListResponse> getTrend(
             @PathVariable("cultivation-id") Long cultivationId,
@@ -58,6 +60,7 @@ public class SensorValueController {
         return ResponseEntity.ok(trend);
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<LatestSensorValueListResponse> getLatest(@PathVariable("cultivation-id") Long cultivationId,
                                                                    @RequestHeader("X-User-Id") Long userId,
@@ -188,6 +191,7 @@ public class SensorValueController {
         }
     }
 
+    @Override
     @GetMapping("/average")
     public ResponseEntity<SensorTypeAverageListResponse> getAverage(
             @PathVariable("cultivation-id") Long cultivationId,

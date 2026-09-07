@@ -7,15 +7,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import site.yesaido.cultivation_server.cultivation.controller.docs.MushGuideControllerDocs;
 import site.yesaido.cultivation_server.cultivation.dto.ai.MushGuideResponse;
 import site.yesaido.cultivation_server.cultivation.service.MushGuideService;
 
 @RestController
 @RequestMapping("/api/v1/mushrooms")
 @RequiredArgsConstructor
-public class MushGuideController {
+public class MushGuideController implements MushGuideControllerDocs {
     private final MushGuideService mushGuideService;
 
+    @Override
     @GetMapping("/{mushroom-id}/guide")
     public ResponseEntity<MushGuideResponse> getMushroomGuide(@PathVariable("mushroom-id") Long mushroomId) {
         MushGuideResponse response = mushGuideService.getMushroomGuide(mushroomId);

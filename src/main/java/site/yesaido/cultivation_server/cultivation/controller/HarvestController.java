@@ -9,15 +9,17 @@ import site.yesaido.cultivation_server.cultivation.dto.harvest.request.HarvestCr
 import site.yesaido.cultivation_server.cultivation.dto.harvest.request.ProductScoreUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.HarvestCreateResponse;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.HarvestDetailResponse;
+import site.yesaido.cultivation_server.cultivation.controller.docs.HarvestControllerDocs;
 import site.yesaido.cultivation_server.cultivation.dto.harvest.response.ProductScoreUpdateResponse;
 import site.yesaido.cultivation_server.cultivation.service.HarvestService;
 
 @RestController
 @RequestMapping("/api/v1/cultivations/{cultivation-id}/harvest")
 @RequiredArgsConstructor
-public class HarvestController {
+public class HarvestController implements HarvestControllerDocs {
     private final HarvestService harvestService;
 
+    @Override
     @PostMapping
     public ResponseEntity<HarvestCreateResponse> createHarvest(@PathVariable("cultivation-id") Long cultivationId,
                                                                @RequestHeader("X-User-Id") Long userId,
@@ -26,6 +28,7 @@ public class HarvestController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<HarvestDetailResponse> getHarvest(@PathVariable("cultivation-id") Long cultivationId,
                                                             @RequestHeader("X-User-Id") Long userId) {
@@ -33,6 +36,7 @@ public class HarvestController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @Override
     @PutMapping("/product-score")
     public ResponseEntity<ProductScoreUpdateResponse> updateProductScore(@PathVariable("cultivation-id") Long cultivationId,
                                                                          @RequestHeader("X-User-Id") Long userId,
