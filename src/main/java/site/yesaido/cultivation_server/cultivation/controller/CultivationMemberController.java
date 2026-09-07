@@ -8,15 +8,17 @@ import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberAddRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.MemberRoleUpdateRequest;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.request.OwnerTransferRequest;
+import site.yesaido.cultivation_server.cultivation.controller.docs.CultivationMemberControllerDocs;
 import site.yesaido.cultivation_server.cultivation.dto.cultivationmember.response.MemberListResponse;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 
 @RestController
 @RequestMapping("/api/v1/cultivations/{cultivation-id}")
 @RequiredArgsConstructor
-public class CultivationMemberController {
+public class CultivationMemberController implements CultivationMemberControllerDocs {
     private final CultivationMemberService cultivationMemberService;
 
+    @Override
     @PostMapping("/members")
     public ResponseEntity<Void> addMember(@PathVariable("cultivation-id") Long cultivationId,
                                            @RequestHeader("X-User-Id") Long userId,
@@ -25,6 +27,7 @@ public class CultivationMemberController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    @Override
     @GetMapping("/members")
     public ResponseEntity<MemberListResponse> getMembers(@PathVariable("cultivation-id") Long cultivationId,
                                                          @RequestHeader("X-User-Id") Long userId,
@@ -33,6 +36,7 @@ public class CultivationMemberController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @Override
     @PutMapping("/members/{user-id}")
     public ResponseEntity<Void> updateMember(@PathVariable("cultivation-id") Long cultivationId,
                                               @PathVariable("user-id") Long targetUserId,
@@ -42,6 +46,7 @@ public class CultivationMemberController {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
+    @Override
     @PutMapping("/owner")
     public ResponseEntity<Void> transferOwnership(@PathVariable("cultivation-id") Long cultivationId,
                                                   @RequestHeader("X-User-Id") Long userId,
@@ -50,6 +55,7 @@ public class CultivationMemberController {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
+    @Override
     @DeleteMapping("/members/{user-id}")
     public ResponseEntity<Void> removeMember(@PathVariable("cultivation-id") Long cultivationId,
                                               @PathVariable("user-id") Long targetUserId,

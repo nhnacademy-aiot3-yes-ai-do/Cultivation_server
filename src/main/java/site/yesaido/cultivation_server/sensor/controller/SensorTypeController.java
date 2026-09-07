@@ -6,15 +6,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import site.yesaido.cultivation_server.sensor.controller.docs.SensorTypeControllerDocs;
 import site.yesaido.cultivation_server.sensor.dto.response.SensorTypeInfoListResponse;
 import site.yesaido.cultivation_server.sensor.service.SensorTypeService;
 
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/sensor-types")
-public class SensorTypeController {
+public class SensorTypeController implements SensorTypeControllerDocs {
     private final SensorTypeService sensorTypeService;
 
+    @Override
     @GetMapping
     public ResponseEntity<SensorTypeInfoListResponse> getAll() {
         SensorTypeInfoListResponse all = sensorTypeService.findAll();
