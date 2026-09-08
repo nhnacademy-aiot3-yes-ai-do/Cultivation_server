@@ -9,7 +9,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorTypeResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
+import site.yesaido.cultivation_server.sensor.entity.SensorConnectStatus;
+import site.yesaido.cultivation_server.sensor.service.CultivationSensorService;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 import site.yesaido.cultivation_server.sensor.service.SensorRedisCacheService;
 import tools.jackson.databind.ObjectMapper;
@@ -52,6 +56,9 @@ class SensorValueControllerTest {
 
     @MockitoBean
     CultivationMemberService cultivationMemberService;
+
+    @MockitoBean
+    CultivationSensorService cultivationSensorService;
 
 
     @Test
@@ -334,21 +341,40 @@ class SensorValueControllerTest {
     }
 
     @Test
-    @DisplayName("전체 센서 평균값 조회 성공 시 200 OK와 결과를 반환한다")
+    @DisplayName("센서 평균값 조회 성공 시 활성 등록된 센서 데이터만 필터링하여 200 OK를 반환한다")
     void getAverageSuccess() throws Exception {
+        // 1. InfluxDB에는 미등록 센서(LIGHT)까지 포함되어 있다고 가정
         List<SensorTypeAverageResponse> averages = List.of(
+                new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", BigDecimal.valueOf(22.5)),
+                new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", BigDecimal.valueOf(80.0)),
+                new SensorTypeAverageResponse(CULTIVATION_ID, "LIGHT", "lux", BigDecimal.valueOf(350.0))
+        );
+
+        // 2. 현재 재배지에는 TEMPERATURE와 HUMIDITY 센서만 활성 등록되어 있음 (LIGHT 없음)
+        CultivationSensorResponse activeSensor = new CultivationSensorResponse(
+                1L, "EUI-001", "MODEL-A", "센서1", "ROOM-1", "선반1",
+                SensorConnectStatus.ONLINE,
+                List.of(
+                        new CultivationSensorTypeResponse(1L, "TEMPERATURE", "°C"),
+                        new CultivationSensorTypeResponse(2L, "HUMIDITY", "%")
+                )
+        );
+        given(cultivationSensorService.findAll(CULTIVATION_ID)).willReturn(List.of(activeSensor));
+        given(influxService.findAverageByCultivationIdForLast24Hours(CULTIVATION_ID)).willReturn(averages);
+
+        // 3. 기대 결과: LIGHT는 필터링되어 TEMPERATURE와 HUMIDITY만 응답에 포함되어야 함
+        List<SensorTypeAverageResponse> expectedAverages = List.of(
                 new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", BigDecimal.valueOf(22.5)),
                 new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", BigDecimal.valueOf(80.0))
         );
-        SensorTypeAverageListResponse response = new SensorTypeAverageListResponse(averages);
-        given(influxService.findAverageByCultivationId(CULTIVATION_ID)).willReturn(averages);
+        SensorTypeAverageListResponse expectedResponse = new SensorTypeAverageListResponse(expectedAverages);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
-                .header("X-User-Id", USER_ID)).andExpect(status().isOk())
-                .andExpect(content().json(objectMapper.writeValueAsString(response)));
+                        .header("X-User-Id", USER_ID)).andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
 
         then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
-        then(influxService).should().findAverageByCultivationId(CULTIVATION_ID);
+        then(influxService).should().findAverageByCultivationIdForLast24Hours(CULTIVATION_ID);
     }
 
     @Test

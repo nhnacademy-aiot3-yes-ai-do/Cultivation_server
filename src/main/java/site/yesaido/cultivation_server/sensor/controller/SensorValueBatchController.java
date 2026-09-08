@@ -26,7 +26,7 @@ import java.util.Map;
 public class SensorValueBatchController implements SensorValueBatchControllerDocs {
     private final SensorLatestBatchService sensorLatestBatchService;
 
-    @Value("${sensor-cache.freshness-seconds:3}")
+    @Value("${sensor-cache.freshness-seconds:10}")
     private long freshnessSeconds;
 
     @Override
