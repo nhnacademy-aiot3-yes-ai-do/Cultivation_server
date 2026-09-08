@@ -354,6 +354,7 @@ class SensorValueControllerTest {
         CultivationSensorResponse activeSensor = new CultivationSensorResponse(
                 1L, "EUI-001", "MODEL-A", "센서1", "ROOM-1", "선반1",
                 SensorConnectStatus.ONLINE,
+                null,
                 List.of(
                         new CultivationSensorTypeResponse(1L, "TEMPERATURE", "°C"),
                         new CultivationSensorTypeResponse(2L, "HUMIDITY", "%")
