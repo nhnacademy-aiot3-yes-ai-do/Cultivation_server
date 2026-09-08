@@ -195,6 +195,33 @@ class CultivationControllerTest {
     }
 
     @Test
+    @DisplayName("재배 초기 metadata API - 관리자(X-User-Role=ADMIN)면 role이 그대로 서비스에 전달된다")
+    void getCultivationMetadataSuccessAdminRole() throws Exception {
+        Long adminId = 999L;
+        Long cultivationId = 100L;
+        CultivationDetailResponse detail = new CultivationDetailResponse(
+                cultivationId, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH,
+                null, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
+        );
+
+        when(cultivationMetadataService.get(adminId, cultivationId, "ADMIN"))
+                .thenReturn(new CultivationMetadataResponse(
+                        detail,
+                        new CultivationSensorListResponse(List.of(), List.of()),
+                        null,
+                        List.of()
+                ));
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/metadata", cultivationId)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cultivation.myRole").doesNotExist());
+
+        verify(cultivationMetadataService).get(adminId, cultivationId, "ADMIN");
+    }
+
+    @Test
     @DisplayName("재배 종료 API - 정상 요청 시 200 OK 반환")
     void finishCultivationSuccess() throws Exception {
         Long userId = 1L;

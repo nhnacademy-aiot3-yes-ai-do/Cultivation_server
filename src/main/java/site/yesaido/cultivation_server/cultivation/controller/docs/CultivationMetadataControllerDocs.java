@@ -19,5 +19,6 @@ public interface CultivationMetadataControllerDocs {
     @Operation(summary = "재배 메타데이터 단건 조회", description = "특정 재배의 요약 메타데이터를 반환합니다.")
     ResponseEntity<CultivationMetadataResponse> get(
             Long userId,
+            String role,
             @Parameter(description = "재배 ID") Long cultivationId);
 }
