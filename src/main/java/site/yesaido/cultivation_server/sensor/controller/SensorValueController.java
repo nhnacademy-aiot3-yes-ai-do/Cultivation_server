@@ -8,19 +8,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.sensor.controller.docs.SensorValueControllerDocs;
+import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorTypeResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorCacheStatus;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTrendPointListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageListResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.SensorTypeAverageResponse;
+import site.yesaido.cultivation_server.sensor.service.CultivationSensorService;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
 import site.yesaido.cultivation_server.sensor.service.SensorRedisCacheService;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 @RestController
 @Slf4j
@@ -33,6 +37,7 @@ public class SensorValueController implements SensorValueControllerDocs {
     private final CultivationMemberService cultivationMemberService;
     private final ConcurrentHashMap<Long, CompletableFuture<LatestSensorValueListResponse>> latestFallbacks =
             new ConcurrentHashMap<>();
+    private final CultivationSensorService cultivationSensorService;
 
     @Value("${sensor-cache.freshness-seconds:3}")
     private long freshnessSeconds;
@@ -41,9 +46,9 @@ public class SensorValueController implements SensorValueControllerDocs {
     @GetMapping("/trend")
     public ResponseEntity<SensorTrendPointListResponse> getTrend(
             @PathVariable("cultivation-id") Long cultivationId,
-            @RequestParam(name = "device-eui", required = true) String deviceEui,
-            @RequestParam(name = "sensor-type", required = true) String sensorType,
-            @RequestParam(name = "unit", required = true) String unit,
+            @RequestParam(name = "device-eui") String deviceEui,
+            @RequestParam(name = "sensor-type") String sensorType,
+            @RequestParam(name = "unit") String unit,
             @RequestHeader(name = "X-User-Id") Long userId
     ) {
         cultivationMemberService.existCultivationMember(cultivationId, userId);
@@ -192,13 +197,25 @@ public class SensorValueController implements SensorValueControllerDocs {
     }
 
     @Override
-    @GetMapping("/average")
+    @GetMapping("/average") // 조회 기간 이상하게 되어 있어 24시간 평균 조회로 변경
     public ResponseEntity<SensorTypeAverageListResponse> getAverage(
             @PathVariable("cultivation-id") Long cultivationId,
             @RequestHeader("X-User-Id") Long userId
     ){
         cultivationMemberService.existCultivationMember(cultivationId, userId);
-        List<SensorTypeAverageResponse> average = influxService.findAverageByCultivationId(cultivationId);
-        return ResponseEntity.ok(new SensorTypeAverageListResponse(average));
+        // InfluxDB에서 최근 24시간 센서 평균값 조회
+        List<SensorTypeAverageResponse> averages = influxService.findAverageByCultivationIdForLast24Hours(cultivationId);
+        // 현재 재배지에 활성 등록된 센서 타입 목록 추출
+        Set<String> activeSensorTypes = cultivationSensorService.findAll(cultivationId).stream()
+                .flatMap(sensor -> sensor.sensorTypes().stream())
+                .map(CultivationSensorTypeResponse::type)
+                .map(String::toUpperCase)
+                .collect(Collectors.toSet());
+        // 활성 센서 목록에 포함된 데이터만 필터링 (미등록/과거 센서 데이터 제외)
+        List<SensorTypeAverageResponse> filteredAverages = averages.stream()
+                .filter(avg -> avg.sensorType() != null && activeSensorTypes.contains(avg.sensorType().toUpperCase()))
+                .toList();
+
+        return ResponseEntity.ok(new SensorTypeAverageListResponse(filteredAverages));
     }
 }
