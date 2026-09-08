@@ -5,5 +5,6 @@ import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.Cult
 
 public interface CultivationMetadataService {
     CultivationMetadataResponse get(Long userId, Long cultivationId);
+    CultivationMetadataResponse get(Long userId, Long cultivationId, String role);
     CultivationMetadataListResponse getList(Long userId);
 }
