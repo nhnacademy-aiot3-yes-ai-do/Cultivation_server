@@ -51,15 +51,31 @@ class EnvironmentComplianceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(response)));
 
-        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID, null);
         then(environmentComplianceService).should().getCompliance(CULTIVATION_ID);
+    }
+
+    @Test
+    @DisplayName("전체 기간 환경 유지율 조회 - 관리자(X-User-Role=ADMIN)면 role이 그대로 전달된다")
+    void getComplianceSuccessForAdmin() throws Exception {
+        Long adminId = 999L;
+        EnvironmentComplianceResponse response = new EnvironmentComplianceResponse(
+                BigDecimal.valueOf(90), BigDecimal.valueOf(85), BigDecimal.valueOf(95), BigDecimal.valueOf(80));
+        given(environmentComplianceService.getCompliance(CULTIVATION_ID)).willReturn(response);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance", CULTIVATION_ID)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk());
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, adminId, "ADMIN");
     }
 
     @Test
     @DisplayName("재배 멤버가 아니면 환경 유지율 조회 없이 403을 반환한다")
     void getComplianceFailsWhenNotMember() throws Exception {
         willThrow(new CultivationAccessDeniedException(CULTIVATION_ID))
-                .given(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID);
+                .given(cultivationMemberService).existCultivationMember(CULTIVATION_ID, USER_ID, null);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
@@ -101,6 +117,23 @@ class EnvironmentComplianceControllerTest {
     }
 
     @Test
+    @DisplayName("일별 환경 유지율 조회 - 관리자(X-User-Role=ADMIN)면 role이 그대로 전달된다")
+    void getDailyComplianceSuccessForAdmin() throws Exception {
+        Long adminId = 999L;
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        EnvironmentComplianceResponse response = new EnvironmentComplianceResponse(
+                BigDecimal.valueOf(90), BigDecimal.valueOf(85), BigDecimal.valueOf(95), BigDecimal.valueOf(80));
+        given(environmentComplianceService.getDailyCompliance(CULTIVATION_ID, today)).willReturn(response);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance/daily", CULTIVATION_ID)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk());
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, adminId, "ADMIN");
+    }
+
+    @Test
     @DisplayName("기간별 환경 유지율 조회 성공 시 200 OK와 결과를 반환한다")
     void getPeriodComplianceSuccess() throws Exception {
         LocalDate startDate = LocalDate.of(2026, 8, 1);
@@ -118,4 +151,24 @@ class EnvironmentComplianceControllerTest {
 
         then(environmentComplianceService).should().getComplianceForPeriod(CULTIVATION_ID, startDate, endDate);
     }
+    @Test
+    @DisplayName("기간별 환경 유지율 조회 - 관리자(X-User-Role=ADMIN)면 role이 그대로 전달된다")
+    void getPeriodComplianceSuccessForAdmin() throws Exception {
+        Long adminId = 999L;
+        LocalDate startDate = LocalDate.of(2026, 8, 1);
+        LocalDate endDate = LocalDate.of(2026, 8, 17);
+        EnvironmentComplianceResponse response = new EnvironmentComplianceResponse(
+                BigDecimal.valueOf(90), BigDecimal.valueOf(85), BigDecimal.valueOf(95), BigDecimal.valueOf(80));
+        given(environmentComplianceService.getComplianceForPeriod(CULTIVATION_ID, startDate, endDate)).willReturn(response);
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/environment-compliance/period", CULTIVATION_ID)
+                        .param("startDate", "2026-08-01")
+                        .param("endDate", "2026-08-17")
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk());
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, adminId, "ADMIN");
+    }
+
 }
