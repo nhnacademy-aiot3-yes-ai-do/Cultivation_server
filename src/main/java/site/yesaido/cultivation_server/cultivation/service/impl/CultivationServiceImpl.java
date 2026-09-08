@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CultivationServiceImpl implements CultivationService {
+    private static final String ADMIN_ROLE = "ADMIN";
 
     private final CultivationRepository cultivationRepository;
     private final MushroomReferenceRepository mushroomReferenceRepository;
@@ -94,10 +95,15 @@ public class CultivationServiceImpl implements CultivationService {
 
     @Override
     public CultivationDetailResponse getCultivation(Long userId, Long cultivationId) {
+        return getCultivation(userId, cultivationId, null);
+    }
+
+    @Override
+    public CultivationDetailResponse getCultivation(Long userId, Long cultivationId, String role) {
         CultivationSummaryProjection projection = cultivationRepository
                 .findDetailProjectionByUserIdAndCultivationId(userId, cultivationId)
                 .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
-        if (projection.myRole() == null) {
+        if (projection.myRole() == null && !ADMIN_ROLE.equals(role)) {
             throw new CultivationAccessDeniedException(cultivationId);
         }
         return toDetail(projection);

@@ -28,9 +28,10 @@ public interface CultivationControllerDocs {
     @Operation(summary = "내 재배 목록 조회", description = "요청자가 멤버로 속한 진행 중인 재배 목록을 반환합니다.")
     ResponseEntity<CultivationSummaryListResponse> getCultivations(Long userId);
 
-    @Operation(summary = "재배 상세 조회", description = "재배 단건 상세를 반환합니다. 멤버만 조회할 수 있습니다.")
+    @Operation(summary = "재배 상세 조회", description = "재배 단건 상세를 반환합니다. 멤버 또는 시스템 관리자(ADMIN)만 조회할 수 있습니다.")
     ResponseEntity<CultivationDetailResponse> getCultivation(
             Long userId,
+            String role,
             @Parameter(description = "재배 ID") Long cultivationId);
 
     @Operation(summary = "재배 종료", description = "진행 중인 재배를 종료 상태로 전환합니다.")

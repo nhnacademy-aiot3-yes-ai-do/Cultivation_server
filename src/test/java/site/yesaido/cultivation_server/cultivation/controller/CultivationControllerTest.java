@@ -135,7 +135,7 @@ class CultivationControllerTest {
                 MemberRole.MEMBER, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(cultivationService.getCultivation(userId, cultivationId)).thenReturn(detail);
+        when(cultivationService.getCultivation(userId, cultivationId, null)).thenReturn(detail);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
                         .header("X-User-Id", userId))
@@ -154,13 +154,15 @@ class CultivationControllerTest {
                 null, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
         );
 
-        when(cultivationService.getCultivation(adminId, cultivationId)).thenReturn(detail);
+        when(cultivationService.getCultivation(adminId, cultivationId, "ADMIN")).thenReturn(detail);
 
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}", cultivationId)
                         .header("X-User-Id", adminId)
                         .header("X-User-Role", "ADMIN"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.myRole").doesNotExist());
+
+        verify(cultivationService).getCultivation(adminId, cultivationId, "ADMIN");
     }
 
     @Test
