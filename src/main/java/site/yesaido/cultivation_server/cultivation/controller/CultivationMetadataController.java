@@ -26,8 +26,9 @@ public class CultivationMetadataController implements CultivationMetadataControl
     @GetMapping("/{cultivation-id}/metadata")
     public ResponseEntity<CultivationMetadataResponse> get(
             @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role,
             @PathVariable("cultivation-id") Long cultivationId
     ) {
-        return ResponseEntity.ok(cultivationMetadataService.get(userId, cultivationId));
+        return ResponseEntity.ok(cultivationMetadataService.get(userId, cultivationId, role));
     }
 }

@@ -178,7 +178,7 @@ class CultivationControllerTest {
                 cultivationId, "TEMPERATURE", "°C", BigDecimal.valueOf(21.5),
                 java.time.Instant.parse("2026-09-02T00:00:00Z"), "eui-1", "model", "sensor", "room", "farm"
         );
-        when(cultivationMetadataService.get(userId, cultivationId))
+        when(cultivationMetadataService.get(userId, cultivationId, null))
                 .thenReturn(new CultivationMetadataResponse(
                         detail,
                         new CultivationSensorListResponse(List.of(), List.of()),
@@ -192,6 +192,33 @@ class CultivationControllerTest {
                 .andExpect(jsonPath("$.cultivation.cultivationId").value(cultivationId))
                 .andExpect(jsonPath("$.sensorHistory12h[0].sensorType").value("TEMPERATURE"))
                 .andExpect(jsonPath("$.sensorHistory12h[0].unit").value("°C"));
+    }
+
+    @Test
+    @DisplayName("재배 초기 metadata API - 관리자(X-User-Role=ADMIN)면 role이 그대로 서비스에 전달된다")
+    void getCultivationMetadataSuccessAdminRole() throws Exception {
+        Long adminId = 999L;
+        Long cultivationId = 100L;
+        CultivationDetailResponse detail = new CultivationDetailResponse(
+                cultivationId, "테스트 버섯", 1L, CultivationStatus.CREATED, CultivationMode.GROWTH,
+                null, LocalDateTime.now(), null, LocalDateTime.now(), LocalDateTime.now()
+        );
+
+        when(cultivationMetadataService.get(adminId, cultivationId, "ADMIN"))
+                .thenReturn(new CultivationMetadataResponse(
+                        detail,
+                        new CultivationSensorListResponse(List.of(), List.of()),
+                        null,
+                        List.of()
+                ));
+
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/metadata", cultivationId)
+                        .header("X-User-Id", adminId)
+                        .header("X-User-Role", "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cultivation.myRole").doesNotExist());
+
+        verify(cultivationMetadataService).get(adminId, cultivationId, "ADMIN");
     }
 
     @Test

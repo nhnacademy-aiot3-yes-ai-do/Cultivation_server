@@ -33,10 +33,15 @@ public class CultivationMetadataServiceImpl implements CultivationMetadataServic
 
     @Override
     public CultivationMetadataResponse get(Long userId, Long cultivationId) {
-        var cultivation = cultivationService.getCultivation(userId, cultivationId);
+        return get(userId, cultivationId, null);
+    }
+
+    @Override
+    public CultivationMetadataResponse get(Long userId, Long cultivationId, String role) {
+        var cultivation = cultivationService.getCultivation(userId, cultivationId, role);
         return new CultivationMetadataResponse(
                 cultivation,
-                cultivationSensorFacade.findAll(userId, cultivationId),
+                cultivationSensorFacade.findAll(userId, cultivationId, role),
                 mushroomReferenceService.getMushroomReferenceInfo(cultivation.mushroomId()),
                 historyValues(cultivationId, Duration.ofHours(12))
         );
