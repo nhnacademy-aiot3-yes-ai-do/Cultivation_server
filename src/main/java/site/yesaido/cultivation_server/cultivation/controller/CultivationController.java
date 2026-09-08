@@ -43,9 +43,10 @@ public class CultivationController implements CultivationControllerDocs {
     @Override
     @GetMapping("/{cultivation-id}")
     public ResponseEntity<CultivationDetailResponse> getCultivation(@RequestHeader("X-User-Id") Long userId,
+                                                                    @RequestHeader(value = "X-User-Role", required = false) String role,
                                                                     @PathVariable("cultivation-id") Long cultivationId
                                                                     ) {
-        CultivationDetailResponse response = cultivationService.getCultivation(userId, cultivationId);
+        CultivationDetailResponse response = cultivationService.getCultivation(userId, cultivationId, role);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

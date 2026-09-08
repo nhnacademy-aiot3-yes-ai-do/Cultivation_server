@@ -15,6 +15,8 @@ public interface CultivationService {
 
     // 경작 상세 조회
     CultivationDetailResponse getCultivation(Long userId, Long cultivationId);
+    // 경작 상세 조회 (시스템 관리자는 멤버가 아니어도 조회 가능)
+    CultivationDetailResponse getCultivation(Long userId, Long cultivationId, String role);
 
     // 경작 모드 변경
     CultivationModeChangeResponse switchToHarvestMode(Long cultivationId, Long userId);

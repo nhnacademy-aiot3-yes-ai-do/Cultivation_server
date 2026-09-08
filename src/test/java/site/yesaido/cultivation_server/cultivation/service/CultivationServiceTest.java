@@ -153,15 +153,29 @@ class CultivationServiceTest {
         Long adminId = 999L;
         Long cultivationId = 100L;
         CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
-        when(projection.myRole()).thenReturn(MemberRole.MEMBER);
+        when(projection.myRole()).thenReturn(null);
         when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(adminId, cultivationId))
                 .thenReturn(Optional.of(projection));
 
-        CultivationDetailResponse response = service.getCultivation(adminId, cultivationId);
+        CultivationDetailResponse response = service.getCultivation(adminId, cultivationId, "ADMIN");
 
         assertThat(response).isNotNull();
-        assertThat(response.myRole()).isEqualTo(MemberRole.MEMBER);
+        assertThat(response.myRole()).isNull();
         verify(cultivationRepository).findDetailProjectionByUserIdAndCultivationId(adminId, cultivationId);
+    }
+
+    @Test
+    @DisplayName("단일 경작 조회 실패 - 멤버가 아닌 일반 유저는 role이 없으면 관리자 우회가 적용되지 않는다")
+    void getCultivationDetailFailAccessDeniedWhenNotAdminAndNotMember() {
+        Long userId = 999L;
+        Long cultivationId = 100L;
+        CultivationSummaryProjection projection = mock(CultivationSummaryProjection.class);
+        when(projection.myRole()).thenReturn(null);
+        when(cultivationRepository.findDetailProjectionByUserIdAndCultivationId(userId, cultivationId))
+                .thenReturn(Optional.of(projection));
+
+        assertThatThrownBy(() -> service.getCultivation(userId, cultivationId, null))
+                .isInstanceOf(CultivationAccessDeniedException.class);
     }
 
     @Test
