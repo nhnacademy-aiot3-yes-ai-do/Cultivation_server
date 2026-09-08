@@ -2,12 +2,14 @@ package site.yesaido.cultivation_server.sensor.repository;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSensorEuiProjection;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -84,4 +86,33 @@ public interface CultivationSensorRepository extends JpaRepository<CultivationSe
                        cultivationSensor.deviceEui ASC
               """)
     List<CultivationSensor> findAllForDataGeneratorSnapshot(@Param("activeStatuses") Collection<CultivationStatus> activeStatuses);
+
+    @Modifying
+    @Query(value = """
+        UPDATE cultivation_sensor s
+        SET sensor_status = :nextStatus,
+            last_measured_at = :nextMeasuredAt
+        WHERE s.id = :sensorId
+          AND s.is_deleted = false
+          AND s.monitoring_started_at = :expectedStartedAt
+          AND s.sensor_status = :expectedStatus
+          AND s.last_measured_at IS NOT DISTINCT FROM :expectedMeasuredAt
+          AND (s.last_measured_at IS NULL
+               OR :nextMeasuredAt >= s.last_measured_at)
+          AND (s.sensor_status IS DISTINCT FROM :nextStatus
+               OR s.last_measured_at IS DISTINCT FROM :nextMeasuredAt)
+          AND EXISTS (
+              SELECT 1 FROM cultivation c
+              WHERE c.id = s.cultivation_id
+                AND c.cultivation_status IN ('CREATED', 'RUNNING')
+          )
+        """, nativeQuery = true)
+    int updateConnectionIfUnchanged(
+            @Param("sensorId") long sensorId,
+            @Param("expectedStartedAt") Instant expectedStartedAt,
+            @Param("expectedStatus") String expectedStatus,
+            @Param("expectedMeasuredAt") Instant expectedMeasuredAt,
+            @Param("nextStatus") String nextStatus,
+            @Param("nextMeasuredAt") Instant nextMeasuredAt
+    );
 }
