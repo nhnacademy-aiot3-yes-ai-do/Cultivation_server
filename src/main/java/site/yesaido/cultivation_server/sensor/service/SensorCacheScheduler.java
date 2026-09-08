@@ -44,6 +44,7 @@ public class SensorCacheScheduler {
     private final InfluxService influxService;
     private final SensorRedisCacheService cacheService;
     private final StringRedisTemplate redis;
+    private final SensorConnectionService sensorConnectionService;
 
     private static final String LOCK_KEY_PREFIX = "cultivation:sensor:cache:refresh-lock:";
     private static final String WATERMARK_PREFIX = "cultivation:sensor:cache:watermark:";
@@ -270,6 +271,15 @@ public class SensorCacheScheduler {
             if (!ownership.getAsBoolean()) {
                 return false;
             }
+
+            // 기존 조회 결과로 센서 연결 상태를 갱신합니다.
+            sensorConnectionService.synchronize(cultivationId, points, now);
+
+            // 상태 갱신 중 락을 잃었다면 워터마크를 진행하지 않습니다.
+            if (!ownership.getAsBoolean()) {
+                return false;
+            }
+
             points.stream()
                     .map(LatestSensorValueResponse::measuredAt)
                     .filter(java.util.Objects::nonNull)

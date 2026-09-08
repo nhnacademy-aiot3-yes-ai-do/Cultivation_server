@@ -3,6 +3,7 @@ package site.yesaido.cultivation_server.sensor.dto.response;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.entity.SensorConnectStatus;
 
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 
@@ -14,6 +15,7 @@ public record CultivationSensorResponse(
         String location,
         String locationDetail,
         SensorConnectStatus sensorStatus,
+        Instant lastMeasuredAt,
         List<CultivationSensorTypeResponse> sensorTypes
 ) {
     public static CultivationSensorResponse from(
@@ -35,6 +37,7 @@ public record CultivationSensorResponse(
                 sensor.getLocation(),
                 sensor.getLocationDetail(),
                 sensor.getSensorStatus(),
+                sensor.getLastMeasuredAt(),
                 sensorTypes
         );
     }
