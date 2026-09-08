@@ -22,8 +22,9 @@ public class EnvironmentComplianceController implements EnvironmentComplianceCon
     @Override
     @GetMapping
     public ResponseEntity<EnvironmentComplianceResponse> get(@PathVariable("cultivation-id") Long cultivationId,
-                                                             @RequestHeader("X-User-Id") Long userId) {
-        cultivationMemberService.existCultivationMember(cultivationId, userId);
+                                                             @RequestHeader("X-User-Id") Long userId,
+                                                             @RequestHeader(value = "X-User-Role", required = false) String role) {
+        cultivationMemberService.existCultivationMember(cultivationId, userId, role);
         return ResponseEntity.ok(environmentComplianceService.getCompliance(cultivationId));
     }
 
@@ -32,9 +33,10 @@ public class EnvironmentComplianceController implements EnvironmentComplianceCon
     public ResponseEntity<EnvironmentComplianceResponse> getDaily(@PathVariable("cultivation-id") Long cultivationId,
                                                                   @RequestParam(value = "date", required = false)
                                                                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                                                                  @RequestHeader("X-User-Id") Long userId) {
+                                                                  @RequestHeader("X-User-Id") Long userId,
+                                                                  @RequestHeader(value = "X-User-Role", required = false) String role) {
         LocalDate targetDate = date != null ? date : LocalDate.now(ZoneId.of("Asia/Seoul"));
-        cultivationMemberService.existCultivationMember(cultivationId, userId);
+        cultivationMemberService.existCultivationMember(cultivationId, userId, role);
         return ResponseEntity.ok(environmentComplianceService.getDailyCompliance(cultivationId, targetDate));
     }
 
@@ -43,8 +45,9 @@ public class EnvironmentComplianceController implements EnvironmentComplianceCon
     public ResponseEntity<EnvironmentComplianceResponse> getPeriod(@PathVariable("cultivation-id") Long cultivationId,
                                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-                                                                   @RequestHeader("X-User-Id") Long userId) {
-        cultivationMemberService.existCultivationMember(cultivationId, userId);
+                                                                   @RequestHeader("X-User-Id") Long userId,
+                                                                   @RequestHeader(value = "X-User-Role", required = false) String role) {
+        cultivationMemberService.existCultivationMember(cultivationId, userId, role);
         return ResponseEntity.ok(environmentComplianceService.getComplianceForPeriod(cultivationId, startDate, endDate));
     }
 }
