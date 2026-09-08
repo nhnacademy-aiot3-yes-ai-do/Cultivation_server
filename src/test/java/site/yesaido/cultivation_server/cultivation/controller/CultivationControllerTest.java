@@ -178,7 +178,7 @@ class CultivationControllerTest {
                 cultivationId, "TEMPERATURE", "°C", BigDecimal.valueOf(21.5),
                 java.time.Instant.parse("2026-09-02T00:00:00Z"), "eui-1", "model", "sensor", "room", "farm"
         );
-        when(cultivationMetadataService.get(userId, cultivationId))
+        when(cultivationMetadataService.get(userId, cultivationId, null))
                 .thenReturn(new CultivationMetadataResponse(
                         detail,
                         new CultivationSensorListResponse(List.of(), List.of()),
