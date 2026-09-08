@@ -54,14 +54,22 @@ public class EnvironmentComplianceServiceImpl implements EnvironmentComplianceSe
         Map<String, BigDecimal> rates = new HashMap<>();
         for (EnvironmentSetting setting : settings) {
             String type = setting.getSensorType().getType();
+            String unit = setting.getSensorType().getValueUnit(); // 단위(°C 또는 °F)
 
-            long total = influxSensorQueryRepository.countTotal(cultivationId, type, startDate, endDate);
-            if (total == 0) {
-                continue;
+            // 화씨(°F)인지 확인
+            boolean isFahrenheit = "TEMPERATURE".equals(type) && "°F".equals(unit);
+
+            // 화씨가 아닌 경우에만 InfluxDB 조회 및 계산 진행 (continue 완전 제거!)
+            if (!isFahrenheit) {
+                long total = influxSensorQueryRepository.countTotal(cultivationId, type, startDate, endDate);
+                if (total > 0) {
+                    long inRange = influxSensorQueryRepository.countInRange(
+                            cultivationId, type, startDate, endDate,
+                            setting.getThresholdMin(), setting.getThresholdMax()
+                    );
+                    rates.put(type, rate(inRange, total));
+                }
             }
-
-            long inRange = influxSensorQueryRepository.countInRange(cultivationId, type, startDate, endDate, setting.getThresholdMin(), setting.getThresholdMax());
-            rates.put(type, rate(inRange, total));
         }
 
         return new EnvironmentComplianceResponse(

@@ -188,7 +188,8 @@ class SensorValueControllerTest {
         given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
                 .willAnswer(invocation -> {
                     if (cacheCalls.incrementAndGet() >= 2) {
-                        secondCacheMiss.countDown();
+                        java.util.concurrent.CompletableFuture.delayedExecutor(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+                                .execute(secondCacheMiss::countDown);
                     }
                     return new SensorRedisCacheService.LatestCacheReadResult(List.of(), false);
                 });
@@ -197,16 +198,13 @@ class SensorValueControllerTest {
             return new LatestSensorValueListResponse(List.of(point));
         });
 
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        try {
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             Future<ResponseEntity<LatestSensorValueListResponse>> first = executor.submit(
                     () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
             Future<ResponseEntity<LatestSensorValueListResponse>> second = executor.submit(
                     () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
             first.get();
             second.get();
-        } finally {
-            executor.shutdownNow();
         }
 
         then(influxService).should(times(1)).findLatestByCultivationId(CULTIVATION_ID);
@@ -220,7 +218,8 @@ class SensorValueControllerTest {
         given(sensorRedisCacheService.findLatestWithStatus(eq(CULTIVATION_ID), any(java.time.Duration.class)))
                 .willAnswer(invocation -> {
                     if (cacheCalls.incrementAndGet() >= 2) {
-                        secondCacheMiss.countDown();
+                        java.util.concurrent.CompletableFuture.delayedExecutor(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+                                .execute(secondCacheMiss::countDown);
                     }
                     return new SensorRedisCacheService.LatestCacheReadResult(List.of(), false);
                 });
@@ -229,8 +228,7 @@ class SensorValueControllerTest {
             throw new IllegalStateException("influx unavailable");
         });
 
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        try {
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             Future<ResponseEntity<LatestSensorValueListResponse>> first = executor.submit(
                     () -> sensorValueController.getLatest(CULTIVATION_ID, USER_ID, null));
             Future<ResponseEntity<LatestSensorValueListResponse>> second = executor.submit(
@@ -243,8 +241,6 @@ class SensorValueControllerTest {
                 }
             }
             org.junit.jupiter.api.Assertions.assertEquals(2, unavailableResponses);
-        } finally {
-            executor.shutdownNow();
         }
 
         then(influxService).should(times(1)).findLatestByCultivationId(CULTIVATION_ID);
