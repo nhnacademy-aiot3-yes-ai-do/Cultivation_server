@@ -38,7 +38,7 @@ public class CultivationMetadataServiceImpl implements CultivationMetadataServic
 
     @Override
     public CultivationMetadataResponse get(Long userId, Long cultivationId, String role) {
-        var cultivation = cultivationService.getCultivation(userId, cultivationId);
+        var cultivation = cultivationService.getCultivation(userId, cultivationId, role);
         return new CultivationMetadataResponse(
                 cultivation,
                 cultivationSensorFacade.findAll(userId, cultivationId, role),
