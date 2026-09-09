@@ -53,14 +53,31 @@ class InfluxTrendQueryTest {
         assertThat(result.unit()).isEqualTo(".°C");
         assertThat(result.responses())
                 .containsExactly(new SensorTrendPointResponse(measuredAt, BigDecimal.valueOf(24.25)));
-        verify(queryApi).query(argThat((String query) ->
-                query.contains("range(start: -12h)")
-                        && query.contains("r.cultivationId == \"42\"")
-                        && query.contains("r.deviceEui == \"eui-01\"")
-                        && query.contains("r.sensorType == \"TEMPERATURE\"")
-                        && query.contains("aggregateWindow(every: 15m, fn: mean")
-                        && query.contains("createEmpty: false")
-        ), eq("yes-nhn"));
+        verify(queryApi, times(1)).query(anyString(), eq("yes-nhn"));
+        List<String> queries = mockingDetails(queryApi).getInvocations().stream()
+                .filter(invocation -> invocation.getMethod().getName().equals("query"))
+                .map(invocation -> (String) invocation.getArguments()[0])
+                .toList();
+        assertThat(queries).allSatisfy(query -> assertThat(query)
+                .contains("r.cultivationId == \"42\"")
+                .contains("r.deviceEui == \"eui-01\"")
+                .contains("r.sensorType == \"TEMPERATURE\"")
+                .contains("r.unit == \".°C\""));
+        assertThat(queries).anyMatch(query -> query.contains("range(start: -9s)"));
+        assertThat(queries).anyMatch(query -> query.contains("range(start: -59s, stop: -9s)")
+                && query.contains("aggregateWindow(every: 3s"));
+        assertThat(queries).anyMatch(query -> query.contains("range(start: -599s, stop: -59s)")
+                && query.contains("aggregateWindow(every: 10s"));
+        assertThat(queries).anyMatch(query -> query.contains("range(start: -1799s, stop: -599s)")
+                && query.contains("aggregateWindow(every: 30s"));
+        assertThat(queries).anyMatch(query -> query.contains("range(start: -3599s, stop: -1799s)")
+                && query.contains("aggregateWindow(every: 1m"));
+        assertThat(queries).anyMatch(query -> query.contains("range(start: -10799s, stop: -3599s)")
+                && query.contains("aggregateWindow(every: 5m"));
+        assertThat(queries).anyMatch(query -> query.contains("range(start: -21599s, stop: -10799s)")
+                && query.contains("aggregateWindow(every: 10m"));
+        assertThat(queries).anyMatch(query -> query.contains("range(start: -12h, stop: -21599s)")
+                && query.contains("aggregateWindow(every: 20m"));
     }
 
     private InfluxProperties properties() {

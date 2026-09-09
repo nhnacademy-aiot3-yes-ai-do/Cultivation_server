@@ -2,7 +2,6 @@ package site.yesaido.cultivation_server.sensor.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import site.yesaido.cultivation_server.config.SensorCacheProperties;
 import site.yesaido.cultivation_server.sensor.controller.docs.SensorValueBatchControllerDocs;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueBatchResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
@@ -25,9 +25,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/cultivations/sensor-values")
 public class SensorValueBatchController implements SensorValueBatchControllerDocs {
     private final SensorLatestBatchService sensorLatestBatchService;
-
-    @Value("${sensor-cache.freshness-seconds:10}")
-    private long freshnessSeconds;
+    private final SensorCacheProperties sensorCacheProperties;
 
     @Override
     @GetMapping("/latest")
@@ -37,7 +35,7 @@ public class SensorValueBatchController implements SensorValueBatchControllerDoc
         try {
             Map<Long, List<LatestSensorValueResponse>> latest = sensorLatestBatchService.findLatestForUser(
                     userId,
-                    Duration.ofSeconds(freshnessSeconds)
+                    Duration.ofSeconds(sensorCacheProperties.getFreshnessSeconds())
             );
             return ResponseEntity.ok(new LatestSensorValueBatchResponse(latest));
         } catch (DataAccessException exception) {

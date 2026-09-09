@@ -11,6 +11,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import site.yesaido.cultivation_server.config.SensorCacheProperties;
 import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
@@ -58,18 +59,7 @@ public class SensorCacheScheduler {
         return script;
     }
 
-    @Value("${sensor-cache.history-hours:12}")
-    private long historyHours;
-    @Value("${sensor-cache.ttl-grace-seconds:3}")
-    private long ttlGraceSeconds;
-    @Value("${sensor-cache.query-overlap-seconds:60}")
-    private long queryOverlapSeconds;
-    @Value("${sensor-cache.lock-lease-seconds:600}")
-    private long lockLeaseSeconds;
-    @Value("${sensor-cache.reconciliation-interval-seconds:300}")
-    private long reconciliationIntervalSeconds;
-    @Value("${sensor-cache.sensor-snapshot-cache-seconds:5}")
-    private long sensorSnapshotCacheSeconds;
+    private final SensorCacheProperties sensorCacheProperties;
     @Value("${HOSTNAME:${spring.application.name:cultivation-server}}")
     private String instanceId;
     private final AtomicBoolean running = new AtomicBoolean();
@@ -86,7 +76,7 @@ public class SensorCacheScheduler {
 
     @EventListener(ApplicationReadyEvent.class)
     public void warmUp() {
-        boolean success = refresh(Duration.ofHours(historyHours), true);
+        boolean success = refresh(Duration.ofHours(sensorCacheProperties.getHistoryHours()), true);
         if (success) {
             lastReconciliationAt = Instant.now();
         }
@@ -97,7 +87,7 @@ public class SensorCacheScheduler {
             initialDelayString = "${sensor-cache.poll-initial-delay-ms:10000}")
     public void poll() {
         if (!warmedUp) {
-            boolean success = refresh(Duration.ofHours(historyHours), true);
+            boolean success = refresh(Duration.ofHours(sensorCacheProperties.getHistoryHours()), true);
             if (success) {
                 lastReconciliationAt = Instant.now();
             }
@@ -106,8 +96,8 @@ public class SensorCacheScheduler {
         }
         Instant now = Instant.now();
         boolean reconciliation = lastReconciliationAt == null
-                || Duration.between(lastReconciliationAt, now).getSeconds() >= reconciliationIntervalSeconds;
-        boolean success = refresh(reconciliation ? Duration.ofHours(historyHours) : Duration.ofSeconds(queryOverlapSeconds), reconciliation);
+                || Duration.between(lastReconciliationAt, now).getSeconds() >= sensorCacheProperties.getReconciliationIntervalSeconds();
+        boolean success = refresh(reconciliation ? Duration.ofHours(sensorCacheProperties.getHistoryHours()) : Duration.ofSeconds(sensorCacheProperties.getQueryOverlapSeconds()), reconciliation);
         if (reconciliation && success) {
             lastReconciliationAt = now;
         }
@@ -142,7 +132,7 @@ public class SensorCacheScheduler {
     private RefreshResult refreshCultivationWithLock(long cultivationId, Duration range, boolean warmup) {
         String lockKey = LOCK_KEY_PREFIX + cultivationId;
         String token = instanceId + ":" + UUID.randomUUID();
-        Duration lease = Duration.ofSeconds(lockLeaseSeconds);
+        Duration lease = Duration.ofSeconds(sensorCacheProperties.getLockLeaseSeconds());
         try {
             Boolean acquired = redis.opsForValue().setIfAbsent(lockKey, token, lease);
             if (!Boolean.TRUE.equals(acquired)) {
@@ -156,7 +146,7 @@ public class SensorCacheScheduler {
         }
 
         AtomicBoolean leaseLost = new AtomicBoolean();
-        long heartbeatSeconds = Math.max(1, lockLeaseSeconds / 3);
+        long heartbeatSeconds = Math.max(1, sensorCacheProperties.getLockLeaseSeconds() / 3);
         ScheduledFuture<?> heartbeat = heartbeatExecutor.scheduleAtFixedRate(() -> {
             if (!renewLock(lockKey, token, lease)) {
                 leaseLost.set(true);
@@ -175,7 +165,7 @@ public class SensorCacheScheduler {
                     return RefreshResult.LOCK_LOST;
                 }
                 cacheService.compactCultivation(cultivationId,
-                        Duration.ofHours(historyHours), Duration.ofSeconds(ttlGraceSeconds), lockKey, token);
+                        Duration.ofHours(sensorCacheProperties.getHistoryHours()), Duration.ofSeconds(sensorCacheProperties.getTtlGraceSeconds()), lockKey, token);
             }
             if (!ownership.getAsBoolean()) {
                 log.warn("센서 캐시 lock 소유권 상실: instanceId={}, cultivationId={}", instanceId, cultivationId);
@@ -220,7 +210,7 @@ public class SensorCacheScheduler {
         Instant now = Instant.now();
         Instant cachedAt = cultivationIdsCachedAt.get();
         if (cachedAt != null
-                && Duration.between(cachedAt, now).getSeconds() < Math.max(1, sensorSnapshotCacheSeconds)) {
+                && Duration.between(cachedAt, now).getSeconds() < Math.max(1, sensorCacheProperties.getSensorSnapshotCacheSeconds())) {
             return cachedCultivationIds.get();
         }
         Set<CultivationStatus> statuses = Set.of(CultivationStatus.CREATED, CultivationStatus.RUNNING);
@@ -248,9 +238,9 @@ public class SensorCacheScheduler {
         try {
             Instant now = Instant.now();
             String watermarkKey = WATERMARK_PREFIX + cultivationId;
-            Duration queryRange = warmup ? range : queryRange(watermarkKey, now, Duration.ofHours(historyHours));
-            queryRange = queryRange.compareTo(Duration.ofHours(historyHours)) > 0
-                    ? Duration.ofHours(historyHours)
+            Duration queryRange = warmup ? range : queryRange(watermarkKey, now, Duration.ofHours(sensorCacheProperties.getHistoryHours()));
+            queryRange = queryRange.compareTo(Duration.ofHours(sensorCacheProperties.getHistoryHours())) > 0
+                    ? Duration.ofHours(sensorCacheProperties.getHistoryHours())
                     : queryRange;
             var points = influxService.findValuesByCultivationId(cultivationId, queryRange);
             if (!ownership.getAsBoolean()) {
@@ -259,7 +249,7 @@ public class SensorCacheScheduler {
             boolean appended = false;
             for (int attempt = 0; attempt < 3 && ownership.getAsBoolean(); attempt++) {
                 appended = cacheService.appendWithLock(cultivationId, points,
-                        Duration.ofHours(historyHours), Duration.ofSeconds(ttlGraceSeconds),
+                        Duration.ofHours(sensorCacheProperties.getHistoryHours()), Duration.ofSeconds(sensorCacheProperties.getTtlGraceSeconds()),
                         lockKey, token);
                 if (appended) {
                     break;
@@ -287,7 +277,7 @@ public class SensorCacheScheduler {
                     .ifPresent(latest -> redis.opsForValue().set(
                             watermarkKey,
                             latest.toString(),
-                            Duration.ofHours(historyHours).plusSeconds(ttlGraceSeconds)));
+                            Duration.ofHours(sensorCacheProperties.getHistoryHours()).plusSeconds(sensorCacheProperties.getTtlGraceSeconds())));
             return true;
         } catch (Exception e) {
             log.warn("센서 Redis 캐시 갱신 건너뜀: instanceId={}, cultivationId={}", instanceId, cultivationId, e);
@@ -302,7 +292,7 @@ public class SensorCacheScheduler {
         }
         try {
             Instant lastMeasuredAt = Instant.parse(watermark);
-            long seconds = Math.max(1, Duration.between(lastMeasuredAt, now).plusSeconds(queryOverlapSeconds).toSeconds());
+            long seconds = Math.max(1, Duration.between(lastMeasuredAt, now).plusSeconds(sensorCacheProperties.getQueryOverlapSeconds()).toSeconds());
             return Duration.ofSeconds(seconds);
         } catch (RuntimeException e) {
             return fallback;

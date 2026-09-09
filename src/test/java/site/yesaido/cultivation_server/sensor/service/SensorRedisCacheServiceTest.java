@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.data.redis.core.*;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
@@ -43,6 +44,36 @@ class SensorRedisCacheServiceTest {
     @BeforeEach
     void setUp() {
         cacheService = new SensorRedisCacheService(redis, objectMapper);
+    }
+
+    @Test
+    void appliesNineSecondRawRetentionAndRequestedHistoryResolutions() {
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 9L)).isEqualTo(0L);
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 10L)).isEqualTo(3L);
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 60L)).isEqualTo(10L);
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 600L)).isEqualTo(30L);
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 1800L)).isEqualTo(60L);
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 3600L)).isEqualTo(300L);
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 10800L)).isEqualTo(600L);
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 21600L)).isEqualTo(1200L);
+    }
+
+    @Test
+    void bucketPointsKeepsRecentPointsAsIndividualRawBuckets() {
+        Instant now = Instant.parse("2026-09-08T00:00:00Z");
+        LatestSensorValueResponse recent = point(now.minusSeconds(5), "C");
+        LatestSensorValueResponse older = point(now.minusSeconds(10), "C");
+
+        @SuppressWarnings("unchecked")
+        Map<String, List<LatestSensorValueResponse>> buckets =
+                (Map<String, List<LatestSensorValueResponse>>) ReflectionTestUtils.invokeMethod(
+                        cacheService, "bucketPoints", List.of(recent, older), now);
+
+        assertThat(buckets).containsKey("raw:" + recent.measuredAt().toEpochMilli());
+        assertThat(buckets.get("raw:" + recent.measuredAt().toEpochMilli()))
+                .containsExactly(recent);
+        assertThat(buckets).containsKey("3:" + (older.measuredAt().getEpochSecond() / 3) * 3);
+        assertThat(buckets.get("raw:" + older.measuredAt().toEpochMilli())).isNull();
     }
 
     @Test

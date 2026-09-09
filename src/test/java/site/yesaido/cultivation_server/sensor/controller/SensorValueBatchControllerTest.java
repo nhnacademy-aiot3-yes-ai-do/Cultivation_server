@@ -2,6 +2,7 @@ package site.yesaido.cultivation_server.sensor.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
+import site.yesaido.cultivation_server.config.SensorCacheProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.service.SensorLatestBatchService;
 
@@ -19,7 +20,12 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 class SensorValueBatchControllerTest {
     private final SensorLatestBatchService service = mock(SensorLatestBatchService.class);
-    private final SensorValueBatchController controller = new SensorValueBatchController(service);
+    private final SensorCacheProperties properties = new SensorCacheProperties();
+    private final SensorValueBatchController controller = new SensorValueBatchController(service, properties);
+
+    {
+        properties.setFreshnessSeconds(0);
+    }
 
     @Test
     void returnsLatestValuesGroupedByCultivationId() {
