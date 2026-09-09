@@ -230,7 +230,7 @@ class InfluxServiceTest {
     class FindTrend {
 
         @Test
-        @DisplayName("15분 단위 센서 추이 반환")
+        @DisplayName("구간별 해상도의 센서 추이 반환")
         void returnsTrendPoints() {
             Instant measuredAt = Instant.parse("2026-08-24T01:15:00Z");
             FluxRecord recordRow = toRecord(
@@ -271,7 +271,7 @@ class InfluxServiceTest {
         void rejectsNonNumericTrendValue() {
             FluxRecord recordRow = toRecord(
                     "invalid",
-                    null,
+                    Instant.parse("2026-08-24T01:15:00Z"),
                     Map.of(
                             "cultivationId", "1",
                             "deviceEui", "eui-01",
@@ -307,7 +307,7 @@ class InfluxServiceTest {
     ) {
         FluxRecord recordRow = mock(FluxRecord.class);
         when(recordRow.getValue()).thenReturn(value);
-        when(recordRow.getValues()).thenReturn(values);
+        lenient().when(recordRow.getValues()).thenReturn(values);
         if (measuredAt != null) {
             when(recordRow.getTime()).thenReturn(measuredAt);
         }

@@ -148,56 +148,83 @@ public class InfluxServiceImpl implements InfluxService {
         Objects.requireNonNull(unit, "unit must not be null");
         String normalizedUnit = Objects.requireNonNull(SensorUnits.normalize(unit), "unit must not be blank");
 
-        String query = baseQuery(cultivationId, " |> range(start: -12h)")
-                + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
-                + " |> filter(fn: (r) => r.sensorType == \"" + escape(sensorType) + "\")"
-                + " |> filter(fn: (r) => r.unit == \"" + escape(normalizedUnit) + "\")"
-                + " |> aggregateWindow(every: 15m, fn: mean, createEmpty: false)"
-                + " |> sort(columns: [\"_time\"])";
+        List<FluxRecord> records = queryTrendRecords(
+                cultivationId, deviceEui, sensorType, normalizedUnit);
 
-        List<FluxRecord> records = queryTablesSafely(query).stream()
-                .flatMap(table -> table.getRecords().stream())
-                .toList();
+        List<FluxRecord> uniqueRecords = records.stream()
+                .filter(record -> record.getTime() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        FluxRecord::getTime,
+                        record -> record,
+                        (first, ignored) -> first,
+                        java.util.TreeMap::new
+                ))
+                .values().stream().toList();
 
-        if (records.isEmpty()) {
+        if (uniqueRecords.isEmpty()) {
             return new SensorTrendPointListResponse(cultivationId, deviceEui, sensorType, normalizedUnit, List.of());
         }
 
-        long cultivationIdFromInfluxDB = toCultivationId(records);
-
-        String deviceEuiFromDB = records.stream()
-                .map(FluxRecord::getValues)
-                .map(values -> stringValue(values, "deviceEui"))
-                .filter(Objects::nonNull)
-                .findFirst().orElse(null);
-
-
-        String sensorTypeFromDB = records.stream()
-                .map(FluxRecord::getValues)
-                .map(values -> stringValue(values, FIELD_SENSOR_TYPE))
-                .filter(Objects::nonNull)
-                .findFirst().orElse(null);
-
-        String responseUnit = records.stream()
-                .map(FluxRecord::getValues)
-                .map(values -> stringValue(values, FIELD_UNIT))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
-
-        List<SensorTrendPointResponse> responses = records.stream()
+        List<SensorTrendPointResponse> responses = uniqueRecords.stream()
                 .map(fluxRecord -> {
                     Object rawValue = fluxRecord.getValue();
                     if (!(rawValue instanceof Number number)) {
                         throw new IllegalStateException("Influx trend value is not numeric: " + rawValue);
                     }
-                    return new SensorTrendPointResponse(fluxRecord.getTime(), NumberUtils.convertNumberToTargetClass(number, BigDecimal.class));
+                    return new SensorTrendPointResponse(
+                            fluxRecord.getTime(), NumberUtils.convertNumberToTargetClass(number, BigDecimal.class));
                 })
                 .toList();
 
         return new SensorTrendPointListResponse(
-                cultivationIdFromInfluxDB, deviceEuiFromDB, sensorTypeFromDB, responseUnit, responses
+                cultivationId, deviceEui, sensorType, normalizedUnit, responses
         );
+    }
+
+    private List<FluxRecord> queryTrendRecords(
+            long cultivationId,
+            String deviceEui,
+            String sensorType,
+            String unit
+    ) {
+        List<String> streams = List.of(
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-9s", null, null),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-59s", "-9s", "3s"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-599s", "-59s", "10s"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-1799s", "-599s", "30s"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-3599s", "-1799s", "1m"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-10799s", "-3599s", "5m"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-21599s", "-10799s", "10m"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-12h", "-21599s", "20m")
+        );
+        String query = "union(tables: [" + String.join(", ", streams) + "])"
+                + " |> sort(columns: [\"_time\"])";
+        return queryTablesSafely(query).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .toList();
+    }
+
+    private String trendStream(
+            long cultivationId,
+            String deviceEui,
+            String sensorType,
+            String unit,
+            String start,
+            String stop,
+            String every
+    ) {
+        String range = stop == null
+                ? " |> range(start: " + start + ")"
+                : " |> range(start: " + start + ", stop: " + stop + ")";
+        String aggregation = every == null
+                ? ""
+                : " |> aggregateWindow(every: " + every + ", fn: mean, createEmpty: false)";
+        return "(" + baseQuery(cultivationId, range)
+                + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
+                + " |> filter(fn: (r) => r.sensorType == \"" + escape(sensorType) + "\")"
+                + " |> filter(fn: (r) => r.unit == \"" + escape(unit) + "\")"
+                + aggregation
+                + ")";
     }
 
     @Override

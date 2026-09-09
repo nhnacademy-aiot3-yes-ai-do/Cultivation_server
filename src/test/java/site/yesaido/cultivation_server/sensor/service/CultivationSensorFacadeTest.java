@@ -415,6 +415,7 @@ class CultivationSensorFacadeTest {
                     "ROOM-1",
                     "북쪽 선반",
                     SensorConnectStatus.OFFLINE,
+                    null,
                     sensorTypes
             );
 
@@ -492,6 +493,7 @@ class CultivationSensorFacadeTest {
                     "ROOM-1",
                     "북쪽",
                     SensorConnectStatus.ONLINE,
+                    null,
                     List.of(
                             new CultivationSensorTypeResponse(
                                     10L, "TEMPERATURE", "C"
@@ -510,6 +512,7 @@ class CultivationSensorFacadeTest {
                     "ROOM-2",
                     "남쪽",
                     SensorConnectStatus.OFFLINE,
+                    null,
                     List.of(
                             new CultivationSensorTypeResponse(
                                     30L, "CO2", "ppm"

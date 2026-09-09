@@ -1,5 +1,6 @@
 package site.yesaido.cultivation_server.sensor.service;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,15 +10,19 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.test.util.ReflectionTestUtils;
+import site.yesaido.cultivation_server.config.SensorCacheProperties;
+import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorRepository;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -33,6 +38,8 @@ class SensorCacheSchedulerTest {
     @Mock
     private SensorRedisCacheService cacheService;
     @Mock
+    private SensorConnectionService sensorConnectionService;
+    @Mock
     private StringRedisTemplate redis;
     @Mock
     private ValueOperations<String, String> valueOperations;
@@ -42,12 +49,9 @@ class SensorCacheSchedulerTest {
 
     @BeforeEach
     void setUp() {
-        scheduler = new SensorCacheScheduler(sensorRepository, influxService, cacheService, redis);
-        ReflectionTestUtils.setField(scheduler, "historyHours", 12L);
-        ReflectionTestUtils.setField(scheduler, "ttlGraceSeconds", 3L);
-        ReflectionTestUtils.setField(scheduler, "queryOverlapSeconds", 60L);
-        ReflectionTestUtils.setField(scheduler, "lockLeaseSeconds", 600L);
-        ReflectionTestUtils.setField(scheduler, "reconciliationIntervalSeconds", 300L);
+        SensorCacheProperties properties = new SensorCacheProperties();
+        scheduler = new SensorCacheScheduler(sensorRepository, influxService, cacheService, redis,
+                sensorConnectionService, properties);
         when(redis.opsForValue()).thenReturn(valueOperations);
         lenient().when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class)))
                 .thenAnswer(invocation -> {
@@ -135,6 +139,7 @@ class SensorCacheSchedulerTest {
         verifyNoInteractions(cacheService);
         verify(valueOperations, never()).set(eq("cultivation:sensor:cache:watermark:1"),
                 anyString(), any(Duration.class));
+        verifyNoInteractions(sensorConnectionService);
     }
 
     @Test
@@ -216,6 +221,7 @@ class SensorCacheSchedulerTest {
                 any(Duration.class), anyString(), anyString());
         verify(valueOperations, never()).set(eq("cultivation:sensor:cache:watermark:1"),
                 anyString(), any(Duration.class));
+        verifyNoInteractions(sensorConnectionService);
     }
 
     @Test
@@ -262,6 +268,75 @@ class SensorCacheSchedulerTest {
 
         verify(influxService).findValuesByCultivationId(eq(1L), argThat(duration ->
                 duration.equals(Duration.ofHours(12))));
+    }
+
+    @AfterEach
+    void tearDown() {
+        scheduler.shutdownHeartbeatExecutor();
+    }
+
+    @Test
+    void synchronizesConnectionAfterSuccessfulQueryAndCacheAppend() {
+        var point = new LatestSensorValueResponse(
+                1L, "TEMPERATURE", "°C", BigDecimal.valueOf(23),
+                Instant.now().minusSeconds(1),
+                "EUI-A", "MODEL-A", "센서 A", "서울", "선반 1");
+        var points = List.of(point);
+        var queryStartedAt = new AtomicReference<Instant>();
+
+        CultivationSensor registeredSensor = sensor(1L);
+
+        when(sensorRepository.findAllForDataGeneratorSnapshot(any()))
+                .thenReturn(List.of(registeredSensor));
+
+        when(influxService.findValuesByCultivationId(eq(1L), any(Duration.class)))
+                .thenAnswer(invocation -> {
+                    queryStartedAt.set(Instant.now());
+                    return points;
+                });
+
+        Instant before = Instant.now();
+        scheduler.warmUp();
+
+        var order = inOrder(cacheService, sensorConnectionService);
+        order.verify(cacheService).appendWithLock(
+                eq(1L), same(points), any(Duration.class), any(Duration.class),
+                anyString(), anyString());
+        order.verify(sensorConnectionService).synchronize(
+                eq(1L), same(points),
+                argThat(at -> at != null && !at.isBefore(before)
+                        && !at.isAfter(queryStartedAt.get())));
+    }
+
+    @Test
+    void synchronizesConnectionEvenWhenQueryResultIsEmpty() {
+        CultivationSensor registeredSensor = sensor(1L);
+
+        when(sensorRepository.findAllForDataGeneratorSnapshot(any()))
+                .thenReturn(List.of(registeredSensor));
+
+        when(influxService.findValuesByCultivationId(eq(1L), any(Duration.class)))
+                .thenReturn(List.of());
+
+        scheduler.warmUp();
+
+        verify(sensorConnectionService)
+                .synchronize(eq(1L), eq(List.of()), any(Instant.class));
+    }
+
+    @Test
+    void doesNotSynchronizeConnectionWhenInfluxQueryFails() {
+        CultivationSensor registeredSensor = sensor(1L);
+
+        when(sensorRepository.findAllForDataGeneratorSnapshot(any()))
+                .thenReturn(List.of(registeredSensor));
+
+        when(influxService.findValuesByCultivationId(eq(1L), any(Duration.class)))
+                .thenThrow(new IllegalStateException("influx unavailable"));
+
+        scheduler.warmUp();
+
+        verifyNoInteractions(sensorConnectionService, cacheService);
     }
 
     private CultivationSensor sensor(long cultivationId) {
