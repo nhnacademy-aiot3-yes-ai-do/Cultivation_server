@@ -90,6 +90,7 @@ sensor-cache:
   poll-initial-delay-ms: ${SENSOR_CACHE_POLL_INITIAL_DELAY_MS:10000}
   lock-lease-seconds: ${SENSOR_CACHE_LOCK_LEASE_SECONDS:600}
   reconciliation-interval-seconds: ${SENSOR_CACHE_RECONCILIATION_INTERVAL_SECONDS:300}
+  fallback-wait-seconds: ${SENSOR_CACHE_FALLBACK_WAIT_SECONDS:25}
 
 # API 문서 (springdoc-openapi / Swagger UI)
 springdoc:

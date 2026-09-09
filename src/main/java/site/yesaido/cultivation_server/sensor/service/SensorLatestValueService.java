@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
@@ -121,7 +123,8 @@ public class SensorLatestValueService {
 
     private LatestSensorValueListResponse awaitFallback(CompletableFuture<LatestSensorValueListResponse> fallback) {
         try {
-            return fallback.get();
+            return fallback.get(
+                    sensorCacheProperties.getFallbackWaitSeconds(), TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Influx latest fallback interrupted", e);
@@ -129,6 +132,8 @@ public class SensorLatestValueService {
             Throwable cause = e.getCause();
             if (cause instanceof RuntimeException runtimeException) throw runtimeException;
             throw new IllegalStateException("Influx latest fallback failed", cause);
+        } catch (TimeoutException e) {
+            throw new IllegalStateException("Influx latest fallback timed out", e);
         }
     }
 }

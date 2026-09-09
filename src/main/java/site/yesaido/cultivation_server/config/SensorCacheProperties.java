@@ -13,6 +13,7 @@ public class SensorCacheProperties {
     private long lockLeaseSeconds = 600;
     private long reconciliationIntervalSeconds = 300;
     private long sensorSnapshotCacheSeconds = 5;
+    private long fallbackWaitSeconds = 25;
 
     public long getHistoryHours() { return historyHours; }
     public void setHistoryHours(long historyHours) { this.historyHours = historyHours; }
@@ -32,4 +33,6 @@ public class SensorCacheProperties {
     public void setReconciliationIntervalSeconds(long reconciliationIntervalSeconds) { this.reconciliationIntervalSeconds = reconciliationIntervalSeconds; }
     public long getSensorSnapshotCacheSeconds() { return sensorSnapshotCacheSeconds; }
     public void setSensorSnapshotCacheSeconds(long sensorSnapshotCacheSeconds) { this.sensorSnapshotCacheSeconds = sensorSnapshotCacheSeconds; }
+    public long getFallbackWaitSeconds() { return fallbackWaitSeconds; }
+    public void setFallbackWaitSeconds(long fallbackWaitSeconds) { this.fallbackWaitSeconds = fallbackWaitSeconds; }
 }

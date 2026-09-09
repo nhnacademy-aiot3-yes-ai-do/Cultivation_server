@@ -148,15 +148,8 @@ public class InfluxServiceImpl implements InfluxService {
         Objects.requireNonNull(unit, "unit must not be null");
         String normalizedUnit = Objects.requireNonNull(SensorUnits.normalize(unit), "unit must not be blank");
 
-        List<FluxRecord> records = new ArrayList<>();
-        records.addAll(queryTrendRecords(cultivationId, deviceEui, sensorType, normalizedUnit, "-9s", null, null));
-        records.addAll(queryTrendRecords(cultivationId, deviceEui, sensorType, normalizedUnit, "-59s", "-9s", "3s"));
-        records.addAll(queryTrendRecords(cultivationId, deviceEui, sensorType, normalizedUnit, "-599s", "-59s", "10s"));
-        records.addAll(queryTrendRecords(cultivationId, deviceEui, sensorType, normalizedUnit, "-1799s", "-599s", "30s"));
-        records.addAll(queryTrendRecords(cultivationId, deviceEui, sensorType, normalizedUnit, "-3599s", "-1799s", "1m"));
-        records.addAll(queryTrendRecords(cultivationId, deviceEui, sensorType, normalizedUnit, "-10799s", "-3599s", "5m"));
-        records.addAll(queryTrendRecords(cultivationId, deviceEui, sensorType, normalizedUnit, "-21599s", "-10799s", "10m"));
-        records.addAll(queryTrendRecords(cultivationId, deviceEui, sensorType, normalizedUnit, "-12h", "-21599s", "20m"));
+        List<FluxRecord> records = queryTrendRecords(
+                cultivationId, deviceEui, sensorType, normalizedUnit);
 
         List<FluxRecord> uniqueRecords = records.stream()
                 .filter(record -> record.getTime() != null)
@@ -192,6 +185,29 @@ public class InfluxServiceImpl implements InfluxService {
             long cultivationId,
             String deviceEui,
             String sensorType,
+            String unit
+    ) {
+        List<String> streams = List.of(
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-9s", null, null),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-59s", "-9s", "3s"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-599s", "-59s", "10s"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-1799s", "-599s", "30s"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-3599s", "-1799s", "1m"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-10799s", "-3599s", "5m"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-21599s", "-10799s", "10m"),
+                trendStream(cultivationId, deviceEui, sensorType, unit, "-12h", "-21599s", "20m")
+        );
+        String query = "union(tables: [" + String.join(", ", streams) + "])"
+                + " |> sort(columns: [\"_time\"])";
+        return queryTablesSafely(query).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .toList();
+    }
+
+    private String trendStream(
+            long cultivationId,
+            String deviceEui,
+            String sensorType,
             String unit,
             String start,
             String stop,
@@ -203,17 +219,13 @@ public class InfluxServiceImpl implements InfluxService {
         String aggregation = every == null
                 ? ""
                 : " |> aggregateWindow(every: " + every + ", fn: mean, createEmpty: false)";
-        String query = baseQuery(cultivationId, range)
+        return "(" + baseQuery(cultivationId, range)
                 + " |> filter(fn: (r) => r.deviceEui == \"" + escape(deviceEui) + "\")"
                 + " |> filter(fn: (r) => r.sensorType == \"" + escape(sensorType) + "\")"
                 + " |> filter(fn: (r) => r.unit == \"" + escape(unit) + "\")"
                 + aggregation
-                + " |> sort(columns: [\"_time\"])";
-        return queryTablesSafely(query).stream()
-                .flatMap(table -> table.getRecords().stream())
-                .toList();
+                + ")";
     }
-
 
     @Override
     public List<SensorTypeAverageResponse> findAverageByCultivationId(long cultivationId) {

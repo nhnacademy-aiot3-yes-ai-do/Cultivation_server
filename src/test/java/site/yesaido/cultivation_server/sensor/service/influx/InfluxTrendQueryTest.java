@@ -53,7 +53,7 @@ class InfluxTrendQueryTest {
         assertThat(result.unit()).isEqualTo(".°C");
         assertThat(result.responses())
                 .containsExactly(new SensorTrendPointResponse(measuredAt, BigDecimal.valueOf(24.25)));
-        verify(queryApi, times(8)).query(anyString(), eq("yes-nhn"));
+        verify(queryApi, times(1)).query(anyString(), eq("yes-nhn"));
         List<String> queries = mockingDetails(queryApi).getInvocations().stream()
                 .filter(invocation -> invocation.getMethod().getName().equals("query"))
                 .map(invocation -> (String) invocation.getArguments()[0])
