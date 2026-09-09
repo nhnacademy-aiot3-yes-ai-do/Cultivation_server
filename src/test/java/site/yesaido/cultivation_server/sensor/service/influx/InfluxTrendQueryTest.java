@@ -58,26 +58,29 @@ class InfluxTrendQueryTest {
                 .filter(invocation -> invocation.getMethod().getName().equals("query"))
                 .map(invocation -> (String) invocation.getArguments()[0])
                 .toList();
-        assertThat(queries).allSatisfy(query -> assertThat(query)
+        String query = queries.getFirst();
+        assertThat(query)
+                .contains("union(tables: [")
                 .contains("r.cultivationId == \"42\"")
                 .contains("r.deviceEui == \"eui-01\"")
                 .contains("r.sensorType == \"TEMPERATURE\"")
-                .contains("r.unit == \".°C\""));
-        assertThat(queries).anyMatch(query -> query.contains("range(start: -9s)"));
-        assertThat(queries).anyMatch(query -> query.contains("range(start: -59s, stop: -9s)")
-                && query.contains("aggregateWindow(every: 3s"));
-        assertThat(queries).anyMatch(query -> query.contains("range(start: -599s, stop: -59s)")
-                && query.contains("aggregateWindow(every: 10s"));
-        assertThat(queries).anyMatch(query -> query.contains("range(start: -1799s, stop: -599s)")
-                && query.contains("aggregateWindow(every: 30s"));
-        assertThat(queries).anyMatch(query -> query.contains("range(start: -3599s, stop: -1799s)")
-                && query.contains("aggregateWindow(every: 1m"));
-        assertThat(queries).anyMatch(query -> query.contains("range(start: -10799s, stop: -3599s)")
-                && query.contains("aggregateWindow(every: 5m"));
-        assertThat(queries).anyMatch(query -> query.contains("range(start: -21599s, stop: -10799s)")
-                && query.contains("aggregateWindow(every: 10m"));
-        assertThat(queries).anyMatch(query -> query.contains("range(start: -12h, stop: -21599s)")
-                && query.contains("aggregateWindow(every: 20m"));
+                .contains("r.unit == \".°C\"")
+                .contains("range(start: -9s)")
+                .contains("range(start: -59s, stop: -9s)")
+                .contains("aggregateWindow(every: 3s")
+                .contains("range(start: -599s, stop: -59s)")
+                .contains("aggregateWindow(every: 10s")
+                .contains("range(start: -1799s, stop: -599s)")
+                .contains("aggregateWindow(every: 30s")
+                .contains("range(start: -3599s, stop: -1799s)")
+                .contains("aggregateWindow(every: 1m")
+                .contains("range(start: -10799s, stop: -3599s)")
+                .contains("aggregateWindow(every: 5m")
+                .contains("range(start: -21599s, stop: -10799s)")
+                .contains("aggregateWindow(every: 10m")
+                .contains("range(start: -12h, stop: -21599s)")
+                .contains("aggregateWindow(every: 20m")
+                .contains("sort(columns: [\"_time\"])");
     }
 
     private InfluxProperties properties() {

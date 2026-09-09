@@ -23,6 +23,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class InfluxServiceImpl implements InfluxService {
+    private static final String RANGE_START = " |> range(start: ";
 
     private final InfluxDBClient influxDBClient;
     private final InfluxProperties properties;
@@ -152,10 +153,10 @@ public class InfluxServiceImpl implements InfluxService {
                 cultivationId, deviceEui, sensorType, normalizedUnit);
 
         List<FluxRecord> uniqueRecords = records.stream()
-                .filter(record -> record.getTime() != null)
+                .filter(fluxRecord -> fluxRecord.getTime() != null)
                 .collect(java.util.stream.Collectors.toMap(
                         FluxRecord::getTime,
-                        record -> record,
+                        fluxRecord -> fluxRecord,
                         (first, ignored) -> first,
                         java.util.TreeMap::new
                 ))
@@ -213,9 +214,7 @@ public class InfluxServiceImpl implements InfluxService {
             String stop,
             String every
     ) {
-        String range = stop == null
-                ? " |> range(start: " + start + ")"
-                : " |> range(start: " + start + ", stop: " + stop + ")";
+        String range = rangeClause(start, stop);
         String aggregation = every == null
                 ? ""
                 : " |> aggregateWindow(every: " + every + ", fn: mean, createEmpty: false)";
@@ -243,13 +242,10 @@ public class InfluxServiceImpl implements InfluxService {
                 .toList();
     }
 
-    private long toCultivationId(List<FluxRecord> records) {
-        String cultivationIdFromInfluxDB = records.stream()
-                .map(FluxRecord::getValues)
-                .map(vaules -> stringValue(vaules, FIELD_CULTIVATION_ID))
-                .filter(Objects::nonNull).findFirst().orElse(null);
-
-        return Long.parseLong(Objects.requireNonNull(cultivationIdFromInfluxDB));
+    private String rangeClause(String start, String stop) {
+        return stop == null
+                ? RANGE_START + start + ")"
+                : RANGE_START + start + ", stop: " + stop + ")";
     }
 
     private List<LatestSensorValueResponse> queryAveragedValues(
@@ -258,9 +254,7 @@ public class InfluxServiceImpl implements InfluxService {
             String stop,
             String every
     ) {
-        String range = stop == null
-                ? " |> range(start: " + start + ")"
-                : " |> range(start: " + start + ", stop: " + stop + ")";
+        String range = rangeClause(start, stop);
         String query = baseQuery(cultivationId, range)
                 + " |> filter(fn: (r) => exists r.deviceEui)"
                 + " |> group(columns: [\"deviceEui\", \"sensorType\", \"unit\"])"
