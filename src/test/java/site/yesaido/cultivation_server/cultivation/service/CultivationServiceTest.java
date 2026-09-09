@@ -24,6 +24,7 @@ import site.yesaido.cultivation_server.cultivation.service.impl.CultivationServi
 import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
+import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
 import java.util.Collections;
 import java.util.List;
@@ -49,6 +50,9 @@ class CultivationServiceTest {
 
     @Mock
     private UserClient userClient;
+
+    @Mock
+    private CultivationSensorFacade cultivationSensorFacade;
 
     @InjectMocks
     private CultivationServiceImpl service;
@@ -221,6 +225,7 @@ class CultivationServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.status()).isEqualTo(CultivationStatus.FINISHED);
         verify(cultivationMemberService).verifyOwnerAccess(cultivationId, userId);
+        verify(cultivationSensorFacade).deleteAll(userId, cultivationId);
     }
 
     @Test
@@ -255,6 +260,7 @@ class CultivationServiceTest {
 
         assertThatThrownBy(() -> service.finish(cultivationId, userId))
                 .isInstanceOf(CultivationAccessDeniedException.class);
+        verifyNoInteractions(cultivationSensorFacade);
     }
 
     @Test
@@ -274,6 +280,7 @@ class CultivationServiceTest {
 
         assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.DELETED);
         verify(cultivationMemberService).verifyOwnerAccess(cultivationId, userId, null);
+        verify(cultivationSensorFacade).deleteAll(userId, cultivationId);
     }
 
     @Test
@@ -293,6 +300,7 @@ class CultivationServiceTest {
 
         assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.DELETED);
         verify(cultivationMemberService).verifyOwnerAccess(cultivationId, adminId, "ADMIN");
+        verify(cultivationSensorFacade).deleteAll(adminId, cultivationId);
     }
 
     @Test
@@ -312,6 +320,7 @@ class CultivationServiceTest {
 
         assertThatThrownBy(() -> service.delete(cultivationId, userId, null))
                 .isInstanceOf(CultivationAccessDeniedException.class);
+        verifyNoInteractions(cultivationSensorFacade);
     }
 
     @Test

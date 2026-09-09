@@ -13,10 +13,7 @@ import site.yesaido.cultivation_server.sensor.exception.CultivationSensorNotFoun
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorRepository;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorService;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +24,14 @@ public class CultivationSensorServiceImpl implements CultivationSensorService {
     @Override
     @Transactional
     public CultivationSensor register(long cultivationId, CreateCultivationSensorRequest dto) {
+
+        // 다른 활성 재배지에서 이미 사용 중인 deviceEui인지 검사하여 등록 원천 차단
+        if (cultivationSensorRepository.isDeviceEuiInUseInOtherActiveCultivation(
+                dto.deviceEui(), cultivationId)) {
+            throw new CultivationSensorAlreadyExistException(
+                    "해당 센서(deviceEui:%s)는 현재 다른 활성 재배지에서 사용 중입니다.".formatted(dto.deviceEui())
+            );
+        }
 
         Optional<CultivationSensor> existingSensor = cultivationSensorRepository
                 .findByCultivationIdAndDeviceEui(cultivationId, dto.deviceEui());

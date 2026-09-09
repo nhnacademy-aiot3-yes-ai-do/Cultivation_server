@@ -86,18 +86,18 @@ class CultivationSensorServiceTest {
                     )
             );
 
+            when(cultivationSensorRepository.isDeviceEuiInUseInOtherActiveCultivation("EUI-001", CULTIVATION_ID))
+                    .thenReturn(false);
+
             when(cultivationSensorRepository.findByCultivationIdAndDeviceEui(CULTIVATION_ID, request.deviceEui()))
                     .thenReturn(Optional.empty());
 
             when(cultivationSensorRepository.saveAndFlush(any(CultivationSensor.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
-            when(cultivationSensorRepository
-                    .findByCultivationIdAndDeviceEui(CULTIVATION_ID, request.deviceEui()))
-                    .thenReturn(Optional.empty());
-
             CultivationSensor result = cultivationSensorService.register(CULTIVATION_ID, request);
 
+            verify(cultivationSensorRepository).isDeviceEuiInUseInOtherActiveCultivation("EUI-001", CULTIVATION_ID);
             verify(cultivationSensorRepository).findByCultivationIdAndDeviceEui(
                     CULTIVATION_ID,
                     request.deviceEui()
@@ -123,6 +123,9 @@ class CultivationSensorServiceTest {
                     )
             );
 
+            when(cultivationSensorRepository.isDeviceEuiInUseInOtherActiveCultivation("EUI-001", CULTIVATION_ID))
+                    .thenReturn(false);
+
             when(cultivationSensorRepository.findByCultivationIdAndDeviceEui(CULTIVATION_ID, request.deviceEui()))
                     .thenReturn(Optional.empty());
 
@@ -132,6 +135,8 @@ class CultivationSensorServiceTest {
             assertThatThrownBy(() ->
                     cultivationSensorService.register(CULTIVATION_ID, request))
                     .isInstanceOf(CultivationSensorAlreadyExistException.class);
+
+            verify(cultivationSensorRepository).isDeviceEuiInUseInOtherActiveCultivation("EUI-001", CULTIVATION_ID);
 
             verify(cultivationSensorRepository).findByCultivationIdAndDeviceEui(
                     CULTIVATION_ID,
@@ -170,6 +175,9 @@ class CultivationSensorServiceTest {
             );
             deletedSensor.toDelete();
 
+            when(cultivationSensorRepository.isDeviceEuiInUseInOtherActiveCultivation("EUI-001", CULTIVATION_ID))
+                    .thenReturn(false);
+
             when(cultivationSensorRepository.findByCultivationIdAndDeviceEui(CULTIVATION_ID, request.deviceEui()))
                     .thenReturn(Optional.of(deletedSensor));
 
@@ -190,6 +198,9 @@ class CultivationSensorServiceTest {
                     .isEqualTo(SensorConnectStatus.OFFLINE);
 
             verify(cultivationSensorRepository)
+                    .isDeviceEuiInUseInOtherActiveCultivation("EUI-001", CULTIVATION_ID);
+
+            verify(cultivationSensorRepository)
                     .findByCultivationIdAndDeviceEui(
                             CULTIVATION_ID,
                             request.deviceEui()
@@ -197,6 +208,23 @@ class CultivationSensorServiceTest {
             verifyNoMoreInteractions(cultivationSensorRepository);
         }
 
+    }
+
+    @Test
+    @DisplayName("다른 재배지에서 사용 중인 EUI는 등록하거나 복구하지 않는다")
+    void rejectsDeviceEuiInUseBeforeSavingOrRestoring() {
+        CreateCultivationSensorRequest request = new CreateCultivationSensorRequest(
+                "EUI-001", "MODEL-A", "센서", "ROOM-1", "선반", List.of()
+        );
+        when(cultivationSensorRepository.isDeviceEuiInUseInOtherActiveCultivation("EUI-001", CULTIVATION_ID))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> cultivationSensorService.register(CULTIVATION_ID, request))
+                .isInstanceOf(CultivationSensorAlreadyExistException.class)
+                .hasMessage("이미 등록되어 사용 중인 센서 고유번호입니다. 기존 등록을 해제하거나 다른 기기를 선택해 주세요.");
+
+        verify(cultivationSensorRepository).isDeviceEuiInUseInOtherActiveCultivation("EUI-001", CULTIVATION_ID);
+        verifyNoMoreInteractions(cultivationSensorRepository);
     }
 
     @Nested
