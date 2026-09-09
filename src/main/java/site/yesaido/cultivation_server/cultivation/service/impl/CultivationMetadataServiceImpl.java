@@ -1,8 +1,8 @@
 package site.yesaido.cultivation_server.cultivation.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import site.yesaido.cultivation_server.config.SensorCacheProperties;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.CultivationMetadataListResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.CultivationMetadataResponse;
 import site.yesaido.cultivation_server.cultivation.dto.cultivation.response.CultivationSummaryListResponse;
@@ -27,9 +27,7 @@ public class CultivationMetadataServiceImpl implements CultivationMetadataServic
     private final MushroomReferenceService mushroomReferenceService;
     private final InfluxService influxService;
     private final SensorRedisCacheService sensorRedisCacheService;
-
-    @Value("${sensor-cache.freshness-seconds:3}")
-    private long freshnessSeconds;
+    private final SensorCacheProperties sensorCacheProperties;
 
     @Override
     public CultivationMetadataResponse get(Long userId, Long cultivationId) {
@@ -98,7 +96,7 @@ public class CultivationMetadataServiceImpl implements CultivationMetadataServic
 
     private Map<Long, List<LatestSensorValueResponse>> latestValues(List<Long> cultivationIds) {
         try {
-            return sensorRedisCacheService.findLatest(cultivationIds, Duration.ofSeconds(freshnessSeconds));
+            return sensorRedisCacheService.findLatest(cultivationIds, Duration.ofSeconds(sensorCacheProperties.getFreshnessSeconds()));
         } catch (RuntimeException exception) {
             return cultivationIds.stream().collect(java.util.stream.Collectors.toMap(
                     cultivationId -> cultivationId,

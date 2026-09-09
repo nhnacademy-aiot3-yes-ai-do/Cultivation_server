@@ -4,9 +4,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import site.yesaido.cultivation_server.config.SensorCacheProperties;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
@@ -15,7 +17,9 @@ import site.yesaido.cultivation_server.sensor.dto.response.influx.*;
 import site.yesaido.cultivation_server.sensor.entity.SensorConnectStatus;
 import site.yesaido.cultivation_server.sensor.service.CultivationSensorService;
 import site.yesaido.cultivation_server.sensor.service.InfluxService;
+import site.yesaido.cultivation_server.sensor.service.SensorLatestValueService;
 import site.yesaido.cultivation_server.sensor.service.SensorRedisCacheService;
+import site.yesaido.cultivation_server.sensor.service.SensorTrendService;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -34,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SensorValueController.class)
+@Import({SensorLatestValueService.class, SensorTrendService.class, SensorCacheProperties.class})
 class SensorValueControllerTest {
 
     private static final Long CULTIVATION_ID = 10L;

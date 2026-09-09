@@ -241,6 +241,11 @@ public class SensorRedisCacheService {
         for (LatestSensorValueResponse point : points) {
             long ageSeconds = Math.max(0, Duration.between(point.measuredAt(), now).getSeconds());
             long resolution = resolutionForAge(ageSeconds);
+            if (resolution == 0) {
+                buckets.computeIfAbsent("raw:" + point.measuredAt().toEpochMilli(), ignored -> new ArrayList<>())
+                        .add(point);
+                continue;
+            }
             long bucket = bucketStart(point.measuredAt(), resolution);
             buckets.computeIfAbsent(resolution + ":" + bucket, ignored -> new ArrayList<>()).add(point);
         }
@@ -253,8 +258,10 @@ public class SensorRedisCacheService {
             String tempValuesKey,
             Instant now) {
         boolean wroteBucket = false;
-        for (List<LatestSensorValueResponse> bucketPoints : buckets.values()) {
-            LatestSensorValueResponse averaged = averageBucket(bucketPoints, now);
+        for (Map.Entry<String, List<LatestSensorValueResponse>> entry : buckets.entrySet()) {
+            LatestSensorValueResponse averaged = entry.getKey().startsWith("raw:")
+                    ? entry.getValue().getFirst()
+                    : averageBucket(entry.getValue(), now);
             if (averaged != null) {
                 String member = averaged.measuredAt().toString();
                 redis.opsForZSet().add(tempHistoryKey, member, averaged.measuredAt().toEpochMilli());
@@ -286,10 +293,14 @@ public class SensorRedisCacheService {
     }
 
     private long resolutionForAge(long ageSeconds) {
-        if (ageSeconds <= 60) return 3;
-        if (ageSeconds <= 300) return 10;
-        if (ageSeconds <= 3600) return 60;
-        return 300;
+        if (ageSeconds <= 9) return 0;
+        if (ageSeconds < 60) return 3;
+        if (ageSeconds < 600) return 10;
+        if (ageSeconds < 1800) return 30;
+        if (ageSeconds < 3600) return 60;
+        if (ageSeconds < 10800) return 300;
+        if (ageSeconds < 21600) return 600;
+        return 1200;
     }
 
     private long bucketStart(Instant measuredAt, long resolution) {

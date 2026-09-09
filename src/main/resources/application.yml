@@ -84,7 +84,7 @@ feign:
 sensor-cache:
   history-hours: ${SENSOR_CACHE_HISTORY_HOURS:12}
   poll-interval-ms: ${SENSOR_CACHE_POLL_INTERVAL_MS:2000}
-  freshness-seconds: ${SENSOR_CACHE_FRESHNESS_SECONDS:10}
+  freshness-seconds: ${SENSOR_CACHE_FRESHNESS_SECONDS:9}
   ttl-grace-seconds: ${SENSOR_CACHE_TTL_GRACE_SECONDS:3}
   query-overlap-seconds: ${SENSOR_CACHE_QUERY_OVERLAP_SECONDS:60}
   poll-initial-delay-ms: ${SENSOR_CACHE_POLL_INITIAL_DELAY_MS:10000}

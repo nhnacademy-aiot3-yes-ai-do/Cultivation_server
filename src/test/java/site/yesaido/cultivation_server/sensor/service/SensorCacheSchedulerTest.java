@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.test.util.ReflectionTestUtils;
+import site.yesaido.cultivation_server.config.SensorCacheProperties;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
 import site.yesaido.cultivation_server.sensor.entity.CultivationSensor;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorRepository;
@@ -48,12 +49,9 @@ class SensorCacheSchedulerTest {
 
     @BeforeEach
     void setUp() {
-        scheduler = new SensorCacheScheduler(sensorRepository, influxService, cacheService, redis, sensorConnectionService);
-        ReflectionTestUtils.setField(scheduler, "historyHours", 12L);
-        ReflectionTestUtils.setField(scheduler, "ttlGraceSeconds", 3L);
-        ReflectionTestUtils.setField(scheduler, "queryOverlapSeconds", 60L);
-        ReflectionTestUtils.setField(scheduler, "lockLeaseSeconds", 600L);
-        ReflectionTestUtils.setField(scheduler, "reconciliationIntervalSeconds", 300L);
+        SensorCacheProperties properties = new SensorCacheProperties();
+        scheduler = new SensorCacheScheduler(sensorRepository, influxService, cacheService, redis,
+                sensorConnectionService, properties);
         when(redis.opsForValue()).thenReturn(valueOperations);
         lenient().when(valueOperations.setIfAbsent(anyString(), anyString(), any(Duration.class)))
                 .thenAnswer(invocation -> {
