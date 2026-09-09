@@ -17,6 +17,7 @@ import site.yesaido.cultivation_server.cultivation.repository.cultivation.Cultiv
 import site.yesaido.cultivation_server.cultivation.service.impl.CultivationServiceImpl;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
+import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -40,6 +41,9 @@ class CultivationDeleteIntegrationTest {
 
     @MockitoBean
     private UserClient userClient;
+
+    @MockitoBean
+    private CultivationSensorFacade cultivationSensorFacade;
 
     @Test
     @DisplayName("관리자 역할을 전달하는 삭제도 DELETED 상태를 DB에 반영한다")
