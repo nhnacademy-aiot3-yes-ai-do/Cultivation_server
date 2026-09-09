@@ -48,7 +48,7 @@ class SensorRedisCacheServiceTest {
 
     @Test
     void appliesNineSecondRawRetentionAndRequestedHistoryResolutions() {
-        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 9L)).isEqualTo(0L);
+        assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 9L)).isZero();
         assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 10L)).isEqualTo(3L);
         assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 60L)).isEqualTo(10L);
         assertThat((Long) ReflectionTestUtils.invokeMethod(cacheService, "resolutionForAge", 600L)).isEqualTo(30L);
