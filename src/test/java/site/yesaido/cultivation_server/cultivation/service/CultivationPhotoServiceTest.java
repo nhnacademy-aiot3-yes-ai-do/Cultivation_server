@@ -399,7 +399,7 @@ class CultivationPhotoServiceTest {
         assertThat(item.cultivationId()).isEqualTo(100L);
         assertThat(item.photoId()).isEqualTo(500L);
         // 내부 API이므로 공개 프록시 주소로 치환되지 않고 원본 presigned URL 그대로 내려가야 한다
-        assertThat(item.presignedUrl()).isEqualTo("http://storage.java21.net:8000/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");
+        assertThat(item.presignedUrl()).isEqualTo("https://yes-nhn.site/storage-proxy/team2-mushroom-photos/" + photo.getObjectKey() + "?X-Amz-Signature=abc");
         assertThat(item.expiresAt()).isNotNull();
     }
 

@@ -195,6 +195,11 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
                     ServerErrorLevel.WARN_LEVEL
             );
         }
+
+        String publicUrl = presignedUrl.startsWith(minioInternalBaseUrl)
+                ? minioPublicBaseUrl + presignedUrl.substring(minioInternalBaseUrl.length())
+                : presignedUrl;
+
         OffsetDateTime expiresAt = OffsetDateTime.now(ZoneOffset.UTC)
                 .withOffsetSameInstant(SEOUL_OFFSET)
                 .plus(PRESIGNED_URL_TTL);
@@ -202,7 +207,7 @@ public class CultivationPhotoServiceImpl implements CultivationPhotoService {
         return new DailyCultivationPhotoResponse(
                 photo.getCultivation().getId(),
                 photo.getId(),
-                presignedUrl,
+                publicUrl,
                 expiresAt
         );
     }
