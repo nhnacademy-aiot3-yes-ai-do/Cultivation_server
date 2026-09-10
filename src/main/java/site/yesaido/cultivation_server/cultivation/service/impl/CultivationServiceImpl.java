@@ -20,6 +20,7 @@ import site.yesaido.cultivation_server.cultivation.service.CultivationService;
 import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSummaryProjection;
 import site.yesaido.cultivation_server.sensor.entity.MushroomReference;
 import site.yesaido.cultivation_server.sensor.repository.MushroomReferenceRepository;
+import site.yesaido.cultivation_server.sensor.service.CultivationSensorFacade;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -39,6 +40,7 @@ public class CultivationServiceImpl implements CultivationService {
     private final MushroomReferenceRepository mushroomReferenceRepository;
     private final CultivationMemberService cultivationMemberService;
     private final UserClient userClient;
+    private final CultivationSensorFacade cultivationSensorFacade;
 
     @Override
     @Transactional
@@ -141,6 +143,7 @@ public class CultivationServiceImpl implements CultivationService {
         }
 
         cultivation.finish();
+        cultivationSensorFacade.deleteAll(userId, cultivationId);
 
         return new CultivationFinishResponse(cultivation.getId(), cultivation.getCultivationStatus(), cultivation.getFinishedAt());
     }
@@ -169,6 +172,7 @@ public class CultivationServiceImpl implements CultivationService {
             throw new CultivationAlreadyDeletedException(cultivationId);
         }
         cultivation.delete();
+        cultivationSensorFacade.deleteAll(userId, cultivationId);
     }
 
     @Override
@@ -183,6 +187,7 @@ public class CultivationServiceImpl implements CultivationService {
             throw new CultivationAlreadyDeletedException(cultivationId);
         }
         cultivation.delete();
+        cultivationSensorFacade.deleteAll(userId, cultivationId);
     }
 
 
