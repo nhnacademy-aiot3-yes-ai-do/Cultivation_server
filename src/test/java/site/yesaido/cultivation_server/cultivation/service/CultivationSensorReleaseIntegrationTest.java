@@ -134,18 +134,19 @@ class CultivationSensorReleaseIntegrationTest {
         Fixture fixture = createFixture(true);
         events.rejectDeletion = true;
 
-        assertThatThrownBy(() -> close(action, fixture.cultivationId()))
+        long cultivationId = fixture.cultivationId();
+        assertThatThrownBy(() -> close(action, cultivationId))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("sensor cleanup failed");
 
-        Cultivation cultivation = entityManager.find(Cultivation.class, fixture.cultivationId());
+        Cultivation cultivation = entityManager.find(Cultivation.class, cultivationId);
         CultivationSensor sensor = sensorRepository.findById(fixture.sensorId()).orElseThrow();
         assertThat(cultivation.getCultivationStatus()).isEqualTo(CultivationStatus.RUNNING);
         assertThat(cultivation.getFinishedAt()).isNull();
         assertThat(cultivation.getDeletedAt()).isNull();
         assertThat(sensor.isDeleted()).isFalse();
         assertThat(sensor.getSensorStatus()).isEqualTo(SensorConnectStatus.ONLINE);
-        assertThat(harvestRepository.existsByCultivationId(fixture.cultivationId())).isFalse();
+        assertThat(harvestRepository.existsByCultivationId(cultivationId)).isFalse();
         assertThat(events.thresholds).isEmpty();
         assertThat(events.sensors).isEmpty();
     }
