@@ -35,22 +35,41 @@ public interface CultivationSensorRepository extends JpaRepository<CultivationSe
     })
     List<CultivationSensor> findAllByCultivationIdAndIsDeletedFalseOrderByCreatedAtAsc(long cultivationId);
 
-    @Query("""
-              SELECT DISTINCT cultivationSensor
-              FROM CultivationSensor cultivationSensor
-              LEFT JOIN FETCH cultivationSensor.cultivationSensorTypes cultivationSensorType
-              LEFT JOIN FETCH cultivationSensorType.sensorType
-              WHERE cultivationSensor.cultivationId <> :excludedCultivationId
-                AND cultivationSensor.cultivationId IN (
-                    SELECT cultivation.id
-                    FROM Cultivation cultivation
-                    WHERE cultivation.userId = :userId
-                )
-              ORDER BY cultivationSensor.createdAt DESC, cultivationSensor.id DESC
+    // 현재 다른 활성 재배지에서 사용 중인 센서 EUI를 제외하고, 완료(FINISHED)된 과거 재배지의 센서만 재사용 목록으로 조회
+    @Query("""                                                                                                                                              
+              SELECT DISTINCT cultivationSensor                                                                                                             
+              FROM CultivationSensor cultivationSensor                                                                                                      
+              LEFT JOIN FETCH cultivationSensor.cultivationSensorTypes cultivationSensorType                                                                
+              LEFT JOIN FETCH cultivationSensorType.sensorType                                                                                              
+              WHERE cultivationSensor.cultivationId <> :excludedCultivationId                                                                               
+                AND cultivationSensor.cultivationId IN (                                                                                                    
+                    SELECT cultivation.id                                                                                                                   
+                    FROM Cultivation cultivation                                                                                                            
+                    WHERE cultivation.userId = :userId                                                                                                      
+                )                                                                                                                                           
+                AND cultivationSensor.deviceEui NOT IN (                                                                                                    
+                    SELECT activeSensor.deviceEui                                                                                                         
+                    FROM CultivationSensor activeSensor                                                                                                     
+                    WHERE activeSensor.isDeleted = false                                                                                                                                                                                                                              
+                )                                                                                                                                           
+              ORDER BY cultivationSensor.createdAt DESC, cultivationSensor.id DESC                                                                          
               """)
     List<CultivationSensor> findReusableSensorsForOwner(
             @Param("userId") Long userId,
             @Param("excludedCultivationId") long excludedCultivationId
+    );
+
+    // 센서 등록 시 다른 활성 재배지에서 사용 중인지 검사하는 쿼리
+    @Query("""                                                                                                                                              
+              SELECT COUNT(cs) > 0
+              FROM CultivationSensor cs
+              WHERE cs.deviceEui = :deviceEui
+                AND cs.isDeleted = false
+                AND cs.cultivationId <> :cultivationId
+              """)
+    boolean isDeviceEuiInUseInOtherActiveCultivation(
+            @Param("deviceEui") String deviceEui,
+            @Param("cultivationId") long cultivationId
     );
 
     /**
