@@ -9,7 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import site.yesaido.cultivation_server.config.SensorCacheProperties;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
 import site.yesaido.cultivation_server.cultivation.exception.CultivationAccessDeniedException;
+import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorResponse;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorTypeResponse;
@@ -25,6 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -64,6 +68,9 @@ class SensorValueControllerTest {
 
     @MockitoBean
     CultivationSensorService cultivationSensorService;
+
+    @MockitoBean
+    CultivationRepository cultivationRepository;
 
 
     @Test
@@ -348,14 +355,17 @@ class SensorValueControllerTest {
     @Test
     @DisplayName("센서 평균값 조회 성공 시 활성 등록된 센서 데이터만 필터링하여 200 OK를 반환한다")
     void getAverageSuccess() throws Exception {
-        // 1. InfluxDB에는 미등록 센서(LIGHT)까지 포함되어 있다고 가정
+        Cultivation cultivation = Cultivation.builder().id(CULTIVATION_ID).cultivationStatus(CultivationStatus.RUNNING).build();
+        given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(cultivation));
+
+        // InfluxDB에는 미등록 센서(LIGHT)까지 포함되어 있다고 가정
         List<SensorTypeAverageResponse> averages = List.of(
                 new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", BigDecimal.valueOf(22.5)),
                 new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", BigDecimal.valueOf(80.0)),
                 new SensorTypeAverageResponse(CULTIVATION_ID, "LIGHT", "lux", BigDecimal.valueOf(350.0))
         );
 
-        // 2. 현재 재배지에는 TEMPERATURE와 HUMIDITY 센서만 활성 등록되어 있음 (LIGHT 없음)
+        // 현재 재배지에는 TEMPERATURE와 HUMIDITY 센서만 활성 등록되어 있음 (LIGHT 없음)
         CultivationSensorResponse activeSensor = new CultivationSensorResponse(
                 1L, "EUI-001", "MODEL-A", "센서1", "ROOM-1", "선반1",
                 SensorConnectStatus.ONLINE,
@@ -368,7 +378,7 @@ class SensorValueControllerTest {
         given(cultivationSensorService.findAll(CULTIVATION_ID)).willReturn(List.of(activeSensor));
         given(influxService.findAverageByCultivationIdForLast24Hours(CULTIVATION_ID)).willReturn(averages);
 
-        // 3. 기대 결과: LIGHT는 필터링되어 TEMPERATURE와 HUMIDITY만 응답에 포함되어야 함
+        // 기대 결과: LIGHT는 필터링되어 TEMPERATURE와 HUMIDITY만 응답에 포함되어야 함
         List<SensorTypeAverageResponse> expectedAverages = List.of(
                 new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", BigDecimal.valueOf(22.5)),
                 new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", BigDecimal.valueOf(80.0))
@@ -391,5 +401,52 @@ class SensorValueControllerTest {
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
                 .header("X-User-Id", USER_ID)).andExpect(status().isForbidden());
         then(influxService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("수확 완료(FINISHED) 상태의 재배지는 전체 기간 평균을 조회하고 센서 필터링 없이 200 OK를 반환한다")
+    void getAverageFinishedSuccess() throws Exception {
+        // 수확 완료 상태 mock
+        Cultivation finishedCultivation = Cultivation.builder()
+                .id(CULTIVATION_ID)
+                .cultivationStatus(CultivationStatus.FINISHED)
+                .build();
+        given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(finishedCultivation));
+
+        // 전체 기간 평균 데이터 mock
+        List<SensorTypeAverageResponse> totalAverages = List.of(
+                new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", BigDecimal.valueOf(21.5)),
+                new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", BigDecimal.valueOf(85.0))
+        );
+        given(influxService.findAverageByCultivationId(CULTIVATION_ID)).willReturn(totalAverages);
+
+        SensorTypeAverageListResponse expectedResponse = new SensorTypeAverageListResponse(totalAverages);
+
+        // API 호출 및 검증
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
+        then(influxService).should().findAverageByCultivationId(CULTIVATION_ID);
+        then(influxService).should(never()).findAverageByCultivationIdForLast24Hours(anyLong());
+        then(cultivationSensorService).shouldHaveNoInteractions(); // 수확 완료 시 센서 필터링 조회 안 함 검증
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 재배 ID로 센서 평균값 조회 시 404 Not Found 반환")
+    void getAverageFailsWhenCultivationNotFound() throws Exception {
+        // given: 재배 정보가 DB에 없음 (Optional.empty())
+        given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.empty());
+
+        // when & then: 404 Not Found 검증 및 Influx 조회 미호출 검증
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isNotFound());
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
+        then(influxService).shouldHaveNoInteractions();
+        then(cultivationSensorService).shouldHaveNoInteractions();
     }
 }
