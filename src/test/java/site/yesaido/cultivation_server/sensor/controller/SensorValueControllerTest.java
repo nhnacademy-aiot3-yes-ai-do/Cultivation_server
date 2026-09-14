@@ -406,14 +406,14 @@ class SensorValueControllerTest {
     @Test
     @DisplayName("수확 완료(FINISHED) 상태의 재배지는 전체 기간 평균을 조회하고 센서 필터링 없이 200 OK를 반환한다")
     void getAverageFinishedSuccess() throws Exception {
-        // 1. 수확 완료 상태 mock
+        // 수확 완료 상태 mock
         Cultivation finishedCultivation = Cultivation.builder()
                 .id(CULTIVATION_ID)
                 .cultivationStatus(CultivationStatus.FINISHED)
                 .build();
         given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.of(finishedCultivation));
 
-        // 2. 전체 기간 평균 데이터 mock
+        // 전체 기간 평균 데이터 mock
         List<SensorTypeAverageResponse> totalAverages = List.of(
                 new SensorTypeAverageResponse(CULTIVATION_ID, "TEMPERATURE", "°C", BigDecimal.valueOf(21.5)),
                 new SensorTypeAverageResponse(CULTIVATION_ID, "HUMIDITY", "%", BigDecimal.valueOf(85.0))
@@ -422,7 +422,7 @@ class SensorValueControllerTest {
 
         SensorTypeAverageListResponse expectedResponse = new SensorTypeAverageListResponse(totalAverages);
 
-        // 3. API 호출 및 검증
+        // API 호출 및 검증
         mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
                         .header("X-User-Id", USER_ID))
                 .andExpect(status().isOk())
@@ -432,5 +432,21 @@ class SensorValueControllerTest {
         then(influxService).should().findAverageByCultivationId(CULTIVATION_ID);
         then(influxService).should(never()).findAverageByCultivationIdForLast24Hours(anyLong());
         then(cultivationSensorService).shouldHaveNoInteractions(); // 수확 완료 시 센서 필터링 조회 안 함 검증
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 재배 ID로 센서 평균값 조회 시 404 Not Found 반환")
+    void getAverageFailsWhenCultivationNotFound() throws Exception {
+        // given: 재배 정보가 DB에 없음 (Optional.empty())
+        given(cultivationRepository.findById(CULTIVATION_ID)).willReturn(Optional.empty());
+
+        // when & then: 404 Not Found 검증 및 Influx 조회 미호출 검증
+        mockMvc.perform(get("/api/v1/cultivations/{cultivation-id}/sensor-values/average", CULTIVATION_ID)
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isNotFound());
+
+        then(cultivationMemberService).should().existCultivationMember(CULTIVATION_ID, USER_ID);
+        then(influxService).shouldHaveNoInteractions();
+        then(cultivationSensorService).shouldHaveNoInteractions();
     }
 }
