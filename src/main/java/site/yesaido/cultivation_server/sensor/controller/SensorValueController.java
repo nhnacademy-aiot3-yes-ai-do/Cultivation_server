@@ -3,6 +3,10 @@ package site.yesaido.cultivation_server.sensor.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.Cultivation;
+import site.yesaido.cultivation_server.cultivation.entity.cultivation.CultivationStatus;
+import site.yesaido.cultivation_server.cultivation.exception.CultivationNotFoundException;
+import site.yesaido.cultivation_server.cultivation.repository.cultivation.CultivationRepository;
 import site.yesaido.cultivation_server.cultivation.service.CultivationMemberService;
 import site.yesaido.cultivation_server.sensor.controller.docs.SensorValueControllerDocs;
 import site.yesaido.cultivation_server.sensor.dto.response.CultivationSensorTypeResponse;
@@ -28,6 +32,7 @@ public class SensorValueController implements SensorValueControllerDocs {
     private final CultivationSensorService cultivationSensorService;
     private final SensorLatestValueService sensorLatestValueService;
     private final SensorTrendService sensorTrendService;
+    private final CultivationRepository cultivationRepository;
 
     @Override
     @GetMapping("/trend")
@@ -59,6 +64,17 @@ public class SensorValueController implements SensorValueControllerDocs {
             @RequestHeader("X-User-Id") Long userId
     ) {
         cultivationMemberService.existCultivationMember(cultivationId, userId);
+
+        Cultivation cultivation = cultivationRepository.findById(cultivationId)
+                .orElseThrow(() -> new CultivationNotFoundException(cultivationId));
+
+        if(cultivation.getCultivationStatus() == CultivationStatus.FINISHED){
+            return ResponseEntity.ok(
+                    new SensorTypeAverageListResponse(
+                            influxService.findAverageByCultivationId(cultivationId)
+                    )
+            );
+        }
         List<SensorTypeAverageResponse> averages = influxService.findAverageByCultivationIdForLast24Hours(cultivationId);
         Set<String> activeSensorTypes = cultivationSensorService.findAll(cultivationId).stream()
                 .flatMap(sensor -> sensor.sensorTypes().stream())
