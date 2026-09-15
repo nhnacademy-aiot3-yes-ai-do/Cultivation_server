@@ -1,31 +1,19 @@
 package site.yesaido.cultivation_server.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import site.yesaido.common.rabbitmq.DeadLetterQueues;
+import site.yesaido.common.rabbitmq.DeadLetterTopologyConfiguration;
+import site.yesaido.common.rabbitmq.RabbitDeadLetterProperties;
 
 import static site.yesaido.cultivation_server.rabbitmq.RabbitMQConstants.*;
 
 @Configuration
+@Import(DeadLetterTopologyConfiguration.class)
 public class RabbitMQConfig {
-
-    // Dead Letter 관련
-    @Bean
-    public FanoutExchange deadLetterExchange() {
-        return new FanoutExchange(DLX_NAME);
-    }
-
-    @Bean
-    public Queue deadLetterQueue() {
-        return QueueBuilder.durable(DLQ_QUEUE).build();
-    }
-
-    @Bean
-    public Binding deadLetterBinding() {
-        return BindingBuilder.bind(deadLetterQueue())
-                .to(deadLetterExchange());
-    }
-
     // 센서 관련
     @Bean
     public TopicExchange sensorExchange() {
@@ -33,80 +21,66 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue dataSourceSensorInfoQueue() {
-        return QueueBuilder
-                .durable(DATA_SOURCE_SENSOR_INFO_QUEUE)
-                .withArgument(DLX_KEY, DLX_NAME)
-                .build();
+    public Queue dataSourceSensorInfoQueue(RabbitDeadLetterProperties dlProps) {
+        return DeadLetterQueues.durableWithDeadLetter(DATA_SOURCE_SENSOR_INFO_QUEUE, dlProps).build();
     }
 
     @Bean
-    public Queue ruleEngineSensorInfoQueue() {
-        return QueueBuilder
-                .durable(RULE_ENGINE_SENSOR_INFO_QUEUE)
-                .withArgument(DLX_KEY, DLX_NAME)
-                .build();
+    public Queue ruleEngineSensorInfoQueue(RabbitDeadLetterProperties dlProps) {
+        return DeadLetterQueues.durableWithDeadLetter(RULE_ENGINE_SENSOR_INFO_QUEUE, dlProps).build();
     }
 
     @Bean
-    public Binding dataSourceSensorInfoBinding() {
+    public Binding dataSourceSensorInfoBinding(@Qualifier("dataSourceSensorInfoQueue") Queue dataSourceSensorInfoQueue) {
         return BindingBuilder
-                .bind(dataSourceSensorInfoQueue())
+                .bind(dataSourceSensorInfoQueue)
                 .to(sensorExchange())
                 .with(SENSOR_INFO_BINDING_KEY_PATTERN);
     }
 
     @Bean
-    public Binding ruleEngineSensorInfoBinding() {
+    public Binding ruleEngineSensorInfoBinding(@Qualifier("ruleEngineSensorInfoQueue") Queue ruleEngineSensorInfoQueue) {
         return BindingBuilder
-                .bind(ruleEngineSensorInfoQueue())
+                .bind(ruleEngineSensorInfoQueue)
                 .to(sensorExchange())
                 .with(SENSOR_INFO_BINDING_KEY_PATTERN);
     }
 
     @Bean
-    public Queue ruleEngineThresholdInfoQueue() {
-        return QueueBuilder
-                .durable(RULE_ENGINE_THRESHOLD_INFO_QUEUE)
-                .withArgument(DLX_KEY, DLX_NAME)
-                .build();
+    public Queue ruleEngineThresholdInfoQueue(RabbitDeadLetterProperties dlProps) {
+        return DeadLetterQueues.durableWithDeadLetter(RULE_ENGINE_THRESHOLD_INFO_QUEUE, dlProps).build();
     }
 
     @Bean
-    public Binding ruleEngineThresholdInfoBinding() {
+    public Binding ruleEngineThresholdInfoBinding(@Qualifier("ruleEngineThresholdInfoQueue") Queue ruleEngineThresholdInfoQueue) {
         return BindingBuilder
-                .bind(ruleEngineThresholdInfoQueue())
+                .bind(ruleEngineThresholdInfoQueue)
                 .to(sensorExchange())
                 .with(THRESHOLD_INFO_BINDING_KEY_PATTERN);
     }
 
     @Bean
-    public Queue dataSourceThresholdInfoQueue() {
-        return QueueBuilder
-                .durable(DATA_SOURCE_THRESHOLD_INFO_QUEUE)
-                .withArgument(DLX_KEY, DLX_NAME)
-                .build();
+    public Queue dataSourceThresholdInfoQueue(RabbitDeadLetterProperties dlProps) {
+        return DeadLetterQueues.durableWithDeadLetter(DATA_SOURCE_THRESHOLD_INFO_QUEUE, dlProps).build();
     }
 
-    @Bean Binding dataSourceThresholdInfoBinding() {
+    @Bean
+    public Binding dataSourceThresholdInfoBinding(@Qualifier("dataSourceThresholdInfoQueue") Queue dataSourceThresholdInfoQueue) {
         return BindingBuilder
-                .bind(dataSourceThresholdInfoQueue())
+                .bind(dataSourceThresholdInfoQueue)
                 .to(sensorExchange())
                 .with(THRESHOLD_INFO_BINDING_KEY_PATTERN);
     }
 
     @Bean
-    public Queue environmentComplianceRequestQueue() {
-        return QueueBuilder
-                .durable(ENVIRONMENT_COMPLIANCE_REQUEST_QUEUE)
-                .withArgument(DLX_KEY, DLX_NAME)
-                .build();
+    public Queue environmentComplianceRequestQueue(RabbitDeadLetterProperties dlProps) {
+        return DeadLetterQueues.durableWithDeadLetter(ENVIRONMENT_COMPLIANCE_REQUEST_QUEUE, dlProps).build();
     }
 
     @Bean
-    public Binding environmentComplianceRequestBinding() {
+    public Binding environmentComplianceRequestBinding(@Qualifier("environmentComplianceRequestQueue") Queue environmentComplianceRequestQueue) {
         return BindingBuilder
-                .bind(environmentComplianceRequestQueue())
+                .bind(environmentComplianceRequestQueue)
                 .to(sensorExchange())
                 .with(ENVIRONMENT_COMPLIANCE_REQUEST_QUEUE);
     }
@@ -118,17 +92,14 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue aiHarvestQueue() {
-        return QueueBuilder
-                .durable(AI_HARVEST_QUEUE)
-                .withArgument(DLX_KEY, DLX_NAME)
-                .build();
+    public Queue aiHarvestQueue(RabbitDeadLetterProperties dlProps) {
+        return DeadLetterQueues.durableWithDeadLetter(AI_HARVEST_QUEUE, dlProps).build();
     }
 
     @Bean
-    public Binding aiHarvestBinding() {
+    public Binding aiHarvestBinding(@Qualifier("aiHarvestQueue") Queue aiHarvestQueue) {
         return BindingBuilder
-                .bind(aiHarvestQueue())
+                .bind(aiHarvestQueue)
                 .to(harvestExchange())
                 .with(AI_HARVEST_QUEUE);
     }

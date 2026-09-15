@@ -4,10 +4,7 @@ public final class RabbitMQConstants {
 
     private RabbitMQConstants() {}
 
-    // Dead Letter 관련
-    public static final String DLX_NAME = "yes-nhn.dlx";
-    public static final String DLX_KEY = "x-dead-letter-exchange";
-    public static final String DLQ_QUEUE = "yes-nhn.dlq";
+    // Dead Letter 관련 설정은 yesaido-common의 RabbitDeadLetterProperties/DeadLetterQueues로 이전됨
 
     // 센서 관련
     public static final String SENSOR_EXCHANGE = "yes-nhn.sensor.exchange";
