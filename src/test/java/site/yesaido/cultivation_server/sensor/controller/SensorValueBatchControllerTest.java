@@ -16,7 +16,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.OK;
-import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 class SensorValueBatchControllerTest {
     private final SensorLatestBatchService service = mock(SensorLatestBatchService.class);
@@ -54,13 +53,12 @@ class SensorValueBatchControllerTest {
     }
 
     @Test
-    void returnsServiceUnavailableWhenRedisBatchFails() {
+    void doesNotHandleDataAccessErrorsInController() {
         when(service.findLatestForUser(7L, Duration.ZERO))
                 .thenThrow(new DataAccessException("redis unavailable") { });
 
-        var response = controller.getLatestForUser(7L);
-
-        assertThat(response.getStatusCode()).isEqualTo(SERVICE_UNAVAILABLE);
-        assertThat(response.getBody().latestSensorValuesByCultivationId()).isEmpty();
+        assertThatThrownBy(() -> controller.getLatestForUser(7L))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessage("redis unavailable");
     }
 }

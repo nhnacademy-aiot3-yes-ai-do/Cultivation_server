@@ -1,9 +1,11 @@
 package site.yesaido.cultivation_server.sensor.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import site.yesaido.cultivation_server.sensor.dto.projection.CultivationSensorEuiProjection;
 import site.yesaido.cultivation_server.sensor.dto.response.influx.LatestSensorValueResponse;
+import site.yesaido.cultivation_server.sensor.exception.SensorLatestBatchReadException;
 import site.yesaido.cultivation_server.sensor.repository.CultivationSensorRepository;
 
 import java.time.Duration;
@@ -23,15 +25,19 @@ public class SensorLatestBatchService {
             Long userId,
             Duration freshness
     ) {
-        Map<Long, Set<String>> sensorEuisByCultivationId = new LinkedHashMap<>();
-        for (CultivationSensorEuiProjection projection
-                : cultivationSensorRepository.findAllAccessibleSensorEuis(userId)) {
-            if (projection.getCultivationId() != null && projection.getDeviceEui() != null) {
-                sensorEuisByCultivationId
-                        .computeIfAbsent(projection.getCultivationId(), ignored -> new LinkedHashSet<>())
-                        .add(projection.getDeviceEui());
+        try {
+            Map<Long, Set<String>> sensorEuisByCultivationId = new LinkedHashMap<>();
+            for (CultivationSensorEuiProjection projection
+                    : cultivationSensorRepository.findAllAccessibleSensorEuis(userId)) {
+                if (projection.getCultivationId() != null && projection.getDeviceEui() != null) {
+                    sensorEuisByCultivationId
+                            .computeIfAbsent(projection.getCultivationId(), ignored -> new LinkedHashSet<>())
+                            .add(projection.getDeviceEui());
+                }
             }
+            return sensorRedisCacheService.findLatestBySensorEuis(sensorEuisByCultivationId, freshness);
+        } catch (DataAccessException exception) {
+            throw new SensorLatestBatchReadException(exception);
         }
-        return sensorRedisCacheService.findLatestBySensorEuis(sensorEuisByCultivationId, freshness);
     }
 }
