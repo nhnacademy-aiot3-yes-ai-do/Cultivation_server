@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -70,40 +71,48 @@ public class SensorCacheScheduler {
                 return thread;
             });
     private volatile boolean warmedUp;
-    private volatile Instant lastReconciliationAt;
+    private final ConcurrentHashMap<Long, Instant> lastReconciliationByCultivation = new ConcurrentHashMap<>();
     private final AtomicReference<List<Long>> cachedCultivationIds = new AtomicReference<>(List.of());
     private final AtomicReference<Instant> cultivationIdsCachedAt = new AtomicReference<>();
 
     @EventListener(ApplicationReadyEvent.class)
     public void warmUp() {
-        boolean success = refresh(Duration.ofHours(sensorCacheProperties.getHistoryHours()), true);
-        if (success) {
-            lastReconciliationAt = Instant.now();
-        }
-        warmedUp = success;
+        warmedUp = refresh(true);
     }
 
     @Scheduled(fixedDelayString = "${sensor-cache.poll-interval-ms:2000}",
             initialDelayString = "${sensor-cache.poll-initial-delay-ms:10000}")
     public void poll() {
         if (!warmedUp) {
-            boolean success = refresh(Duration.ofHours(sensorCacheProperties.getHistoryHours()), true);
-            if (success) {
-                lastReconciliationAt = Instant.now();
-            }
-            warmedUp = success;
+            warmedUp = refresh(true);
             return;
         }
-        Instant now = Instant.now();
-        boolean reconciliation = lastReconciliationAt == null
-                || Duration.between(lastReconciliationAt, now).getSeconds() >= sensorCacheProperties.getReconciliationIntervalSeconds();
-        boolean success = refresh(reconciliation ? Duration.ofHours(sensorCacheProperties.getHistoryHours()) : Duration.ofSeconds(sensorCacheProperties.getQueryOverlapSeconds()), reconciliation);
-        if (reconciliation && success) {
-            lastReconciliationAt = now;
-        }
+        refresh(false);
     }
 
-    private boolean refresh(Duration range, boolean warmup) {
+    /**
+     * 재검증(12시간 전체 재조회) 대상 여부를 재배지별로 판단합니다.
+     * 인스턴스 단위로 한꺼번에 재검증하면 그 순간 모든 재배지가 동시에 풀스캔을 돌면서
+     * 한 바퀴 전체가 수십 초~수 분 지연되는 현상이 있어, 재배지마다 마지막 재검증 시각을
+     * 따로 추적해 재검증 시점을 자연스럽게 분산시킵니다.
+     */
+    private boolean isReconciliationDue(long cultivationId, Instant now) {
+        Instant last = lastReconciliationByCultivation.get(cultivationId);
+        return last == null
+                || Duration.between(last, now).getSeconds() >= sensorCacheProperties.getReconciliationIntervalSeconds();
+    }
+
+    /**
+     * 한 바퀴(poll 1회)당 풀스캔으로 승격시키는 재배지 수의 상한.
+     * 재배지별로 재검증 시각을 따로 추적해도, 그 시각들은 애초에 warmUp 때
+     * 순차 처리 지연만큼씩 벌어져 기록된다 — 그 간격이 마침 재검증(풀스캔) 1건의
+     * 처리 시간과 비슷하면, 하나가 늦어져 다음 재배지 차례로 넘어가는 순간
+     * 그 다음 재배지도 이미 기한을 넘겨버리는 연쇄가 발생해 결국 한 바퀴에
+     * 전부 몰릴 수 있다. 바퀴당 승격 개수를 제한해 이 연쇄를 끊는다.
+     */
+    private static final int MAX_RECONCILIATIONS_PER_CYCLE = 1;
+
+    private boolean refresh(boolean forceFullRange) {
         if (!running.compareAndSet(false, true)) {
             return false;
         }
@@ -111,8 +120,21 @@ public class SensorCacheScheduler {
         try {
             List<Long> cultivationIds = cultivationIdsSnapshot();
             success = true;
+            int reconciliationBudget = MAX_RECONCILIATIONS_PER_CYCLE;
             for (Long cultivationId : cultivationIds) {
-                RefreshResult result = refreshCultivationWithLock(cultivationId, range, warmup);
+                Instant now = Instant.now();
+                boolean dueForReconciliation = isReconciliationDue(cultivationId, now);
+                boolean reconciliation = forceFullRange || (dueForReconciliation && reconciliationBudget > 0);
+                if (reconciliation && !forceFullRange) {
+                    reconciliationBudget--;
+                }
+                Duration range = reconciliation
+                        ? Duration.ofHours(sensorCacheProperties.getHistoryHours())
+                        : Duration.ofSeconds(sensorCacheProperties.getQueryOverlapSeconds());
+                RefreshResult result = refreshCultivationWithLock(cultivationId, range, reconciliation);
+                if (reconciliation && result == RefreshResult.SUCCESS) {
+                    lastReconciliationByCultivation.put(cultivationId, now);
+                }
                 if (result == RefreshResult.LOCK_LOST) {
                     success = false;
                     continue;

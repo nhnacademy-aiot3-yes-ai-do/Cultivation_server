@@ -166,7 +166,7 @@ class SensorCacheSchedulerTest {
                 .thenReturn(List.of());
 
         ReflectionTestUtils.setField(scheduler, "warmedUp", true);
-        ReflectionTestUtils.setField(scheduler, "lastReconciliationAt", Instant.now());
+        markReconciled(1L);
         scheduler.poll();
 
         verify(influxService).findValuesByCultivationId(eq(1L), argThat(duration ->
@@ -184,7 +184,7 @@ class SensorCacheSchedulerTest {
                 .thenReturn(List.of());
 
         ReflectionTestUtils.setField(scheduler, "warmedUp", true);
-        ReflectionTestUtils.setField(scheduler, "lastReconciliationAt", Instant.now());
+        markReconciled(1L);
         scheduler.poll();
 
         verify(influxService).findValuesByCultivationId(1L, Duration.ofHours(12));
@@ -262,7 +262,7 @@ class SensorCacheSchedulerTest {
         when(influxService.findValuesByCultivationId(eq(1L), any(Duration.class)))
                 .thenReturn(List.of());
         ReflectionTestUtils.setField(scheduler, "warmedUp", true);
-        ReflectionTestUtils.setField(scheduler, "lastReconciliationAt", Instant.now());
+        markReconciled(1L);
 
         scheduler.poll();
 
@@ -343,5 +343,12 @@ class SensorCacheSchedulerTest {
         CultivationSensor sensor = mock(CultivationSensor.class);
         when(sensor.getCultivationId()).thenReturn(cultivationId);
         return sensor;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void markReconciled(long cultivationId) {
+        Map<Long, Instant> lastReconciliationByCultivation =
+                (Map<Long, Instant>) ReflectionTestUtils.getField(scheduler, "lastReconciliationByCultivation");
+        lastReconciliationByCultivation.put(cultivationId, Instant.now());
     }
 }
