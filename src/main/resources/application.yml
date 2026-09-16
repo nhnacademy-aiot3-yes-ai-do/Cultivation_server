@@ -1,6 +1,18 @@
+server:
+  shutdown: graceful
+
 spring:
   application:
     name: cultivation-server
+
+  lifecycle:
+    timeout-per-shutdown-phase: 25s
+
+  task:
+    scheduling:
+      shutdown:
+        await-termination: true
+        await-termination-period: 25s
 
   config:
     import: optional:file:.env[.properties]
@@ -88,7 +100,7 @@ sensor-cache:
   ttl-grace-seconds: ${SENSOR_CACHE_TTL_GRACE_SECONDS:3}
   query-overlap-seconds: ${SENSOR_CACHE_QUERY_OVERLAP_SECONDS:60}
   poll-initial-delay-ms: ${SENSOR_CACHE_POLL_INITIAL_DELAY_MS:10000}
-  lock-lease-seconds: ${SENSOR_CACHE_LOCK_LEASE_SECONDS:600}
+  lock-lease-seconds: ${SENSOR_CACHE_LOCK_LEASE_SECONDS:30}
   reconciliation-interval-seconds: ${SENSOR_CACHE_RECONCILIATION_INTERVAL_SECONDS:300}
   fallback-wait-seconds: ${SENSOR_CACHE_FALLBACK_WAIT_SECONDS:25}
 
