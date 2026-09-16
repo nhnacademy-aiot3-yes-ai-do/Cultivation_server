@@ -102,6 +102,28 @@ public class SensorCacheScheduler {
                 || Duration.between(last, now).getSeconds() >= sensorCacheProperties.getReconciliationIntervalSeconds();
     }
 
+    private boolean refresh(boolean forceFullRange) {
+        if (!running.compareAndSet(false, true)) {
+            return false;
+        }
+        boolean success = false;
+        try {
+            List<Long> cultivationIds = cultivationIdsSnapshot();
+            success = true;
+            int[] reconciliationBudget = {MAX_RECONCILIATIONS_PER_CYCLE};
+            for (Long cultivationId : cultivationIds) {
+                if (!refreshOneCultivation(cultivationId, forceFullRange, reconciliationBudget)) {
+                    success = false;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("센서 Redis 캐시 갱신 실패: 원본 InfluxDB 조회는 유지됩니다.", e);
+        } finally {
+            running.set(false);
+        }
+        return success;
+    }
+
     /**
      * 한 바퀴(poll 1회)당 풀스캔으로 승격시키는 재배지 수의 상한.
      * 재배지별로 재검증 시각을 따로 추적해도, 그 시각들은 애초에 warmUp 때
@@ -112,43 +134,21 @@ public class SensorCacheScheduler {
      */
     private static final int MAX_RECONCILIATIONS_PER_CYCLE = 1;
 
-    private boolean refresh(boolean forceFullRange) {
-        if (!running.compareAndSet(false, true)) {
-            return false;
+    private boolean refreshOneCultivation(Long cultivationId, boolean forceFullRange, int[] reconciliationBudget) {
+        Instant now = Instant.now();
+        boolean dueForReconciliation = isReconciliationDue(cultivationId, now);
+        boolean reconciliation = forceFullRange || (dueForReconciliation && reconciliationBudget[0] > 0);
+        if (reconciliation && !forceFullRange) {
+            reconciliationBudget[0]--;
         }
-        boolean success = false;
-        try {
-            List<Long> cultivationIds = cultivationIdsSnapshot();
-            success = true;
-            int reconciliationBudget = MAX_RECONCILIATIONS_PER_CYCLE;
-            for (Long cultivationId : cultivationIds) {
-                Instant now = Instant.now();
-                boolean dueForReconciliation = isReconciliationDue(cultivationId, now);
-                boolean reconciliation = forceFullRange || (dueForReconciliation && reconciliationBudget > 0);
-                if (reconciliation && !forceFullRange) {
-                    reconciliationBudget--;
-                }
-                Duration range = reconciliation
-                        ? Duration.ofHours(sensorCacheProperties.getHistoryHours())
-                        : Duration.ofSeconds(sensorCacheProperties.getQueryOverlapSeconds());
-                RefreshResult result = refreshCultivationWithLock(cultivationId, range, reconciliation);
-                if (reconciliation && result == RefreshResult.SUCCESS) {
-                    lastReconciliationByCultivation.put(cultivationId, now);
-                }
-                if (result == RefreshResult.LOCK_LOST) {
-                    success = false;
-                    continue;
-                }
-                if (result == RefreshResult.FAILED) {
-                    success = false;
-                }
-            }
-        } catch (Exception e) {
-            log.warn("센서 Redis 캐시 갱신 실패: 원본 InfluxDB 조회는 유지됩니다.", e);
-        } finally {
-            running.set(false);
+        Duration range = reconciliation
+                ? Duration.ofHours(sensorCacheProperties.getHistoryHours())
+                : Duration.ofSeconds(sensorCacheProperties.getQueryOverlapSeconds());
+        RefreshResult result = refreshCultivationWithLock(cultivationId, range, reconciliation);
+        if (reconciliation && result == RefreshResult.SUCCESS) {
+            lastReconciliationByCultivation.put(cultivationId, now);
         }
-        return success;
+        return result != RefreshResult.LOCK_LOST && result != RefreshResult.FAILED;
     }
 
     private RefreshResult refreshCultivationWithLock(long cultivationId, Duration range, boolean warmup) {
