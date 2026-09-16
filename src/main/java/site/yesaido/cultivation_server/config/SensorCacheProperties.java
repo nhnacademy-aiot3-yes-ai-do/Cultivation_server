@@ -10,7 +10,7 @@ public class SensorCacheProperties {
     private long ttlGraceSeconds = 3;
     private long queryOverlapSeconds = 60;
     private long pollInitialDelayMs = 10000;
-    private long lockLeaseSeconds = 600;
+    private long lockLeaseSeconds = 30;
     private long reconciliationIntervalSeconds = 300;
     private long sensorSnapshotCacheSeconds = 5;
     private long fallbackWaitSeconds = 25;
