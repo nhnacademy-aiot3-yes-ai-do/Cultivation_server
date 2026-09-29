@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
@@ -14,6 +15,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import site.yesaido.common.exception.client.*;
 import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.exception.server.ServerErrorLevel;
+import site.yesaido.cultivation_server.sensor.exception.SensorLatestBatchReadException;
 
 import java.util.Objects;
 
@@ -231,6 +233,20 @@ class GlobalExceptionHandlerTest {
 
         Assertions.assertEquals(
                 "서버 오류가 발생했습니다.",
+                Objects.requireNonNull(response.getBody()).getDetail()
+        );
+    }
+
+    @Test
+    @DisplayName("Redis batch 조회 실패는 503 ErrorResponse로 처리한다")
+    void handleSensorLatestBatchReadException() {
+        ErrorResponse response =
+                handler.handleSensorLatestBatchReadException(
+                        new SensorLatestBatchReadException(new RuntimeException("redis unavailable")));
+
+        Assertions.assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        Assertions.assertEquals(
+                "센서 최신값을 조회하는 중 일시적인 오류가 발생했습니다.",
                 Objects.requireNonNull(response.getBody()).getDetail()
         );
     }

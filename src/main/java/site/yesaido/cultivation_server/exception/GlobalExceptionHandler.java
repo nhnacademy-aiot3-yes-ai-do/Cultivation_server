@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import site.yesaido.common.exception.client.*;
 import site.yesaido.common.exception.server.CustomServerException;
 import site.yesaido.common.exception.server.ServerErrorLevel;
+import site.yesaido.cultivation_server.sensor.exception.SensorLatestBatchReadException;
 
 import java.util.Objects;
 
@@ -129,6 +130,14 @@ public class GlobalExceptionHandler {
             return createResponseEntity(e, HttpStatus.NOT_FOUND, "해당 버섯 가이드 정보를 찾을 수 없습니다.");
         } // 503 (Load balancer / Eureka 연결 실패 등) 또는 500 AI 서버 오류 시
         return ErrorResponse.create(e, HttpStatus.SERVICE_UNAVAILABLE, "AI 서비스 연결이 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해 주세요.");
+    }
+
+    @ExceptionHandler(SensorLatestBatchReadException.class)
+    public ErrorResponse handleSensorLatestBatchReadException(SensorLatestBatchReadException e) {
+        log.warn("사용자 센서 최신값 batch 조회 실패: stage=redis-latest-batch, exception={}",
+                e.getCause() == null ? e.getClass().getSimpleName() : e.getCause().getClass().getSimpleName());
+        return ErrorResponse.create(e, HttpStatus.SERVICE_UNAVAILABLE,
+                "센서 최신값을 조회하는 중 일시적인 오류가 발생했습니다.");
     }
 
 }
